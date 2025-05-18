@@ -1,0 +1,2 @@
+# BooruPrompter
+Danbooruタグをサジェストする画像生成プロンプト入力補助ツール
