@@ -171,33 +171,39 @@ void BooruPrompter::OnCreate(HWND hwnd) {
 }
 
 void BooruPrompter::OnSize(HWND hwnd) {
+
+	// クライアントサイズの取得
 	RECT rc;
 	GetClientRect(hwnd, &rc);
+	int clientHeight = rc.bottom - rc.top;
+	int clientWidth = rc.right - rc.left;
 
 	// ツールバーのサイズ調整
 	SendMessage(m_hwndToolbar, TB_AUTOSIZE, 0, 0);
+	int toolbarHeight = HIWORD(SendMessage(m_hwndToolbar, TB_GETBUTTONSIZE, 0, 0));  // ツールバーの高さ
 
 	// ステータスバーのサイズ調整
 	SendMessage(m_hwndStatusBar, WM_SIZE, 0, 0);
+	GetWindowRect(m_hwndStatusBar, &rc);
+	int statusHeight = rc.bottom - rc.top;   // ステータスバーの高さ
+
 
 	// 入力欄とサジェストリストの配置
+	int editHeight = (clientHeight - toolbarHeight - statusHeight) / 3;
 	const int margin = 4;
-	int toolbarHeight = 24;  // ツールバーの高さ
-	int statusHeight = 20;   // ステータスバーの高さ
-	int editHeight = (rc.bottom - toolbarHeight - statusHeight) / 3;
 
 	SetWindowPos(m_hwndEdit, NULL,
 		margin,
 		toolbarHeight + margin,
-		rc.right - margin * 2,
+		clientWidth - margin * 2,
 		editHeight - margin,
 		SWP_NOZORDER);
 
 	SetWindowPos(m_hwndSuggestions, NULL,
 		margin,
 		toolbarHeight + editHeight,
-		rc.right - margin * 2,
-		rc.bottom - toolbarHeight - editHeight - statusHeight - margin,
+		clientWidth - margin * 2,
+		clientHeight - toolbarHeight - editHeight - statusHeight - margin,
 		SWP_NOZORDER);
 }
 
