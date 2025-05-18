@@ -12,9 +12,7 @@
 - (WIP)サジェストの数を設定できたり窓の位置を記憶したり
 - (WIP)代替や関連タグのサジェスト
 
-<img src="docs/sample_normal_saggestion.jpg" width="30%">
-<img src="docs/sample_fuzzy_saggestion.jpg" width="30%">
-<img src="docs/sample_reverse_saggestion.jpg" width="30%">
+<img src="docs/sample_normal_saggestion.jpg" width="30%"><img src="docs/sample_fuzzy_saggestion.jpg" width="30%"><img src="docs/sample_reverse_saggestion.jpg" width="30%">
 
 
 ## 必要条件
