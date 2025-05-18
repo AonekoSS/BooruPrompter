@@ -28,7 +28,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 }
 
 
-BooruPrompter::BooruPrompter() : m_hwnd(NULL), m_hwndEdit(NULL), m_hwndSuggestions(NULL) {}
+BooruPrompter::BooruPrompter() : m_hwnd(NULL), m_hwndEdit(NULL), m_hwndSuggestions(NULL), m_hwndToolbar(NULL), m_hwndStatusBar(NULL) {}
 
 BooruPrompter::~BooruPrompter() {}
 
@@ -79,6 +79,48 @@ bool BooruPrompter::Initialize(HINSTANCE hInstance) {
 }
 
 void BooruPrompter::OnCreate(HWND hwnd) {
+	// ツールバーの作成
+	m_hwndToolbar = CreateWindowEx(
+		0,
+		TOOLBARCLASSNAME,
+		NULL,
+		WS_CHILD | WS_VISIBLE | TBSTYLE_FLAT | TBSTYLE_LIST | TBSTYLE_TOOLTIPS,
+		0, 0, 0, 0,
+		hwnd,
+		(HMENU)ID_TOOLBAR,
+		GetModuleHandle(NULL),
+		NULL
+	);
+
+	TBADDBITMAP tb = { 0 };
+	tb.hInst = HINST_COMMCTRL;
+	tb.nID = IDB_STD_SMALL_COLOR;
+	SendMessage(m_hwndToolbar, TB_ADDBITMAP, 0, (LPARAM)&tb);
+
+	// ツールバーボタンの設定
+	TBBUTTON tbButtons[] = {
+		{STD_DELETE, ID_CLEAR, TBSTATE_ENABLED, BTNS_BUTTON, {0}, 0, (INT_PTR)L"クリア"},
+		{STD_PASTE, ID_PASTE, TBSTATE_ENABLED, BTNS_BUTTON, {0}, 0, (INT_PTR)L"貼り付け"},
+		{STD_COPY, ID_COPY, TBSTATE_ENABLED, BTNS_BUTTON, {0}, 0, (INT_PTR)L"コピー" }
+	};
+
+	// ツールバーにボタンを追加
+	SendMessage(m_hwndToolbar, TB_BUTTONSTRUCTSIZE, sizeof(TBBUTTON), 0);
+	SendMessage(m_hwndToolbar, TB_ADDBUTTONS, 3, (LPARAM)&tbButtons);
+
+	// ステータスバーの作成
+	m_hwndStatusBar = CreateWindowEx(
+		0,
+		STATUSCLASSNAME,
+		NULL,
+		WS_CHILD | WS_VISIBLE | SBARS_SIZEGRIP,
+		0, 0, 0, 0,
+		hwnd,
+		(HMENU)ID_STATUS_BAR,
+		GetModuleHandle(NULL),
+		NULL
+	);
+
 	// メイン入力欄の作成
 	m_hwndEdit = CreateWindowEx(
 		WS_EX_CLIENTEDGE,
@@ -132,11 +174,31 @@ void BooruPrompter::OnSize(HWND hwnd) {
 	RECT rc;
 	GetClientRect(hwnd, &rc);
 
+	// ツールバーのサイズ調整
+	SendMessage(m_hwndToolbar, TB_AUTOSIZE, 0, 0);
+
+	// ステータスバーのサイズ調整
+	SendMessage(m_hwndStatusBar, WM_SIZE, 0, 0);
+
 	// 入力欄とサジェストリストの配置
 	const int margin = 4;
-	int editHeight = rc.bottom / 3;
-	SetWindowPos(m_hwndEdit, NULL, margin, margin, rc.right - margin * 2, editHeight - margin, SWP_NOZORDER);
-	SetWindowPos(m_hwndSuggestions, NULL, margin, editHeight, rc.right - margin * 2, rc.bottom - editHeight - margin, SWP_NOZORDER);
+	int toolbarHeight = 24;  // ツールバーの高さ
+	int statusHeight = 20;   // ステータスバーの高さ
+	int editHeight = (rc.bottom - toolbarHeight - statusHeight) / 3;
+
+	SetWindowPos(m_hwndEdit, NULL,
+		margin,
+		toolbarHeight + margin,
+		rc.right - margin * 2,
+		editHeight - margin,
+		SWP_NOZORDER);
+
+	SetWindowPos(m_hwndSuggestions, NULL,
+		margin,
+		toolbarHeight + editHeight,
+		rc.right - margin * 2,
+		rc.bottom - toolbarHeight - editHeight - statusHeight - margin,
+		SWP_NOZORDER);
 }
 
 void BooruPrompter::OnTextChanged(HWND hwnd) {
@@ -220,6 +282,50 @@ void BooruPrompter::OnSuggestionSelected(int index) {
 	m_suggestionManager.Request({});
 }
 
+// ツールバーコマンドの処理を追加
+void BooruPrompter::OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify) {
+	switch (id) {
+	case ID_EDIT:
+		if (codeNotify == EN_CHANGE) {
+			OnTextChanged(hwnd);
+		}
+		break;
+	case ID_CLEAR:
+		SetWindowText(m_hwndEdit, L"");
+		break;
+	case ID_PASTE:
+		// テキストをクリップボードから貼り付け
+		if (OpenClipboard(hwnd)) {
+			HANDLE hData = GetClipboardData(CF_UNICODETEXT);
+			if (hData) {
+				wchar_t* pszText = (wchar_t*)GlobalLock(hData);
+				if (pszText) {
+					SetWindowText(m_hwndEdit, pszText);
+				}
+				GlobalUnlock(hData);
+			}
+			CloseClipboard();
+		}
+		break;
+	case ID_COPY:
+		// テキストをクリップボードにコピー
+		int length = GetWindowTextLength(m_hwndEdit) + 1;
+		std::vector<wchar_t> buffer(length);
+		GetWindowText(m_hwndEdit, buffer.data(), length);
+
+		if (OpenClipboard(hwnd)) {
+			EmptyClipboard();
+			HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, length * sizeof(wchar_t));
+			if (hMem) {
+				wchar_t* pMem = (wchar_t*)GlobalLock(hMem);
+				wcscpy_s(pMem, length, buffer.data());
+				GlobalUnlock(hMem);
+				SetClipboardData(CF_UNICODETEXT, hMem);
+			}
+			CloseClipboard();
+		}
+	}
+}
 
 LRESULT CALLBACK BooruPrompter::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 	BooruPrompter* pThis = NULL;
@@ -242,9 +348,7 @@ LRESULT CALLBACK BooruPrompter::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, 
 			return 0;
 
 		case WM_COMMAND:
-			if (LOWORD(wParam) == ID_EDIT && HIWORD(wParam) == EN_CHANGE) {
-				pThis->OnTextChanged(hwnd);
-			}
+			pThis->OnCommand(hwnd, LOWORD(wParam), (HWND)lParam, HIWORD(wParam));
 			return 0;
 
 		case WM_NOTIFY:
