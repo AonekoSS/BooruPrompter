@@ -1,7 +1,13 @@
 ﻿#include "framework.h"
-#include "TextUtils.h"
-#include "BooruPrompter.h"
 #include <CommCtrl.h>
+#include <shellapi.h>
+#include <algorithm>
+#include <fstream>
+
+#include "BooruPrompter.h"
+#include "TextUtils.h"
+#include "ReadPNGInfo.h"
+
 #pragma comment(lib, "Comctl32.lib")
 
 // アプリケーションのエントリポイント
@@ -72,6 +78,9 @@ bool BooruPrompter::Initialize(HINSTANCE hInstance) {
 	if (!m_hwnd) {
 		return false;
 	}
+
+	// ドラッグ＆ドロップを有効化
+	DragAcceptFiles(m_hwnd, TRUE);
 
 	ShowWindow(m_hwnd, SW_SHOW);
 	UpdateWindow(m_hwnd);
@@ -372,6 +381,43 @@ LRESULT CALLBACK BooruPrompter::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, 
 		case WM_DESTROY:
 			PostQuitMessage(0);
 			return 0;
+
+		case WM_DROPFILES:
+		{
+			HDROP hDrop = (HDROP)wParam;
+			wchar_t szFile[MAX_PATH];
+			if (DragQueryFile(hDrop, 0, szFile, MAX_PATH)) {
+				// ファイルの拡張子をチェック
+				std::wstring filePath(szFile);
+				std::wstring ext = filePath.substr(filePath.find_last_of(L".") + 1);
+				std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+
+				// PNGだったらメタデータを取得
+				if (ext == L"png") {
+					auto pnginfo = ReadPNGInfo(filePath);
+					auto metadata = utf8_to_unicode(pnginfo);
+					SetWindowText(pThis->m_hwndEdit, metadata.c_str());
+				}
+
+				// テキストファイルだったら内容を読み込む
+				if (ext == L"txt") {
+					std::ifstream file(filePath);
+					if (file.is_open()) {
+						std::string line;
+						std::string content;
+						while (std::getline(file, line)) {
+							content += line + "\n";
+						}
+						file.close();
+						SetWindowText(pThis->m_hwndEdit, utf8_to_unicode(content).c_str());
+					}
+				}
+
+				// jpegやwebpは無視でいいや（うちは使わないし）
+			}
+			DragFinish(hDrop);
+			return 0;
+		}
 		}
 	}
 

@@ -159,6 +159,7 @@
   <ItemGroup>
     <ClCompile Include="BooruDB.cpp" />
     <ClCompile Include="BooruPrompter.cpp" />
+    <ClCompile Include="ReadPNGInfo.cpp" />
     <ClCompile Include="SuggestionManager.cpp" />
     <ClCompile Include="TextUtils.cpp" />
   </ItemGroup>
