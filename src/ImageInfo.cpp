@@ -1,13 +1,26 @@
 ﻿#include "framework.h"
 #include <vector>
 #include <fstream>
+#include <algorithm>
 
 #include "TextUtils.h"
 #include "ImageInfo.h"
 
+// PNG画像のプロンプト抽出
+static std::string ReadTextFile(const std::wstring& filePath) {
+	std::ifstream file(filePath);
+	if (!file.is_open()) return std::string();
+	std::string line;
+	std::string content;
+	while (std::getline(file, line)) {
+		content += line + "\n";
+	}
+	file.close();
+	return content;
+}
 
 // PNGファイルからTEXTチャンクのみを読み込む
-std::vector<std::vector<uint8_t>> ReadPNG_TextChunks(const std::wstring& filePath) {
+static std::vector<std::vector<uint8_t>> ReadPNG_TextChunks(const std::wstring& filePath) {
 	std::vector<std::vector<uint8_t>> chunks;
 	std::ifstream file(filePath, std::ios::binary);
 
@@ -58,7 +71,8 @@ std::vector<std::vector<uint8_t>> ReadPNG_TextChunks(const std::wstring& filePat
 	return chunks;
 }
 
-std::string ReadPNGInfo(const std::wstring& filePath) {
+// PNG画像のプロンプト抽出
+static std::string ReadPNGInfo(const std::wstring& filePath) {
 	// PNGファイルのチャンクを読み込む
 	auto chunks = ReadPNG_TextChunks(filePath);
 
@@ -101,4 +115,46 @@ std::string ReadPNGInfo(const std::wstring& filePath) {
 	}
 
 	return prompt;
+}
+
+
+
+// Jpeg画像のプロンプト抽出
+static std::string ReadJpegInfo(const std::wstring& filePath) {
+	return std::string();
+}
+
+
+
+// Webp画像のプロンプト抽出
+static std::string ReadWebpInfo(const std::wstring& filePath) {
+	return std::string();
+}
+
+
+
+// ファイル情報の読み込み
+std::wstring ReadFileInfo(const std::wstring& filePath) {
+
+	// ファイルの拡張子をチェック
+	std::wstring ext = filePath.substr(filePath.find_last_of(L".") + 1);
+	std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+
+	// 拡張子ごとにファイルの情報を取得
+	if (ext == L"txt") {
+		auto info = ReadTextFile(filePath);
+		return utf8_to_unicode(info);
+	}
+	if (ext == L"png") {
+		auto pnginfo = ReadPNGInfo(filePath);
+		return utf8_to_unicode(pnginfo);
+	}
+	if (ext == L"jpg" || ext == L"jpeg") {
+		auto pnginfo = ReadJpegInfo(filePath);
+		return utf8_to_unicode(pnginfo);
+	}
+	if (ext == L"webp") {
+		auto pnginfo = ReadWebpInfo(filePath);
+		return utf8_to_unicode(pnginfo);
+	}
 }

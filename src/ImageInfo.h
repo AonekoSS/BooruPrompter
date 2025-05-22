@@ -1,4 +1,6 @@
 ﻿#pragma once
 #include <string>
 
-std::string ReadPNGInfo(const std::wstring& filePath);
+// ファイル情報の読み込み
+std::wstring ReadFileInfo(const std::wstring& filePath);
+
