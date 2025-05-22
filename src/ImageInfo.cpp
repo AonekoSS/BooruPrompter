@@ -3,7 +3,7 @@
 #include <fstream>
 
 #include "TextUtils.h"
-#include "ReadPNGInfo.h"
+#include "ImageInfo.h"
 
 
 // PNGファイルからTEXTチャンクのみを読み込む

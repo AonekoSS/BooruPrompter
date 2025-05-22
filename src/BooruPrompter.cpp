@@ -6,7 +6,7 @@
 
 #include "BooruPrompter.h"
 #include "TextUtils.h"
-#include "ReadPNGInfo.h"
+#include "ImageInfo.h"
 
 #pragma comment(lib, "Comctl32.lib")
 
