@@ -290,7 +290,7 @@ void BooruPrompter::OnSuggestionSelected(int index) {
 	SetWindowText(m_hwndEdit, newText.c_str());
 
 	// カーソル位置を更新
-	DWORD newPos = start + insertTag.length();
+	auto newPos = start + insertTag.length();
 	SendMessage(m_hwndEdit, EM_SETSEL, newPos, newPos);
 	SetFocus(m_hwndEdit);
 

@@ -48,7 +48,7 @@ bool BooruDB::QuickSuggestion(SuggestionList& suggestions, const std::string& in
 	int query_id = ++active_query_;
 	auto length = input.size();
 	for (const auto& entry : dictionary_) {
-		int score = rapidfuzz::prefix_similarity(input, entry);
+		auto score = rapidfuzz::prefix_similarity(input, entry);
 		if (score >= length) {
 			suggestions.push_back(MakeSuggestion(entry));
 			if (--maxSuggestions <= 0) break;
