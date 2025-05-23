@@ -117,25 +117,143 @@ static std::string ReadPNGInfo(const std::wstring& filePath) {
 	return prompt;
 }
 
+// EXIFチャンクからプロンプトを取り出す
+static std::wstring ReadExifChunk(std::ifstream& file, size_t chunk_size) {
+	// チャンクを読む
+	std::vector<char> data(chunk_size);
+	file.read(data.data(), chunk_size);
+	std::string text(data.data(), chunk_size);
+
+	// a1111準拠の形式
+	auto a1111_pos = text.find("a1111");
+	if (a1111_pos != std::string::npos) {
+		auto prompt = text.substr(a1111_pos + 6);
+		auto lf_pos = prompt.find('\n');
+		if (lf_pos != std::string::npos) {
+			return utf8_to_unicode(prompt.substr(0, lf_pos));
+		}
+	}
+
+	// Forgeとかの形式
+	auto unicode_pos = text.find("UNICODE");
+	if (unicode_pos != std::string::npos) {
+		auto params = text.substr(unicode_pos + 9);
+		auto unicode = std::wstring(reinterpret_cast<wchar_t*>(params.data()), params.size() / 2);
+		auto lf_pos = unicode.find(L'\n');
+		if (lf_pos != std::string::npos) {
+			return unicode.substr(0, lf_pos);
+		}
+	}
+
+	return std::wstring();
+}
 
 
 // Jpeg画像のプロンプト抽出
-static std::string ReadJpegInfo(const std::wstring& filePath) {
-	return std::string();
+static std::wstring ReadJpegInfo(const std::wstring& filePath) {
+	std::ifstream file(filePath, std::ios::binary);
+	if (!file) {
+		return std::wstring();
+	}
+
+	// JPEGファイルの先頭を確認
+	uint8_t header[2];
+	file.read(reinterpret_cast<char*>(header), 2);
+	if (header[0] != 0xFF || header[1] != 0xD8) {
+		return std::wstring();  // JPEGファイルではない
+	}
+
+	while (file) {
+		uint8_t marker[2];
+		file.read(reinterpret_cast<char*>(marker), 2);
+
+		// マーカーの確認
+		if (marker[0] != 0xFF) {
+			break;
+		}
+
+		// APP1マーカー（Exif）を探す
+		if (marker[1] == 0xE1) {
+			// セグメントサイズを読み込む
+			uint16_t size;
+			file.read(reinterpret_cast<char*>(&size), 2);
+			size = _byteswap_ushort(size);  // ビッグエンディアンから変換
+
+			// Exifヘッダーを確認
+			char exif_header[6];
+			file.read(exif_header, 6);
+			if (memcmp(exif_header, "Exif\0\0", 6) == 0) {
+				auto info = ReadExifChunk(file, size - 8);
+				if (!info.empty()) return info;
+			}
+		}
+		else if (marker[1] == 0xDA) {  // SOSマーカー（画像データの開始）
+			break;
+		}
+		else {
+			// その他のマーカーはスキップ
+			uint16_t size;
+			file.read(reinterpret_cast<char*>(&size), 2);
+			size = _byteswap_ushort(size);
+			file.seekg(size - 2, std::ios::cur);
+		}
+	}
+
+	return std::wstring();
 }
-
-
 
 // Webp画像のプロンプト抽出
-static std::string ReadWebpInfo(const std::wstring& filePath) {
-	return std::string();
+static std::wstring ReadWebpInfo(const std::wstring& filePath) {
+	std::ifstream file(filePath, std::ios::binary);
+	if (!file) {
+		return std::wstring();
+	}
+
+	// WebPファイルの先頭を確認
+	char header[4];
+	file.read(header, 4);
+	if (memcmp(header, "RIFF", 4) != 0) {
+		return std::wstring();  // WebPファイルではない
+	}
+
+	// ファイルサイズを読み込む
+	uint32_t fileSize;
+	file.read(reinterpret_cast<char*>(&fileSize), 4);
+	fileSize = _byteswap_ulong(fileSize);  // リトルエンディアンから変換
+
+	// WebPシグネチャを確認
+	char webp_header[4];
+	file.read(webp_header, 4);
+	if (memcmp(webp_header, "WEBP", 4) != 0) {
+		return std::wstring();
+	}
+
+	// チャンクを探す
+	while (file) {
+		char chunk_header[5]; chunk_header[4] = '\0';
+		file.read(chunk_header, 4);
+		if (file.eof()) break;
+
+		// チャンクサイズを読み込む
+		uint32_t chunk_size;
+		file.read(reinterpret_cast<char*>(&chunk_size), 4);
+
+		// EXIFチャンクを探す
+		if (memcmp(chunk_header, "EXIF", 4) == 0) {
+			auto info = ReadExifChunk(file, chunk_size);
+			if (!info.empty()) return info;
+		}
+		else {
+			// その他のチャンクはスキップ
+			file.seekg(chunk_size, std::ios::cur);
+		}
+	}
+
+	return std::wstring();
 }
-
-
 
 // ファイル情報の読み込み
 std::wstring ReadFileInfo(const std::wstring& filePath) {
-
 	// ファイルの拡張子をチェック
 	std::wstring ext = filePath.substr(filePath.find_last_of(L".") + 1);
 	std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
@@ -146,15 +264,18 @@ std::wstring ReadFileInfo(const std::wstring& filePath) {
 		return utf8_to_unicode(info);
 	}
 	if (ext == L"png") {
-		auto pnginfo = ReadPNGInfo(filePath);
-		return utf8_to_unicode(pnginfo);
+		auto info = ReadPNGInfo(filePath);
+		return utf8_to_unicode(info);
 	}
 	if (ext == L"jpg" || ext == L"jpeg") {
-		auto pnginfo = ReadJpegInfo(filePath);
-		return utf8_to_unicode(pnginfo);
+		auto info = ReadJpegInfo(filePath);
+		return info;
 	}
 	if (ext == L"webp") {
-		auto pnginfo = ReadWebpInfo(filePath);
-		return utf8_to_unicode(pnginfo);
+		auto info = ReadWebpInfo(filePath);
+		return info;
 	}
+
+	return std::wstring();
 }
+
