@@ -104,7 +104,16 @@ static std::string ReadPNGInfo(const std::wstring& filePath) {
 	// パラメータからプロンプトを取り出す
 	std::string prompt;
 	if (parameters_is_json) {
-		// json形式は一旦パス（ほとんど居ない筈）
+		// json形式は簡易対応
+		auto prompt_pos = parameters.find("\"full_prompt\":");
+		auto param = parameters.substr(prompt_pos + 14);
+		auto begin = param.find('"');
+		if (begin != std::string::npos) {
+			auto end = param.find('"', begin + 1);
+			if (end != std::string::npos) {
+				prompt = param.substr(begin + 1, end - begin - 1);
+			}
+		}
 	}
 	else {
 		// a1111形式は改行の手前を取り出せばOK
