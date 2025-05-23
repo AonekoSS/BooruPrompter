@@ -41,7 +41,7 @@
     <ClCompile Include="TextUtils.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="ReadPNGInfo.cpp">
+    <ClCompile Include="ImageInfo.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
   </ItemGroup>

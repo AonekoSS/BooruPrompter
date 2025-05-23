@@ -6,7 +6,7 @@
 
 #include "BooruPrompter.h"
 #include "TextUtils.h"
-#include "ReadPNGInfo.h"
+#include "ImageInfo.h"
 
 #pragma comment(lib, "Comctl32.lib")
 
@@ -290,7 +290,7 @@ void BooruPrompter::OnSuggestionSelected(int index) {
 	SetWindowText(m_hwndEdit, newText.c_str());
 
 	// カーソル位置を更新
-	DWORD newPos = start + insertTag.length();
+	auto newPos = start + insertTag.length();
 	SendMessage(m_hwndEdit, EM_SETSEL, newPos, newPos);
 	SetFocus(m_hwndEdit);
 
@@ -387,33 +387,9 @@ LRESULT CALLBACK BooruPrompter::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, 
 			HDROP hDrop = (HDROP)wParam;
 			wchar_t szFile[MAX_PATH];
 			if (DragQueryFile(hDrop, 0, szFile, MAX_PATH)) {
-				// ファイルの拡張子をチェック
 				std::wstring filePath(szFile);
-				std::wstring ext = filePath.substr(filePath.find_last_of(L".") + 1);
-				std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
-
-				// PNGだったらメタデータを取得
-				if (ext == L"png") {
-					auto pnginfo = ReadPNGInfo(filePath);
-					auto metadata = utf8_to_unicode(pnginfo);
-					SetWindowText(pThis->m_hwndEdit, metadata.c_str());
-				}
-
-				// テキストファイルだったら内容を読み込む
-				if (ext == L"txt") {
-					std::ifstream file(filePath);
-					if (file.is_open()) {
-						std::string line;
-						std::string content;
-						while (std::getline(file, line)) {
-							content += line + "\n";
-						}
-						file.close();
-						SetWindowText(pThis->m_hwndEdit, utf8_to_unicode(content).c_str());
-					}
-				}
-
-				// jpegやwebpは無視でいいや（うちは使わないし）
+				auto metadata = ReadFileInfo(filePath);
+				SetWindowText(pThis->m_hwndEdit, metadata.c_str());
 			}
 			DragFinish(hDrop);
 			return 0;
