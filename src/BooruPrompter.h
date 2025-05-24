@@ -1,23 +1,5 @@
 ﻿#pragma once
-
-#include "resource.h"
 #include "SuggestionManager.h"
-#include <Windows.h>
-#include <CommCtrl.h>
-#include <string>
-#include <vector>
-
-// アバウトダイアログのコールバック関数の宣言
-INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
-
-// コントロールIDの定義
-#define ID_EDIT 1001
-#define ID_SUGGESTIONS 1002
-#define ID_TOOLBAR 1003
-#define ID_STATUS_BAR 1004
-#define ID_CLEAR 1005
-#define ID_PASTE 1006
-#define ID_COPY 1007
 
 class BooruPrompter {
 public:
@@ -44,6 +26,14 @@ private:
 	SuggestionManager m_suggestionManager;
 	SuggestionList m_currentSuggestions;
 
-	//static constexpr int ID_EDIT = 1001;
-	//static constexpr int ID_SUGGESTIONS = 1002;
+	// コントロールIDの定義
+	enum {
+		ID_EDIT = 1001,
+		ID_SUGGESTIONS = 1002,
+		ID_TOOLBAR = 1003,
+		ID_STATUS_BAR = 1004,
+		ID_CLEAR = 1005,
+		ID_PASTE = 1006,
+		ID_COPY = 1007
+	};
 };

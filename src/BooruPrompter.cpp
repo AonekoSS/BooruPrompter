@@ -1,14 +1,17 @@
 ﻿#include "framework.h"
 #include <CommCtrl.h>
 #include <shellapi.h>
+#pragma comment(lib, "Comctl32.lib")
 #include <algorithm>
 #include <fstream>
+#include <array>
+
+#include "Resource.h"
 
 #include "BooruPrompter.h"
 #include "TextUtils.h"
 #include "ImageInfo.h"
 
-#pragma comment(lib, "Comctl32.lib")
 
 // アプリケーションのエントリポイント
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
@@ -19,9 +22,10 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	UNREFERENCED_PARAMETER(lpCmdLine);
 
 	// コモンコントロールの初期化
-	INITCOMMONCONTROLSEX icex;
-	icex.dwSize = sizeof(INITCOMMONCONTROLSEX);
-	icex.dwICC = ICC_LISTVIEW_CLASSES;
+	INITCOMMONCONTROLSEX icex{
+		.dwSize = sizeof(INITCOMMONCONTROLSEX),
+		.dwICC = ICC_LISTVIEW_CLASSES
+	};
 	InitCommonControlsEx(&icex);
 
 	// BooruPrompterのインスタンスを作成して実行
@@ -33,29 +37,23 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	return app.Run();
 }
 
-
 BooruPrompter::BooruPrompter() : m_hwnd(NULL), m_hwndEdit(NULL), m_hwndSuggestions(NULL), m_hwndToolbar(NULL), m_hwndStatusBar(NULL) {}
 
 BooruPrompter::~BooruPrompter() {}
 
 bool BooruPrompter::Initialize(HINSTANCE hInstance) {
-	// コモンコントロールの初期化
-	INITCOMMONCONTROLSEX icex;
-	icex.dwSize = sizeof(INITCOMMONCONTROLSEX);
-	icex.dwICC = ICC_LISTVIEW_CLASSES;
-	InitCommonControlsEx(&icex);
-
 	// ウィンドウクラスの登録
-	WNDCLASSEX wcex = {};
-	wcex.cbSize = sizeof(WNDCLASSEX);
-	wcex.style = CS_HREDRAW | CS_VREDRAW;
-	wcex.lpfnWndProc = WindowProc;
-	wcex.hInstance = hInstance;
-	wcex.hCursor = LoadCursor(NULL, IDC_ARROW);
-	wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
-	wcex.lpszClassName = L"BooruPrompterClass";
-	wcex.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_BOORUPROMPTER));
-	wcex.hIconSm = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_SMALL));
+	WNDCLASSEX wcex{
+		.cbSize = sizeof(WNDCLASSEX),
+		.style = CS_HREDRAW | CS_VREDRAW,
+		.lpfnWndProc = WindowProc,
+		.hInstance = hInstance,
+		.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_BOORUPROMPTER)),
+		.hCursor = LoadCursor(nullptr, IDC_ARROW),
+		.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1),
+		.lpszClassName = L"BooruPrompterClass",
+		.hIconSm = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_SMALL))
+	};
 
 	if (!RegisterClassEx(&wcex)) {
 		return false;
@@ -101,7 +99,7 @@ void BooruPrompter::OnCreate(HWND hwnd) {
 		NULL
 	);
 
-	TBADDBITMAP tb = { 0 };
+	TBADDBITMAP tb{};
 	tb.hInst = HINST_COMMCTRL;
 	tb.nID = IDB_STD_SMALL_COLOR;
 	SendMessage(m_hwndToolbar, TB_ADDBITMAP, 0, (LPARAM)&tb);
@@ -157,18 +155,13 @@ void BooruPrompter::OnCreate(HWND hwnd) {
 	);
 
 	// リストビューのカラム設定
-	LVCOLUMN lvc = {};
-	lvc.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM;
-
-	lvc.iSubItem = 0;
-	lvc.pszText = (LPWSTR)L"タグ";
-	lvc.cx = 200;
-	ListView_InsertColumn(m_hwndSuggestions, 0, &lvc);
-
-	lvc.iSubItem = 1;
-	lvc.pszText = (LPWSTR)L"説明";
-	lvc.cx = 400;
-	ListView_InsertColumn(m_hwndSuggestions, 1, &lvc);
+	std::array<LVCOLUMN, 2> columns{{
+		{LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM, 0, 200, (LPWSTR)L"タグ", 0, 0},
+		{LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM, 0, 400, (LPWSTR)L"説明", 0, 1}
+	}};
+	for (const auto& column : columns) {
+		ListView_InsertColumn(m_hwndSuggestions, column.iSubItem, &column);
+	}
 
 	// リストビューのスタイル設定
 	ListView_SetExtendedListViewStyle(m_hwndSuggestions, LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
@@ -176,29 +169,28 @@ void BooruPrompter::OnCreate(HWND hwnd) {
 	// サジェスト開始
 	m_suggestionManager.StartSuggestion([this](const SuggestionList& suggestions) {
 		UpdateSuggestionList(suggestions);
-		});
+	});
 }
 
 void BooruPrompter::OnSize(HWND hwnd) {
-
 	// クライアントサイズの取得
 	RECT rc;
 	GetClientRect(hwnd, &rc);
-	int clientHeight = rc.bottom - rc.top;
-	int clientWidth = rc.right - rc.left;
+	const int clientHeight = rc.bottom - rc.top;
+	const int clientWidth = rc.right - rc.left;
 
 	// ツールバーのサイズ調整
 	SendMessage(m_hwndToolbar, TB_AUTOSIZE, 0, 0);
-	int toolbarHeight = HIWORD(SendMessage(m_hwndToolbar, TB_GETBUTTONSIZE, 0, 0));  // ツールバーの高さ
+	const int toolbarHeight = HIWORD(SendMessage(m_hwndToolbar, TB_GETBUTTONSIZE, 0, 0));  // ツールバーの高さ
 
 	// ステータスバーのサイズ調整
 	SendMessage(m_hwndStatusBar, WM_SIZE, 0, 0);
 	GetWindowRect(m_hwndStatusBar, &rc);
-	int statusHeight = rc.bottom - rc.top;   // ステータスバーの高さ
+	const int statusHeight = rc.bottom - rc.top;   // ステータスバーの高さ
 
 
 	// 入力欄とサジェストリストの配置
-	int editHeight = (clientHeight - toolbarHeight - statusHeight) / 3;
+	const int editHeight = (clientHeight - toolbarHeight - statusHeight) / 3;
 	const int margin = 4;
 
 	SetWindowPos(m_hwndEdit, NULL,
@@ -222,14 +214,14 @@ void BooruPrompter::OnTextChanged(HWND hwnd) {
 	SendMessage(m_hwndEdit, EM_GETSEL, (WPARAM)&startPos, (LPARAM)&endPos);
 
 	// 現在のテキストを取得
-	int length = GetWindowTextLength(m_hwndEdit) + 1;
+	const int length = GetWindowTextLength(m_hwndEdit) + 1;
 	std::vector<wchar_t> buffer(length);
 	GetWindowText(m_hwndEdit, buffer.data(), length);
 	std::wstring currentText(buffer.data());
 
 	// カーソル位置のワードを取得
-	auto [start, end] = get_span_at_cursor(currentText, startPos);
-	auto currentWord = trim(currentText.substr(start, end - start));
+	const auto [start, end] = get_span_at_cursor(currentText, startPos);
+	const auto currentWord = trim(currentText.substr(start, end - start));
 
 	// サジェスト開始
 	m_suggestionManager.Request(unicode_to_utf8(currentWord.c_str()));
@@ -243,12 +235,12 @@ void BooruPrompter::UpdateSuggestionList(const SuggestionList& suggestions) {
 	m_currentSuggestions = suggestions;
 
 	// 新しいサジェストを追加
-	LVITEM lvi = {};
+	LVITEM lvi{};
 	lvi.mask = LVIF_TEXT;
 
-	for (size_t i = 0; i < suggestions.size(); i++) {
-		std::wstring tag = utf8_to_unicode(suggestions[i].tag);
-		std::wstring description = suggestions[i].description;
+	for (size_t i = 0; i < suggestions.size(); ++i) {
+		const auto tag = utf8_to_unicode(suggestions[i].tag);
+		const auto& description = suggestions[i].description;
 
 		lvi.iItem = static_cast<int>(i);
 		lvi.iSubItem = 0;
@@ -267,20 +259,20 @@ void BooruPrompter::OnSuggestionSelected(int index) {
 	}
 
 	// 選択したタグを取得
-	const std::wstring& selectedTag = utf8_to_unicode(m_currentSuggestions[index].tag);
+	const auto& selectedTag = utf8_to_unicode(m_currentSuggestions[index].tag);
 
 	// 現在のカーソル位置を取得
 	DWORD startPos, endPos;
 	SendMessage(m_hwndEdit, EM_GETSEL, (WPARAM)&startPos, (LPARAM)&endPos);
 
 	// 現在のテキストを取得
-	int length = GetWindowTextLength(m_hwndEdit) + 1;
+	const int length = GetWindowTextLength(m_hwndEdit) + 1;
 	std::vector<wchar_t> buffer(length);
 	GetWindowText(m_hwndEdit, buffer.data(), length);
 	std::wstring currentText(buffer.data());
 
 	// カーソル位置のワード範囲を取得
-	auto [start, end] = get_span_at_cursor(currentText, startPos);
+	const auto [start, end] = get_span_at_cursor(currentText, startPos);
 
 	// タグを挿入
 	auto insertTag = selectedTag;
@@ -297,7 +289,6 @@ void BooruPrompter::OnSuggestionSelected(int index) {
 	m_suggestionManager.Request({});
 }
 
-// ツールバーコマンドの処理を追加
 void BooruPrompter::OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify) {
 	switch (id) {
 	case ID_EDIT:
@@ -339,6 +330,7 @@ void BooruPrompter::OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify) 
 			}
 			CloseClipboard();
 		}
+		break;
 	}
 }
 
@@ -401,26 +393,10 @@ LRESULT CALLBACK BooruPrompter::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, 
 }
 
 int BooruPrompter::Run() {
-	MSG msg = {};
+	MSG msg{};
 	while (GetMessage(&msg, NULL, 0, 0)) {
 		TranslateMessage(&msg);
 		DispatchMessage(&msg);
 	}
 	return static_cast<int>(msg.wParam);
-}
-
-INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam) {
-	UNREFERENCED_PARAMETER(lParam);
-	switch (message) {
-	case WM_INITDIALOG:
-		return (INT_PTR)TRUE;
-
-	case WM_COMMAND:
-		if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL) {
-			EndDialog(hDlg, LOWORD(wParam));
-			return (INT_PTR)TRUE;
-		}
-		break;
-	}
-	return (INT_PTR)FALSE;
 }
