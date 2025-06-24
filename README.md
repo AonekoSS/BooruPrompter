@@ -9,11 +9,12 @@
 - 入力中タグのサジェストと日本語の意味表示
 - スペルが近いタグのサジェスト（あいまい検索）
 - 日本語によるタグの検索（プロンプト欄に日本語を入れるだけ）
-- (NEW) PNGファイルをドロップすると生成時のプロンプトを入力
+- 生成した画像ファイルをドロップすると生成時のプロンプトを表示
+- (NEW) 右のペインに入力中プロンプトのリストを表示（D&Dで順序入れ替え）
 - (WIP)サジェストの数を設定できたり窓の位置を記憶したり
 - (WIP)代替や関連タグのサジェスト
 
-<img src="docs/sample_normal_saggestion.jpg" width="30%"><img src="docs/sample_fuzzy_saggestion.jpg" width="30%"><img src="docs/sample_reverse_saggestion.jpg" width="30%">
+<img src="docs/sample.jpg">
 
 
 ## 必要条件
