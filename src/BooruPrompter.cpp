@@ -1,6 +1,7 @@
 ﻿#include "framework.h"
 #include <CommCtrl.h>
 #include <shellapi.h>
+#include <WindowsX.h>
 #pragma comment(lib, "Comctl32.lib")
 #include <algorithm>
 #include <fstream>
@@ -37,7 +38,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	return app.Run();
 }
 
-BooruPrompter::BooruPrompter() : m_hwnd(NULL), m_hwndEdit(NULL), m_hwndSuggestions(NULL), m_hwndToolbar(NULL), m_hwndStatusBar(NULL) {}
+BooruPrompter::BooruPrompter() : m_hwnd(NULL), m_hwndEdit(NULL), m_hwndSuggestions(NULL), m_hwndTagList(NULL), m_hwndToolbar(NULL), m_hwndStatusBar(NULL), m_dragIndex(-1), m_dragTargetIndex(-1), m_isDragging(false), m_splitterX(0), m_splitterY(0), m_minLeftWidth(200), m_minRightWidth(150), m_minTopHeight(100), m_minBottomHeight(100), m_isDraggingSplitter(false), m_draggingSplitterType(0) {}
 
 BooruPrompter::~BooruPrompter() {}
 
@@ -155,12 +156,14 @@ void BooruPrompter::OnCreate(HWND hwnd) {
 	);
 
 	// リストビューのカラム設定
-	std::array<LVCOLUMN, 2> columns{{
-		{LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM, 0, 200, (LPWSTR)L"タグ", 0, 0},
-		{LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM, 0, 400, (LPWSTR)L"説明", 0, 1}
-	}};
-	for (const auto& column : columns) {
-		ListView_InsertColumn(m_hwndSuggestions, column.iSubItem, &column);
+	{
+		std::array<LVCOLUMN, 2> columns{ {
+			{LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM, 0, 150, (LPWSTR)L"タグ", 0, 0},
+			{LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM, 0, 300, (LPWSTR)L"説明", 0, 1}
+		} };
+		for (const auto& column : columns) {
+			ListView_InsertColumn(m_hwndSuggestions, column.iSubItem, &column);
+		}
 	}
 
 	// リストビューのスタイル設定
@@ -170,6 +173,36 @@ void BooruPrompter::OnCreate(HWND hwnd) {
 	m_suggestionManager.StartSuggestion([this](const SuggestionList& suggestions) {
 		UpdateSuggestionList(suggestions);
 	});
+
+	// タグリストの初期化
+	m_hwndTagList = CreateWindowEx(
+		WS_EX_CLIENTEDGE,
+		WC_LISTVIEW,
+		L"",
+		WS_CHILD | WS_VISIBLE | LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS,
+		0, 0, 0, 0,
+		hwnd,
+		(HMENU)ID_TAG_LIST,
+		GetModuleHandle(NULL),
+		NULL
+	);
+
+	// リストビューのカラム設定
+	{
+		std::array<LVCOLUMN, 2> columns{ {
+			{LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM, 0, 150, (LPWSTR)L"タグ", 0, 0},
+			{LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM, 0, 200, (LPWSTR)L"説明", 0, 1}
+		} };
+		for (const auto& column : columns) {
+			ListView_InsertColumn(m_hwndTagList, column.iSubItem, &column);
+		}
+	}
+
+	// リストビューのスタイル設定（ドラッグ＆ドロップ対応）
+	SendMessage(m_hwndTagList, LVM_SETEXTENDEDLISTVIEWSTYLE, 0,
+		LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_TRACKSELECT);
+
+	// 初期状態ではタグリストは空
 }
 
 void BooruPrompter::OnSize(HWND hwnd) {
@@ -179,32 +212,55 @@ void BooruPrompter::OnSize(HWND hwnd) {
 	const int clientHeight = rc.bottom - rc.top;
 	const int clientWidth = rc.right - rc.left;
 
-	// ツールバーのサイズ調整
-	SendMessage(m_hwndToolbar, TB_AUTOSIZE, 0, 0);
-	const int toolbarHeight = HIWORD(SendMessage(m_hwndToolbar, TB_GETBUTTONSIZE, 0, 0));  // ツールバーの高さ
+	// ツールバーとステータスバーの高さを取得
+	auto [toolbarHeight, statusHeight] = GetToolbarAndStatusHeight();
 
-	// ステータスバーのサイズ調整
-	SendMessage(m_hwndStatusBar, WM_SIZE, 0, 0);
-	GetWindowRect(m_hwndStatusBar, &rc);
-	const int statusHeight = rc.bottom - rc.top;   // ステータスバーの高さ
+	// スプリッター位置の初期化（初回のみ）
+	if (m_splitterX == 0) {
+		m_splitterX = clientWidth * 2 / 3;  // 初期位置は2/3
+	}
+	if (m_splitterY == 0) {
+		m_splitterY = (clientHeight - toolbarHeight - statusHeight) / 3;  // 初期位置は1/3
+	}
 
+	// スプリッター位置の制限
+	const int maxSplitterX = clientWidth - m_minRightWidth;
+	const int minSplitterX = m_minLeftWidth;
+	const int maxSplitterY = clientHeight - statusHeight - m_minBottomHeight;
+	const int minSplitterY = toolbarHeight + m_minTopHeight;
 
-	// 入力欄とサジェストリストの配置
-	const int editHeight = (clientHeight - toolbarHeight - statusHeight) / 3;
+	m_splitterX = std::clamp(m_splitterX, minSplitterX, maxSplitterX);
+	m_splitterY = std::clamp(m_splitterY, minSplitterY, maxSplitterY);
+
+	// 4分割の設定
+	const int leftWidth = m_splitterX;
+	const int rightWidth = clientWidth - leftWidth;
+	const int topHeight = m_splitterY - toolbarHeight;
+	const int bottomHeight = clientHeight - m_splitterY - statusHeight;
 	const int margin = 4;
 
+	// 左上: 入力欄
 	SetWindowPos(m_hwndEdit, NULL,
 		margin,
 		toolbarHeight + margin,
-		clientWidth - margin * 2,
-		editHeight - margin,
+		leftWidth - margin * 2,
+		topHeight - margin,
 		SWP_NOZORDER);
 
+	// 左下: サジェストリスト
 	SetWindowPos(m_hwndSuggestions, NULL,
 		margin,
-		toolbarHeight + editHeight,
-		clientWidth - margin * 2,
-		clientHeight - toolbarHeight - editHeight - statusHeight - margin,
+		m_splitterY + margin,
+		leftWidth - margin * 2,
+		bottomHeight - margin,
+		SWP_NOZORDER);
+
+	// 右側: タグリスト
+	SetWindowPos(m_hwndTagList, NULL,
+		leftWidth + margin,
+		toolbarHeight + margin,
+		rightWidth - margin * 2,
+		clientHeight - toolbarHeight - statusHeight - margin * 2,
 		SWP_NOZORDER);
 }
 
@@ -225,6 +281,9 @@ void BooruPrompter::OnTextChanged(HWND hwnd) {
 
 	// サジェスト開始
 	m_suggestionManager.Request(unicode_to_utf8(currentWord.c_str()));
+
+	// プロンプトが変更されたのでタグリストを更新
+	SyncTagListFromPrompt(unicode_to_utf8(currentText.c_str()));
 }
 
 void BooruPrompter::UpdateSuggestionList(const SuggestionList& suggestions) {
@@ -285,6 +344,9 @@ void BooruPrompter::OnSuggestionSelected(int index) {
 	auto newPos = start + insertTag.length();
 	SendMessage(m_hwndEdit, EM_SETSEL, newPos, newPos);
 	SetFocus(m_hwndEdit);
+
+	// タグリストを更新
+	SyncTagListFromPrompt(unicode_to_utf8(newText.c_str()));
 
 	m_suggestionManager.Request({});
 }
@@ -367,6 +429,78 @@ LRESULT CALLBACK BooruPrompter::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, 
 				pThis->OnSuggestionSelected(pnmia->iItem);
 				return 0;
 			}
+			else if (pnmh->idFrom == ID_TAG_LIST && pnmh->code == LVN_BEGINDRAG) {
+				// ドラッグ開始
+				LPNMLISTVIEW pnmlv = reinterpret_cast<LPNMLISTVIEW>(lParam);
+				pThis->OnTagListDragStart(pnmlv->iItem);
+				SetCapture(hwnd);
+				return 0;
+			}
+		}
+		break;
+
+		case WM_LBUTTONDOWN:
+		{
+			int xPos = GET_X_LPARAM(lParam);
+			int yPos = GET_Y_LPARAM(lParam);
+			pThis->HandleSplitterMouseDown(xPos, yPos);
+		}
+		break;
+
+		case WM_MOUSEMOVE:
+		{
+			int xPos = GET_X_LPARAM(lParam);
+			int yPos = GET_Y_LPARAM(lParam);
+
+			// スプリッターカーソルの更新
+			pThis->UpdateSplitterCursor(xPos, yPos);
+
+			if (pThis->m_isDragging) {
+				// ドラッグ中のマウス移動処理
+				// メインウィンドウのクライアント座標をタグリストのクライアント座標に変換
+				POINT pt = { xPos, yPos };
+				MapWindowPoints(hwnd, pThis->m_hwndTagList, &pt, 1);
+
+				// マウス位置のアイテムを取得
+				LVHITTESTINFO ht = { 0 };
+				ht.pt = pt;
+				int targetIndex = ListView_HitTest(pThis->m_hwndTagList, &ht);
+
+				// すべてのアイテムのハイライトをクリア
+				for (int i = 0; i < static_cast<int>(pThis->m_tagItems.size()); ++i) {
+					ListView_SetItemState(pThis->m_hwndTagList, i, 0, LVIS_DROPHILITED);
+				}
+
+				// ドラッグ先が有効な場合、ハイライト表示
+				if (targetIndex >= 0 && targetIndex < static_cast<int>(pThis->m_tagItems.size())) {
+					ListView_SetItemState(pThis->m_hwndTagList, targetIndex,
+						LVIS_DROPHILITED, LVIS_DROPHILITED);
+					pThis->m_dragTargetIndex = targetIndex;
+				} else {
+					pThis->m_dragTargetIndex = -1;
+				}
+			}
+			else if (pThis->m_isDraggingSplitter) {
+				pThis->HandleSplitterMouseMove(xPos, yPos);
+			}
+		}
+		break;
+
+		case WM_LBUTTONUP:
+		{
+			if (pThis->m_isDragging) {
+				// ドラッグ終了時に実際の移動を実行
+				if (pThis->m_dragTargetIndex >= 0 && pThis->m_dragTargetIndex != pThis->m_dragIndex) {
+					pThis->OnTagListDragDrop(pThis->m_dragIndex, pThis->m_dragTargetIndex);
+				}
+
+				// ドラッグ終了処理
+				pThis->OnTagListDragEnd();
+				ReleaseCapture();
+			}
+			else if (pThis->m_isDraggingSplitter) {
+				pThis->HandleSplitterMouseUp();
+			}
 		}
 		break;
 
@@ -399,4 +533,250 @@ int BooruPrompter::Run() {
 		DispatchMessage(&msg);
 	}
 	return static_cast<int>(msg.wParam);
+}
+
+
+void BooruPrompter::RefreshTagList() {
+	ListView_DeleteAllItems(m_hwndTagList);
+
+	LVITEM lvi{};
+	lvi.mask = LVIF_TEXT;
+
+	for (size_t i = 0; i < m_tagItems.size(); ++i) {
+		const auto& item = m_tagItems[i];
+		const auto tag = utf8_to_unicode(item.tag);
+
+		lvi.iItem = static_cast<int>(i);
+		lvi.iSubItem = 0;
+		lvi.pszText = (LPWSTR)tag.c_str();
+		ListView_InsertItem(m_hwndTagList, &lvi);
+
+		lvi.iSubItem = 1;
+		lvi.pszText = (LPWSTR)item.description.c_str();
+		ListView_SetItem(m_hwndTagList, &lvi);
+	}
+}
+
+void BooruPrompter::OnTagListDragDrop(int fromIndex, int toIndex) {
+	if (fromIndex < 0 || fromIndex >= static_cast<int>(m_tagItems.size()) ||
+		toIndex < 0 || toIndex >= static_cast<int>(m_tagItems.size()) ||
+		fromIndex == toIndex) {
+		return;
+	}
+
+	std::swap(m_tagItems[fromIndex], m_tagItems[toIndex]);
+
+	RefreshTagList();
+	UpdatePromptFromTagList();
+
+	m_dragIndex = toIndex;
+}
+
+void BooruPrompter::OnTagListDragStart(int index) {
+	m_dragIndex = index;
+	m_dragTargetIndex = index;
+	m_isDragging = true;
+}
+
+void BooruPrompter::OnTagListDragEnd() {
+	if (m_isDragging) {
+		for (int i = 0; i < static_cast<int>(m_tagItems.size()); ++i) {
+			ListView_SetItemState(m_hwndTagList, i, 0, LVIS_DROPHILITED);
+		}
+
+		if (m_dragIndex >= 0 && m_dragIndex < static_cast<int>(m_tagItems.size())) {
+			ListView_SetItemState(m_hwndTagList, m_dragIndex,
+				LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
+			ListView_EnsureVisible(m_hwndTagList, m_dragIndex, FALSE);
+		}
+	}
+
+	m_dragIndex = -1;
+	m_dragTargetIndex = -1;
+	m_isDragging = false;
+}
+
+void BooruPrompter::AddTagToList(const Suggestion& suggestion) {
+	m_tagItems.push_back(suggestion);
+	RefreshTagList();
+}
+
+std::vector<std::string> BooruPrompter::ExtractTagsFromPrompt(const std::string& prompt) {
+	std::vector<std::string> tags;
+	std::string currentTag;
+
+	for (char c : prompt) {
+		if (c == ',') {
+			if (!currentTag.empty()) {
+				std::string trimmedTag = trim(currentTag);
+				if (!trimmedTag.empty()) {
+					tags.push_back(trimmedTag);
+				}
+				currentTag.clear();
+			}
+		} else {
+			currentTag += c;
+		}
+	}
+
+	if (!currentTag.empty()) {
+		std::string trimmedTag = trim(currentTag);
+		if (!trimmedTag.empty()) {
+			tags.push_back(trimmedTag);
+		}
+	}
+
+	return tags;
+}
+
+void BooruPrompter::UpdatePromptFromTagList() {
+	std::wstring newPrompt;
+	for (size_t i = 0; i < m_tagItems.size(); ++i) {
+		if (i > 0) {
+			newPrompt += L", ";
+		}
+		newPrompt += utf8_to_unicode(m_tagItems[i].tag);
+	}
+
+	SetWindowText(m_hwndEdit, newPrompt.c_str());
+}
+
+void BooruPrompter::SyncTagListFromPrompt(const std::string& prompt) {
+	auto extractedTags = ExtractTagsFromPrompt(prompt);
+
+	// 効率的な差分検出
+	if (extractedTags.size() != m_tagItems.size()) {
+		// サイズが異なる場合は完全に再構築
+		m_tagItems.clear();
+		m_tagItems.reserve(extractedTags.size());
+		for (const auto& tag : extractedTags) {
+			Suggestion sug = BooruDB::GetInstance().MakeSuggestion(tag);
+			m_tagItems.push_back(sug);
+		}
+		RefreshTagList();
+		return;
+	}
+
+	// サイズが同じ場合は要素ごとに比較
+	bool needsUpdate = false;
+	for (size_t i = 0; i < extractedTags.size(); ++i) {
+		if (extractedTags[i] != m_tagItems[i].tag) {
+			needsUpdate = true;
+			break;
+		}
+	}
+
+	if (needsUpdate) {
+		m_tagItems.clear();
+		m_tagItems.reserve(extractedTags.size());
+		for (const auto& tag : extractedTags) {
+			Suggestion sug = BooruDB::GetInstance().MakeSuggestion(tag);
+			m_tagItems.push_back(sug);
+		}
+		RefreshTagList();
+	}
+}
+
+// スプリッター関連のメソッド
+void BooruPrompter::UpdateLayout() {
+	OnSize(m_hwnd);
+}
+
+bool BooruPrompter::IsInSplitterArea(int x, int y) {
+	// 垂直スプリッター（左右分割）
+	bool inVertical = (x >= m_splitterX - SPLITTER_HIT_AREA && x <= m_splitterX + SPLITTER_HIT_AREA);
+	// 水平スプリッター（上下分割）
+	bool inHorizontal = (y >= m_splitterY - SPLITTER_HIT_AREA && y <= m_splitterY + SPLITTER_HIT_AREA && x <= m_splitterX);
+
+	return inVertical || inHorizontal;
+}
+
+void BooruPrompter::HandleSplitterMouseDown(int x, int y) {
+	if (!IsInSplitterArea(x, y)) return;
+
+	// どのスプリッターをドラッグしているかを判定
+	if (x >= m_splitterX - SPLITTER_HIT_AREA && x <= m_splitterX + SPLITTER_HIT_AREA) {
+		m_draggingSplitterType = SPLITTER_TYPE_VERTICAL;
+	}
+	else if (y >= m_splitterY - SPLITTER_HIT_AREA && y <= m_splitterY + SPLITTER_HIT_AREA && x <= m_splitterX) {
+		m_draggingSplitterType = SPLITTER_TYPE_HORIZONTAL;
+	}
+	m_isDraggingSplitter = true;
+	SetCapture(m_hwnd);
+}
+
+void BooruPrompter::HandleSplitterMouseMove(int x, int y) {
+	if (!m_isDraggingSplitter) return;
+
+	RECT rc;
+	GetClientRect(m_hwnd, &rc);
+	const int clientWidth = rc.right - rc.left;
+	const int clientHeight = rc.bottom - rc.top;
+
+	auto [toolbarHeight, statusHeight] = GetToolbarAndStatusHeight();
+
+	const int maxSplitterX = clientWidth - m_minRightWidth;
+	const int minSplitterX = m_minLeftWidth;
+	const int maxSplitterY = clientHeight - statusHeight - m_minBottomHeight;
+	const int minSplitterY = toolbarHeight + m_minTopHeight;
+
+	bool needsUpdate = false;
+
+	// 垂直スプリッター（左右分割）
+	if (m_draggingSplitterType == SPLITTER_TYPE_VERTICAL) {
+		int newSplitterX = std::clamp(x, minSplitterX, maxSplitterX);
+		if (newSplitterX != m_splitterX) {
+			m_splitterX = newSplitterX;
+			needsUpdate = true;
+		}
+	}
+
+	// 水平スプリッター（上下分割）
+	if (m_draggingSplitterType == SPLITTER_TYPE_HORIZONTAL) {
+		int newSplitterY = std::clamp(y, minSplitterY, maxSplitterY);
+		if (newSplitterY != m_splitterY) {
+			m_splitterY = newSplitterY;
+			needsUpdate = true;
+		}
+	}
+
+	if (needsUpdate) {
+		UpdateLayout();
+	}
+}
+
+void BooruPrompter::HandleSplitterMouseUp() {
+	if (m_isDraggingSplitter) {
+		m_isDraggingSplitter = false;
+		m_draggingSplitterType = SPLITTER_TYPE_NONE;
+		ReleaseCapture();
+	}
+}
+
+void BooruPrompter::UpdateSplitterCursor(int x, int y) {
+	if (m_isDragging || m_isDraggingSplitter) return;
+
+	if (x >= m_splitterX - SPLITTER_HIT_AREA && x <= m_splitterX + SPLITTER_HIT_AREA) {
+		SetCursor(LoadCursor(NULL, IDC_SIZEWE));  // 左右サイズ変更カーソル
+	}
+	else if (y >= m_splitterY - SPLITTER_HIT_AREA && y <= m_splitterY + SPLITTER_HIT_AREA && x <= m_splitterX) {
+		SetCursor(LoadCursor(NULL, IDC_SIZENS));  // 上下サイズ変更カーソル
+	}
+	else {
+		SetCursor(LoadCursor(NULL, IDC_ARROW));   // 通常のカーソル
+	}
+}
+
+std::pair<int, int> BooruPrompter::GetToolbarAndStatusHeight() {
+	// ツールバーの高さを取得
+	SendMessage(m_hwndToolbar, TB_AUTOSIZE, 0, 0);
+	const int toolbarHeight = HIWORD(SendMessage(m_hwndToolbar, TB_GETBUTTONSIZE, 0, 0));
+
+	// ステータスバーの高さを取得
+	SendMessage(m_hwndStatusBar, WM_SIZE, 0, 0);
+	RECT rc;
+	GetWindowRect(m_hwndStatusBar, &rc);
+	const int statusHeight = rc.bottom - rc.top;
+
+	return {toolbarHeight, statusHeight};
 }
