@@ -4,11 +4,6 @@
 #include <vector>
 #include <string>
 
-struct TagItem {
-	std::wstring tag;
-	std::wstring description;
-};
-
 class BooruPrompter {
 public:
 	BooruPrompter();
@@ -28,18 +23,16 @@ private:
 
 	// タグリスト関連のメソッド
 	void InitializeTagList();
-	void UpdateTagList();
+	void RefreshTagList();
 	void OnTagListDragDrop(int fromIndex, int toIndex);
 	void OnTagListDragStart(int index);
 	void OnTagListDragEnd();
-	void AddTagToList(const std::wstring& tag, const std::wstring& description = L"");
-	void RemoveTagFromList(int index);
-	void ClearTagList();
+	void AddTagToList(const Suggestion& suggestion);
 
 	// プロンプトとタグリストの同期機能
-	void UpdateTagListFromPrompt(const std::wstring& prompt);
+	void SyncTagListFromPrompt(const std::string& prompt);
 	void UpdatePromptFromTagList();
-	std::vector<std::wstring> ExtractTagsFromPrompt(const std::wstring& prompt);
+	std::vector<std::string> ExtractTagsFromPrompt(const std::string& prompt);
 
 	HWND m_hwnd;
 	HWND m_hwndEdit;        // メイン入力欄
@@ -51,7 +44,7 @@ private:
 	SuggestionList m_currentSuggestions;
 
 	// タグリスト関連のメンバー変数
-	std::vector<TagItem> m_tagItems;
+	SuggestionList m_tagItems;
 	int m_dragIndex;        // ドラッグ中のアイテムインデックス
 	int m_dragTargetIndex;  // ドラッグ先のアイテムインデックス
 	bool m_isDragging;      // ドラッグ中かどうか

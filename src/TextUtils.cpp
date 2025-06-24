@@ -107,3 +107,13 @@ std::wstring trim(const std::wstring& text) {
 	ward.erase(ward.find_last_not_of(L" \t") + 1);
 	return ward;
 }
+
+std::string trim(const std::string& text) {
+	if (text.empty()) {
+		return std::string();
+	}
+	std::string ward = text;
+	ward.erase(0, ward.find_first_not_of(" \t"));
+	ward.erase(ward.find_last_not_of(" \t") + 1);
+	return ward;
+}

@@ -271,7 +271,7 @@ void BooruPrompter::OnTextChanged(HWND hwnd) {
 	m_suggestionManager.Request(unicode_to_utf8(currentWord.c_str()));
 
 	// プロンプトが変更されたのでタグリストを更新
-	UpdateTagListFromPrompt(currentText);
+	SyncTagListFromPrompt(unicode_to_utf8(currentText.c_str()));
 }
 
 void BooruPrompter::UpdateSuggestionList(const SuggestionList& suggestions) {
@@ -334,7 +334,7 @@ void BooruPrompter::OnSuggestionSelected(int index) {
 	SetFocus(m_hwndEdit);
 
 	// タグリストを更新
-	UpdateTagListFromPrompt(newText);
+	SyncTagListFromPrompt(unicode_to_utf8(newText.c_str()));
 
 	m_suggestionManager.Request({});
 }
@@ -507,20 +507,19 @@ int BooruPrompter::Run() {
 }
 
 
-void BooruPrompter::UpdateTagList() {
-	// リストをクリア
+void BooruPrompter::RefreshTagList() {
 	ListView_DeleteAllItems(m_hwndTagList);
 
-	// タグアイテムを追加
 	LVITEM lvi{};
 	lvi.mask = LVIF_TEXT;
 
 	for (size_t i = 0; i < m_tagItems.size(); ++i) {
 		const auto& item = m_tagItems[i];
+		const auto tag = utf8_to_unicode(item.tag);
 
 		lvi.iItem = static_cast<int>(i);
 		lvi.iSubItem = 0;
-		lvi.pszText = (LPWSTR)item.tag.c_str();
+		lvi.pszText = (LPWSTR)tag.c_str();
 		ListView_InsertItem(m_hwndTagList, &lvi);
 
 		lvi.iSubItem = 1;
@@ -536,33 +535,26 @@ void BooruPrompter::OnTagListDragDrop(int fromIndex, int toIndex) {
 		return;
 	}
 
-	// 2つの要素を入れ替え
 	std::swap(m_tagItems[fromIndex], m_tagItems[toIndex]);
 
-	// リストを更新
-	UpdateTagList();
-
-	// タグリストの並べ替えをプロンプトに反映
+	RefreshTagList();
 	UpdatePromptFromTagList();
 
-	// ドラッグインデックスを更新
 	m_dragIndex = toIndex;
 }
 
 void BooruPrompter::OnTagListDragStart(int index) {
 	m_dragIndex = index;
-	m_dragTargetIndex = index;  // 初期値は同じ位置
+	m_dragTargetIndex = index;
 	m_isDragging = true;
 }
 
 void BooruPrompter::OnTagListDragEnd() {
 	if (m_isDragging) {
-		// すべてのアイテムのハイライトをクリア
 		for (int i = 0; i < static_cast<int>(m_tagItems.size()); ++i) {
 			ListView_SetItemState(m_hwndTagList, i, 0, LVIS_DROPHILITED);
 		}
 
-		// 移動したアイテムを選択状態にする
 		if (m_dragIndex >= 0 && m_dragIndex < static_cast<int>(m_tagItems.size())) {
 			ListView_SetItemState(m_hwndTagList, m_dragIndex,
 				LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
@@ -575,48 +567,31 @@ void BooruPrompter::OnTagListDragEnd() {
 	m_isDragging = false;
 }
 
-void BooruPrompter::AddTagToList(const std::wstring& tag, const std::wstring& description) {
-	TagItem item{tag, description};
-	m_tagItems.push_back(item);
-	UpdateTagList();
+void BooruPrompter::AddTagToList(const Suggestion& suggestion) {
+	m_tagItems.push_back(suggestion);
+	RefreshTagList();
 }
 
-void BooruPrompter::RemoveTagFromList(int index) {
-	if (index >= 0 && index < static_cast<int>(m_tagItems.size())) {
-		m_tagItems.erase(m_tagItems.begin() + index);
-		UpdateTagList();
-	}
-}
+std::vector<std::string> BooruPrompter::ExtractTagsFromPrompt(const std::string& prompt) {
+	std::vector<std::string> tags;
+	std::string currentTag;
 
-void BooruPrompter::ClearTagList() {
-	m_tagItems.clear();
-	UpdateTagList();
-}
-
-std::vector<std::wstring> BooruPrompter::ExtractTagsFromPrompt(const std::wstring& prompt) {
-	std::vector<std::wstring> tags;
-	std::wstring currentTag;
-
-	for (wchar_t c : prompt) {
-		if (c == L',') {
-			// カンマで区切る
+	for (char c : prompt) {
+		if (c == ',') {
 			if (!currentTag.empty()) {
-				// タグの前後の空白を削除
-				std::wstring trimmedTag = trim(currentTag);
+				std::string trimmedTag = trim(currentTag);
 				if (!trimmedTag.empty()) {
 					tags.push_back(trimmedTag);
 				}
 				currentTag.clear();
 			}
 		} else {
-			// 空白も含めてタグの一部として扱う
 			currentTag += c;
 		}
 	}
 
-	// 最後のタグを処理
 	if (!currentTag.empty()) {
-		std::wstring trimmedTag = trim(currentTag);
+		std::string trimmedTag = trim(currentTag);
 		if (!trimmedTag.empty()) {
 			tags.push_back(trimmedTag);
 		}
@@ -625,46 +600,50 @@ std::vector<std::wstring> BooruPrompter::ExtractTagsFromPrompt(const std::wstrin
 	return tags;
 }
 
-void BooruPrompter::UpdateTagListFromPrompt(const std::wstring& prompt) {
-	// プロンプトからタグを抽出
-	auto extractedTags = ExtractTagsFromPrompt(prompt);
-
-	// 現在のタグリストと比較して、変更がある場合のみ更新
-	bool needsUpdate = false;
-
-	if (extractedTags.size() != m_tagItems.size()) {
-		needsUpdate = true;
-	} else {
-		for (size_t i = 0; i < extractedTags.size(); ++i) {
-			if (extractedTags[i] != m_tagItems[i].tag) {
-				needsUpdate = true;
-				break;
-			}
-		}
-	}
-
-	if (needsUpdate) {
-		// タグリストをクリアして新しいタグを追加
-		m_tagItems.clear();
-		for (const auto& tag : extractedTags) {
-			// MakeSuggestionで説明を取得
-			Suggestion sug = BooruDB::GetInstance().MakeSuggestion(std::string(tag.begin(), tag.end()));
-			AddTagToList(tag, sug.description);
-		}
-		UpdateTagList();
-	}
-}
-
 void BooruPrompter::UpdatePromptFromTagList() {
-	// タグリストからプロンプトを再構築
 	std::wstring newPrompt;
 	for (size_t i = 0; i < m_tagItems.size(); ++i) {
 		if (i > 0) {
 			newPrompt += L", ";
 		}
-		newPrompt += m_tagItems[i].tag;
+		newPrompt += utf8_to_unicode(m_tagItems[i].tag);
 	}
 
-	// プロンプトを更新
 	SetWindowText(m_hwndEdit, newPrompt.c_str());
+}
+
+void BooruPrompter::SyncTagListFromPrompt(const std::string& prompt) {
+	auto extractedTags = ExtractTagsFromPrompt(prompt);
+
+	// 効率的な差分検出
+	if (extractedTags.size() != m_tagItems.size()) {
+		// サイズが異なる場合は完全に再構築
+		m_tagItems.clear();
+		m_tagItems.reserve(extractedTags.size());
+		for (const auto& tag : extractedTags) {
+			Suggestion sug = BooruDB::GetInstance().MakeSuggestion(tag);
+			m_tagItems.push_back(sug);
+		}
+		RefreshTagList();
+		return;
+	}
+
+	// サイズが同じ場合は要素ごとに比較
+	bool needsUpdate = false;
+	for (size_t i = 0; i < extractedTags.size(); ++i) {
+		if (extractedTags[i] != m_tagItems[i].tag) {
+			needsUpdate = true;
+			break;
+		}
+	}
+
+	if (needsUpdate) {
+		m_tagItems.clear();
+		m_tagItems.reserve(extractedTags.size());
+		for (const auto& tag : extractedTags) {
+			Suggestion sug = BooruDB::GetInstance().MakeSuggestion(tag);
+			m_tagItems.push_back(sug);
+		}
+		RefreshTagList();
+	}
 }

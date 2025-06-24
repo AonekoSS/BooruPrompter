@@ -22,3 +22,4 @@ std::tuple<size_t,size_t> get_span_at_cursor(const std::wstring& text, int pos);
 
 // トリミング
 std::wstring trim(const std::wstring& text);
+std::string trim(const std::string& text);
