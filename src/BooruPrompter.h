@@ -3,6 +3,14 @@
 #include "BooruDB.h"
 #include <vector>
 #include <string>
+#include <windows.h>
+#include "Suggestion.h"
+
+// スプリッター関連の定数
+constexpr int SPLITTER_HIT_AREA = 8;  // スプリッターの判定領域（ピクセル）
+constexpr int SPLITTER_TYPE_NONE = 0;
+constexpr int SPLITTER_TYPE_VERTICAL = 1;
+constexpr int SPLITTER_TYPE_HORIZONTAL = 2;
 
 class BooruPrompter {
 public:
@@ -37,6 +45,11 @@ private:
 	// スプリッター関連のメソッド
 	void UpdateLayout();
 	bool IsInSplitterArea(int x, int y);
+	void HandleSplitterMouseDown(int x, int y);
+	void HandleSplitterMouseMove(int x, int y);
+	void HandleSplitterMouseUp();
+	void UpdateSplitterCursor(int x, int y);
+	std::pair<int, int> GetToolbarAndStatusHeight();
 
 	HWND m_hwnd;
 	HWND m_hwndEdit;        // メイン入力欄

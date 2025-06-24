@@ -212,14 +212,8 @@ void BooruPrompter::OnSize(HWND hwnd) {
 	const int clientHeight = rc.bottom - rc.top;
 	const int clientWidth = rc.right - rc.left;
 
-	// ツールバーのサイズ調整
-	SendMessage(m_hwndToolbar, TB_AUTOSIZE, 0, 0);
-	const int toolbarHeight = HIWORD(SendMessage(m_hwndToolbar, TB_GETBUTTONSIZE, 0, 0));  // ツールバーの高さ
-
-	// ステータスバーのサイズ調整
-	SendMessage(m_hwndStatusBar, WM_SIZE, 0, 0);
-	GetWindowRect(m_hwndStatusBar, &rc);
-	const int statusHeight = rc.bottom - rc.top;   // ステータスバーの高さ
+	// ツールバーとステータスバーの高さを取得
+	auto [toolbarHeight, statusHeight] = GetToolbarAndStatusHeight();
 
 	// スプリッター位置の初期化（初回のみ）
 	if (m_splitterX == 0) {
@@ -232,13 +226,11 @@ void BooruPrompter::OnSize(HWND hwnd) {
 	// スプリッター位置の制限
 	const int maxSplitterX = clientWidth - m_minRightWidth;
 	const int minSplitterX = m_minLeftWidth;
-	const int maxSplitterY = clientHeight - toolbarHeight - statusHeight - m_minBottomHeight;
+	const int maxSplitterY = clientHeight - statusHeight - m_minBottomHeight;
 	const int minSplitterY = toolbarHeight + m_minTopHeight;
 
-	if (m_splitterX > maxSplitterX) m_splitterX = maxSplitterX;
-	if (m_splitterX < minSplitterX) m_splitterX = minSplitterX;
-	if (m_splitterY > maxSplitterY) m_splitterY = maxSplitterY;
-	if (m_splitterY < minSplitterY) m_splitterY = minSplitterY;
+	m_splitterX = std::clamp(m_splitterX, minSplitterX, maxSplitterX);
+	m_splitterY = std::clamp(m_splitterY, minSplitterY, maxSplitterY);
 
 	// 4分割の設定
 	const int leftWidth = m_splitterX;
@@ -451,19 +443,7 @@ LRESULT CALLBACK BooruPrompter::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, 
 		{
 			int xPos = GET_X_LPARAM(lParam);
 			int yPos = GET_Y_LPARAM(lParam);
-
-			// スプリッター領域でのドラッグ開始
-			if (pThis->IsInSplitterArea(xPos, yPos)) {
-				// どのスプリッターをドラッグしているかを判定
-				if (xPos >= pThis->m_splitterX - 8 && xPos <= pThis->m_splitterX + 8) {
-					pThis->m_draggingSplitterType = 1;  // 垂直スプリッター
-				}
-				else if (yPos >= pThis->m_splitterY - 8 && yPos <= pThis->m_splitterY + 8 && xPos <= pThis->m_splitterX) {
-					pThis->m_draggingSplitterType = 2;  // 水平スプリッター
-				}
-				pThis->m_isDraggingSplitter = true;
-				SetCapture(hwnd);
-			}
+			pThis->HandleSplitterMouseDown(xPos, yPos);
 		}
 		break;
 
@@ -472,18 +452,8 @@ LRESULT CALLBACK BooruPrompter::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, 
 			int xPos = GET_X_LPARAM(lParam);
 			int yPos = GET_Y_LPARAM(lParam);
 
-			// スプリッター上でのカーソル変更
-			if (!pThis->m_isDragging && !pThis->m_isDraggingSplitter) {
-				if (xPos >= pThis->m_splitterX - 8 && xPos <= pThis->m_splitterX + 8) {
-					SetCursor(LoadCursor(NULL, IDC_SIZEWE));  // 左右サイズ変更カーソル
-				}
-				else if (yPos >= pThis->m_splitterY - 8 && yPos <= pThis->m_splitterY + 8 && xPos <= pThis->m_splitterX) {
-					SetCursor(LoadCursor(NULL, IDC_SIZENS));  // 上下サイズ変更カーソル
-				}
-				else {
-					SetCursor(LoadCursor(NULL, IDC_ARROW));   // 通常のカーソル
-				}
-			}
+			// スプリッターカーソルの更新
+			pThis->UpdateSplitterCursor(xPos, yPos);
 
 			if (pThis->m_isDragging) {
 				// ドラッグ中のマウス移動処理
@@ -511,53 +481,7 @@ LRESULT CALLBACK BooruPrompter::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, 
 				}
 			}
 			else if (pThis->m_isDraggingSplitter) {
-				// スプリッターのドラッグ処理
-				RECT rc;
-				GetClientRect(hwnd, &rc);
-				const int clientWidth = rc.right - rc.left;
-				const int clientHeight = rc.bottom - rc.top;
-
-				// ツールバーとステータスバーの高さを取得
-				SendMessage(pThis->m_hwndToolbar, TB_AUTOSIZE, 0, 0);
-				const int toolbarHeight = HIWORD(SendMessage(pThis->m_hwndToolbar, TB_GETBUTTONSIZE, 0, 0));
-				SendMessage(pThis->m_hwndStatusBar, WM_SIZE, 0, 0);
-				GetWindowRect(pThis->m_hwndStatusBar, &rc);
-				const int statusHeight = rc.bottom - rc.top;
-
-				const int maxSplitterX = clientWidth - pThis->m_minRightWidth;
-				const int minSplitterX = pThis->m_minLeftWidth;
-				const int maxSplitterY = clientHeight - statusHeight - pThis->m_minBottomHeight;
-				const int minSplitterY = toolbarHeight + pThis->m_minTopHeight;
-
-				bool needsUpdate = false;
-
-				// 垂直スプリッター（左右分割）
-				if (pThis->m_draggingSplitterType == 1) {
-					int newSplitterX = xPos;
-					if (newSplitterX > maxSplitterX) newSplitterX = maxSplitterX;
-					if (newSplitterX < minSplitterX) newSplitterX = minSplitterX;
-
-					if (newSplitterX != pThis->m_splitterX) {
-						pThis->m_splitterX = newSplitterX;
-						needsUpdate = true;
-					}
-				}
-
-				// 水平スプリッター（上下分割）
-				if (pThis->m_draggingSplitterType == 2) {
-					int newSplitterY = yPos;
-					if (newSplitterY > maxSplitterY) newSplitterY = maxSplitterY;
-					if (newSplitterY < minSplitterY) newSplitterY = minSplitterY;
-
-					if (newSplitterY != pThis->m_splitterY) {
-						pThis->m_splitterY = newSplitterY;
-						needsUpdate = true;
-					}
-				}
-
-				if (needsUpdate) {
-					pThis->UpdateLayout();
-				}
+				pThis->HandleSplitterMouseMove(xPos, yPos);
 			}
 		}
 		break;
@@ -575,10 +499,7 @@ LRESULT CALLBACK BooruPrompter::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, 
 				ReleaseCapture();
 			}
 			else if (pThis->m_isDraggingSplitter) {
-				// スプリッタードラッグ終了
-				pThis->m_isDraggingSplitter = false;
-				pThis->m_draggingSplitterType = 0;
-				ReleaseCapture();
+				pThis->HandleSplitterMouseUp();
 			}
 		}
 		break;
@@ -763,9 +684,99 @@ void BooruPrompter::UpdateLayout() {
 
 bool BooruPrompter::IsInSplitterArea(int x, int y) {
 	// 垂直スプリッター（左右分割）
-	bool inVertical = (x >= m_splitterX - 8 && x <= m_splitterX + 8);
+	bool inVertical = (x >= m_splitterX - SPLITTER_HIT_AREA && x <= m_splitterX + SPLITTER_HIT_AREA);
 	// 水平スプリッター（上下分割）
-	bool inHorizontal = (y >= m_splitterY - 8 && y <= m_splitterY + 8 && x <= m_splitterX);
+	bool inHorizontal = (y >= m_splitterY - SPLITTER_HIT_AREA && y <= m_splitterY + SPLITTER_HIT_AREA && x <= m_splitterX);
 
 	return inVertical || inHorizontal;
+}
+
+void BooruPrompter::HandleSplitterMouseDown(int x, int y) {
+	if (!IsInSplitterArea(x, y)) return;
+
+	// どのスプリッターをドラッグしているかを判定
+	if (x >= m_splitterX - SPLITTER_HIT_AREA && x <= m_splitterX + SPLITTER_HIT_AREA) {
+		m_draggingSplitterType = SPLITTER_TYPE_VERTICAL;
+	}
+	else if (y >= m_splitterY - SPLITTER_HIT_AREA && y <= m_splitterY + SPLITTER_HIT_AREA && x <= m_splitterX) {
+		m_draggingSplitterType = SPLITTER_TYPE_HORIZONTAL;
+	}
+	m_isDraggingSplitter = true;
+	SetCapture(m_hwnd);
+}
+
+void BooruPrompter::HandleSplitterMouseMove(int x, int y) {
+	if (!m_isDraggingSplitter) return;
+
+	RECT rc;
+	GetClientRect(m_hwnd, &rc);
+	const int clientWidth = rc.right - rc.left;
+	const int clientHeight = rc.bottom - rc.top;
+
+	auto [toolbarHeight, statusHeight] = GetToolbarAndStatusHeight();
+
+	const int maxSplitterX = clientWidth - m_minRightWidth;
+	const int minSplitterX = m_minLeftWidth;
+	const int maxSplitterY = clientHeight - statusHeight - m_minBottomHeight;
+	const int minSplitterY = toolbarHeight + m_minTopHeight;
+
+	bool needsUpdate = false;
+
+	// 垂直スプリッター（左右分割）
+	if (m_draggingSplitterType == SPLITTER_TYPE_VERTICAL) {
+		int newSplitterX = std::clamp(x, minSplitterX, maxSplitterX);
+		if (newSplitterX != m_splitterX) {
+			m_splitterX = newSplitterX;
+			needsUpdate = true;
+		}
+	}
+
+	// 水平スプリッター（上下分割）
+	if (m_draggingSplitterType == SPLITTER_TYPE_HORIZONTAL) {
+		int newSplitterY = std::clamp(y, minSplitterY, maxSplitterY);
+		if (newSplitterY != m_splitterY) {
+			m_splitterY = newSplitterY;
+			needsUpdate = true;
+		}
+	}
+
+	if (needsUpdate) {
+		UpdateLayout();
+	}
+}
+
+void BooruPrompter::HandleSplitterMouseUp() {
+	if (m_isDraggingSplitter) {
+		m_isDraggingSplitter = false;
+		m_draggingSplitterType = SPLITTER_TYPE_NONE;
+		ReleaseCapture();
+	}
+}
+
+void BooruPrompter::UpdateSplitterCursor(int x, int y) {
+	if (m_isDragging || m_isDraggingSplitter) return;
+
+	if (x >= m_splitterX - SPLITTER_HIT_AREA && x <= m_splitterX + SPLITTER_HIT_AREA) {
+		SetCursor(LoadCursor(NULL, IDC_SIZEWE));  // 左右サイズ変更カーソル
+	}
+	else if (y >= m_splitterY - SPLITTER_HIT_AREA && y <= m_splitterY + SPLITTER_HIT_AREA && x <= m_splitterX) {
+		SetCursor(LoadCursor(NULL, IDC_SIZENS));  // 上下サイズ変更カーソル
+	}
+	else {
+		SetCursor(LoadCursor(NULL, IDC_ARROW));   // 通常のカーソル
+	}
+}
+
+std::pair<int, int> BooruPrompter::GetToolbarAndStatusHeight() {
+	// ツールバーの高さを取得
+	SendMessage(m_hwndToolbar, TB_AUTOSIZE, 0, 0);
+	const int toolbarHeight = HIWORD(SendMessage(m_hwndToolbar, TB_GETBUTTONSIZE, 0, 0));
+
+	// ステータスバーの高さを取得
+	SendMessage(m_hwndStatusBar, WM_SIZE, 0, 0);
+	RECT rc;
+	GetWindowRect(m_hwndStatusBar, &rc);
+	const int statusHeight = rc.bottom - rc.top;
+
+	return {toolbarHeight, statusHeight};
 }
