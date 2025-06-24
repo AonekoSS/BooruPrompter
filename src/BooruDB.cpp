@@ -9,6 +9,12 @@
 
 #include "TextUtils.h"
 
+// Singletonインスタンスを取得
+BooruDB& BooruDB::GetInstance() {
+	static BooruDB instance;
+	return instance;
+}
+
 BooruDB::BooruDB() : active_query_(0) {}
 
 BooruDB::~BooruDB() {}

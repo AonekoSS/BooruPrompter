@@ -24,7 +24,6 @@ private:
 	std::function<void(const std::vector<Suggestion>&)> m_callback;
 	HANDLE m_SuggestTimer;
 	std::string m_currentInput;
-	BooruDB m_booruDB;
 
 	void CancelTimer();
 	static void CALLBACK SuggestTimerProc(PVOID lpParameter, BOOLEAN TimerOrWaitFired);
