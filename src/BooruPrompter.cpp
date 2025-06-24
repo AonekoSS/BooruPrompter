@@ -38,7 +38,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	return app.Run();
 }
 
-BooruPrompter::BooruPrompter() : m_hwnd(NULL), m_hwndEdit(NULL), m_hwndSuggestions(NULL), m_hwndTagList(NULL), m_hwndToolbar(NULL), m_hwndStatusBar(NULL), m_dragIndex(-1), m_dragTargetIndex(-1), m_isDragging(false) {}
+BooruPrompter::BooruPrompter() : m_hwnd(NULL), m_hwndEdit(NULL), m_hwndSuggestions(NULL), m_hwndTagList(NULL), m_hwndToolbar(NULL), m_hwndStatusBar(NULL), m_dragIndex(-1), m_dragTargetIndex(-1), m_isDragging(false), m_splitterX(0), m_splitterY(0), m_minLeftWidth(200), m_minRightWidth(150), m_minTopHeight(100), m_minBottomHeight(100), m_isDraggingSplitter(false), m_draggingSplitterType(0) {}
 
 BooruPrompter::~BooruPrompter() {}
 
@@ -158,8 +158,8 @@ void BooruPrompter::OnCreate(HWND hwnd) {
 	// リストビューのカラム設定
 	{
 		std::array<LVCOLUMN, 2> columns{ {
-			{LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM, 0, 200, (LPWSTR)L"タグ", 0, 0},
-			{LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM, 0, 400, (LPWSTR)L"説明", 0, 1}
+			{LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM, 0, 150, (LPWSTR)L"タグ", 0, 0},
+			{LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM, 0, 300, (LPWSTR)L"説明", 0, 1}
 		} };
 		for (const auto& column : columns) {
 			ListView_InsertColumn(m_hwndSuggestions, column.iSubItem, &column);
@@ -221,29 +221,49 @@ void BooruPrompter::OnSize(HWND hwnd) {
 	GetWindowRect(m_hwndStatusBar, &rc);
 	const int statusHeight = rc.bottom - rc.top;   // ステータスバーの高さ
 
-	// 左右分割の設定
-	const int leftWidth = clientWidth * 2 / 3;  // 左側が2/3
-	const int rightWidth = clientWidth - leftWidth;  // 右側が1/3
+	// スプリッター位置の初期化（初回のみ）
+	if (m_splitterX == 0) {
+		m_splitterX = clientWidth * 2 / 3;  // 初期位置は2/3
+	}
+	if (m_splitterY == 0) {
+		m_splitterY = (clientHeight - toolbarHeight - statusHeight) / 3;  // 初期位置は1/3
+	}
+
+	// スプリッター位置の制限
+	const int maxSplitterX = clientWidth - m_minRightWidth;
+	const int minSplitterX = m_minLeftWidth;
+	const int maxSplitterY = clientHeight - toolbarHeight - statusHeight - m_minBottomHeight;
+	const int minSplitterY = toolbarHeight + m_minTopHeight;
+
+	if (m_splitterX > maxSplitterX) m_splitterX = maxSplitterX;
+	if (m_splitterX < minSplitterX) m_splitterX = minSplitterX;
+	if (m_splitterY > maxSplitterY) m_splitterY = maxSplitterY;
+	if (m_splitterY < minSplitterY) m_splitterY = minSplitterY;
+
+	// 4分割の設定
+	const int leftWidth = m_splitterX;
+	const int rightWidth = clientWidth - leftWidth;
+	const int topHeight = m_splitterY - toolbarHeight;
+	const int bottomHeight = clientHeight - m_splitterY - statusHeight;
 	const int margin = 4;
 
-	// 入力欄とサジェストリストの配置（左側）
-	const int editHeight = (clientHeight - toolbarHeight - statusHeight) / 3;
-
+	// 左上: 入力欄
 	SetWindowPos(m_hwndEdit, NULL,
 		margin,
 		toolbarHeight + margin,
 		leftWidth - margin * 2,
-		editHeight - margin,
+		topHeight - margin,
 		SWP_NOZORDER);
 
+	// 左下: サジェストリスト
 	SetWindowPos(m_hwndSuggestions, NULL,
 		margin,
-		toolbarHeight + editHeight,
+		m_splitterY + margin,
 		leftWidth - margin * 2,
-		clientHeight - toolbarHeight - editHeight - statusHeight - margin,
+		bottomHeight - margin,
 		SWP_NOZORDER);
 
-	// タグリストの配置（右側）
+	// 右側: タグリスト
 	SetWindowPos(m_hwndTagList, NULL,
 		leftWidth + margin,
 		toolbarHeight + margin,
@@ -427,13 +447,46 @@ LRESULT CALLBACK BooruPrompter::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, 
 		}
 		break;
 
+		case WM_LBUTTONDOWN:
+		{
+			int xPos = GET_X_LPARAM(lParam);
+			int yPos = GET_Y_LPARAM(lParam);
+
+			// スプリッター領域でのドラッグ開始
+			if (pThis->IsInSplitterArea(xPos, yPos)) {
+				// どのスプリッターをドラッグしているかを判定
+				if (xPos >= pThis->m_splitterX - 8 && xPos <= pThis->m_splitterX + 8) {
+					pThis->m_draggingSplitterType = 1;  // 垂直スプリッター
+				}
+				else if (yPos >= pThis->m_splitterY - 8 && yPos <= pThis->m_splitterY + 8 && xPos <= pThis->m_splitterX) {
+					pThis->m_draggingSplitterType = 2;  // 水平スプリッター
+				}
+				pThis->m_isDraggingSplitter = true;
+				SetCapture(hwnd);
+			}
+		}
+		break;
+
 		case WM_MOUSEMOVE:
 		{
+			int xPos = GET_X_LPARAM(lParam);
+			int yPos = GET_Y_LPARAM(lParam);
+
+			// スプリッター上でのカーソル変更
+			if (!pThis->m_isDragging && !pThis->m_isDraggingSplitter) {
+				if (xPos >= pThis->m_splitterX - 8 && xPos <= pThis->m_splitterX + 8) {
+					SetCursor(LoadCursor(NULL, IDC_SIZEWE));  // 左右サイズ変更カーソル
+				}
+				else if (yPos >= pThis->m_splitterY - 8 && yPos <= pThis->m_splitterY + 8 && xPos <= pThis->m_splitterX) {
+					SetCursor(LoadCursor(NULL, IDC_SIZENS));  // 上下サイズ変更カーソル
+				}
+				else {
+					SetCursor(LoadCursor(NULL, IDC_ARROW));   // 通常のカーソル
+				}
+			}
+
 			if (pThis->m_isDragging) {
 				// ドラッグ中のマウス移動処理
-				int xPos = GET_X_LPARAM(lParam);
-				int yPos = GET_Y_LPARAM(lParam);
-
 				// メインウィンドウのクライアント座標をタグリストのクライアント座標に変換
 				POINT pt = { xPos, yPos };
 				MapWindowPoints(hwnd, pThis->m_hwndTagList, &pt, 1);
@@ -457,6 +510,55 @@ LRESULT CALLBACK BooruPrompter::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, 
 					pThis->m_dragTargetIndex = -1;
 				}
 			}
+			else if (pThis->m_isDraggingSplitter) {
+				// スプリッターのドラッグ処理
+				RECT rc;
+				GetClientRect(hwnd, &rc);
+				const int clientWidth = rc.right - rc.left;
+				const int clientHeight = rc.bottom - rc.top;
+
+				// ツールバーとステータスバーの高さを取得
+				SendMessage(pThis->m_hwndToolbar, TB_AUTOSIZE, 0, 0);
+				const int toolbarHeight = HIWORD(SendMessage(pThis->m_hwndToolbar, TB_GETBUTTONSIZE, 0, 0));
+				SendMessage(pThis->m_hwndStatusBar, WM_SIZE, 0, 0);
+				GetWindowRect(pThis->m_hwndStatusBar, &rc);
+				const int statusHeight = rc.bottom - rc.top;
+
+				const int maxSplitterX = clientWidth - pThis->m_minRightWidth;
+				const int minSplitterX = pThis->m_minLeftWidth;
+				const int maxSplitterY = clientHeight - statusHeight - pThis->m_minBottomHeight;
+				const int minSplitterY = toolbarHeight + pThis->m_minTopHeight;
+
+				bool needsUpdate = false;
+
+				// 垂直スプリッター（左右分割）
+				if (pThis->m_draggingSplitterType == 1) {
+					int newSplitterX = xPos;
+					if (newSplitterX > maxSplitterX) newSplitterX = maxSplitterX;
+					if (newSplitterX < minSplitterX) newSplitterX = minSplitterX;
+
+					if (newSplitterX != pThis->m_splitterX) {
+						pThis->m_splitterX = newSplitterX;
+						needsUpdate = true;
+					}
+				}
+
+				// 水平スプリッター（上下分割）
+				if (pThis->m_draggingSplitterType == 2) {
+					int newSplitterY = yPos;
+					if (newSplitterY > maxSplitterY) newSplitterY = maxSplitterY;
+					if (newSplitterY < minSplitterY) newSplitterY = minSplitterY;
+
+					if (newSplitterY != pThis->m_splitterY) {
+						pThis->m_splitterY = newSplitterY;
+						needsUpdate = true;
+					}
+				}
+
+				if (needsUpdate) {
+					pThis->UpdateLayout();
+				}
+			}
 		}
 		break;
 
@@ -470,6 +572,12 @@ LRESULT CALLBACK BooruPrompter::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, 
 
 				// ドラッグ終了処理
 				pThis->OnTagListDragEnd();
+				ReleaseCapture();
+			}
+			else if (pThis->m_isDraggingSplitter) {
+				// スプリッタードラッグ終了
+				pThis->m_isDraggingSplitter = false;
+				pThis->m_draggingSplitterType = 0;
 				ReleaseCapture();
 			}
 		}
@@ -646,4 +754,18 @@ void BooruPrompter::SyncTagListFromPrompt(const std::string& prompt) {
 		}
 		RefreshTagList();
 	}
+}
+
+// スプリッター関連のメソッド
+void BooruPrompter::UpdateLayout() {
+	OnSize(m_hwnd);
+}
+
+bool BooruPrompter::IsInSplitterArea(int x, int y) {
+	// 垂直スプリッター（左右分割）
+	bool inVertical = (x >= m_splitterX - 8 && x <= m_splitterX + 8);
+	// 水平スプリッター（上下分割）
+	bool inHorizontal = (y >= m_splitterY - 8 && y <= m_splitterY + 8 && x <= m_splitterX);
+
+	return inVertical || inHorizontal;
 }

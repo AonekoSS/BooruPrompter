@@ -34,6 +34,10 @@ private:
 	void UpdatePromptFromTagList();
 	std::vector<std::string> ExtractTagsFromPrompt(const std::string& prompt);
 
+	// スプリッター関連のメソッド
+	void UpdateLayout();
+	bool IsInSplitterArea(int x, int y);
+
 	HWND m_hwnd;
 	HWND m_hwndEdit;        // メイン入力欄
 	HWND m_hwndSuggestions; // サジェスト表示用リストビュー
@@ -48,6 +52,16 @@ private:
 	int m_dragIndex;        // ドラッグ中のアイテムインデックス
 	int m_dragTargetIndex;  // ドラッグ先のアイテムインデックス
 	bool m_isDragging;      // ドラッグ中かどうか
+
+	// スプリッター関連
+	int m_splitterX;
+	int m_splitterY;
+	int m_minLeftWidth;
+	int m_minRightWidth;
+	int m_minTopHeight;
+	int m_minBottomHeight;
+	bool m_isDraggingSplitter;
+	int m_draggingSplitterType;  // 0: なし, 1: 垂直, 2: 水平
 
 	// コントロールIDの定義
 	enum {
