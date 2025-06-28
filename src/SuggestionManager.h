@@ -28,9 +28,6 @@ private:
 	HANDLE m_SuggestTimer;
 	std::string m_currentInput;
 
-	// 同期処理用
-	HANDLE m_timerEvent;
-
 	void CancelTimer();
 	static void CALLBACK SuggestTimerProc(PVOID lpParameter, BOOLEAN TimerOrWaitFired);
 	void Suggestion();
