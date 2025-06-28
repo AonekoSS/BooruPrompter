@@ -200,7 +200,7 @@ void BooruPrompter::OnCreate(HWND hwnd) {
 
 	// リストビューのスタイル設定（ドラッグ＆ドロップ対応）
 	SendMessage(m_hwndTagList, LVM_SETEXTENDEDLISTVIEWSTYLE, 0,
-		LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_TRACKSELECT);
+		LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
 
 	// 初期状態ではタグリストは空
 }
@@ -376,6 +376,7 @@ void BooruPrompter::OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify) 
 		}
 		break;
 	case ID_COPY:
+	{
 		// テキストをクリップボードにコピー
 		int length = GetWindowTextLength(m_hwndEdit) + 1;
 		std::vector<wchar_t> buffer(length);
@@ -392,6 +393,12 @@ void BooruPrompter::OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify) 
 			}
 			CloseClipboard();
 		}
+		break;
+	}
+	case ID_CONTEXT_MOVE_TO_TOP:
+	case ID_CONTEXT_MOVE_TO_BOTTOM:
+	case ID_CONTEXT_DELETE:
+		OnTagListContextCommand(id);
 		break;
 	}
 }
@@ -520,6 +527,19 @@ LRESULT CALLBACK BooruPrompter::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, 
 			DragFinish(hDrop);
 			return 0;
 		}
+
+		case WM_CONTEXTMENU:
+		{
+			HWND hwndContext = (HWND)wParam;
+			int xPos = GET_X_LPARAM(lParam);
+			int yPos = GET_Y_LPARAM(lParam);
+
+			if (hwndContext == pThis->m_hwndTagList) {
+				pThis->OnTagListContextMenu(xPos, yPos);
+				return 0;
+			}
+		}
+		break;
 		}
 	}
 
@@ -582,12 +602,6 @@ void BooruPrompter::OnTagListDragEnd() {
 	if (m_isDragging) {
 		for (int i = 0; i < static_cast<int>(m_tagItems.size()); ++i) {
 			ListView_SetItemState(m_hwndTagList, i, 0, LVIS_DROPHILITED);
-		}
-
-		if (m_dragIndex >= 0 && m_dragIndex < static_cast<int>(m_tagItems.size())) {
-			ListView_SetItemState(m_hwndTagList, m_dragIndex,
-				LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
-			ListView_EnsureVisible(m_hwndTagList, m_dragIndex, FALSE);
 		}
 	}
 
@@ -779,4 +793,113 @@ std::pair<int, int> BooruPrompter::GetToolbarAndStatusHeight() {
 	const int statusHeight = rc.bottom - rc.top;
 
 	return {toolbarHeight, statusHeight};
+}
+
+// コンテキストメニュー関連のメソッド
+void BooruPrompter::OnTagListContextMenu(int x, int y) {
+	// マウス位置のアイテムを取得
+	POINT pt = { x, y };
+	ScreenToClient(m_hwndTagList, &pt);
+
+	LVHITTESTINFO ht = { 0 };
+	ht.pt = pt;
+	int itemIndex = ListView_HitTest(m_hwndTagList, &ht);
+
+	// アイテムが選択されていない場合は何もしない
+	if (itemIndex < 0 || itemIndex >= static_cast<int>(m_tagItems.size())) {
+		return;
+	}
+
+	// コンテキストメニューを作成
+	HMENU hMenu = CreatePopupMenu();
+	if (!hMenu) return;
+
+	// メニュー項目を追加
+	AppendMenu(hMenu, MF_STRING, ID_CONTEXT_MOVE_TO_TOP, L"先頭に移動");
+	AppendMenu(hMenu, MF_STRING, ID_CONTEXT_MOVE_TO_BOTTOM, L"最後に移動");
+	AppendMenu(hMenu, MF_SEPARATOR, 0, NULL);
+	AppendMenu(hMenu, MF_STRING, ID_CONTEXT_DELETE, L"削除");
+
+	// メニューを表示
+	ClientToScreen(m_hwndTagList, &pt);
+	TrackPopupMenu(hMenu, TPM_LEFTALIGN | TPM_RIGHTBUTTON, pt.x, pt.y, 0, m_hwnd, NULL);
+
+	// メニューを破棄
+	DestroyMenu(hMenu);
+}
+
+void BooruPrompter::OnTagListContextCommand(int commandId) {
+	// 現在選択されているアイテムを取得
+	int selectedIndex = ListView_GetNextItem(m_hwndTagList, -1, LVNI_SELECTED);
+	if (selectedIndex < 0 || selectedIndex >= static_cast<int>(m_tagItems.size())) {
+		return;
+	}
+
+	switch (commandId) {
+	case ID_CONTEXT_MOVE_TO_TOP:
+		MoveTagToTop(selectedIndex);
+		break;
+	case ID_CONTEXT_MOVE_TO_BOTTOM:
+		MoveTagToBottom(selectedIndex);
+		break;
+	case ID_CONTEXT_DELETE:
+		DeleteTag(selectedIndex);
+		break;
+	}
+}
+
+void BooruPrompter::MoveTagToTop(int index) {
+	if (index <= 0 || index >= static_cast<int>(m_tagItems.size())) {
+		return;
+	}
+
+	// アイテムを先頭に移動
+	Suggestion item = m_tagItems[index];
+	m_tagItems.erase(m_tagItems.begin() + index);
+	m_tagItems.insert(m_tagItems.begin(), item);
+
+	RefreshTagList();
+	UpdatePromptFromTagList();
+
+	// 移動したアイテムを選択状態にする
+	ListView_SetItemState(m_hwndTagList, 0, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
+	ListView_EnsureVisible(m_hwndTagList, 0, FALSE);
+}
+
+void BooruPrompter::MoveTagToBottom(int index) {
+	if (index < 0 || index >= static_cast<int>(m_tagItems.size()) - 1) {
+		return;
+	}
+
+	// アイテムを最後に移動
+	Suggestion item = m_tagItems[index];
+	m_tagItems.erase(m_tagItems.begin() + index);
+	m_tagItems.push_back(item);
+
+	RefreshTagList();
+	UpdatePromptFromTagList();
+
+	// 移動したアイテムを選択状態にする
+	int newIndex = static_cast<int>(m_tagItems.size()) - 1;
+	ListView_SetItemState(m_hwndTagList, newIndex, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
+	ListView_EnsureVisible(m_hwndTagList, newIndex, FALSE);
+}
+
+void BooruPrompter::DeleteTag(int index) {
+	if (index < 0 || index >= static_cast<int>(m_tagItems.size())) {
+		return;
+	}
+
+	// アイテムを削除
+	m_tagItems.erase(m_tagItems.begin() + index);
+
+	RefreshTagList();
+	UpdatePromptFromTagList();
+
+	// 削除後に適切なアイテムを選択
+	if (!m_tagItems.empty()) {
+		int newIndex = std::min(index, static_cast<int>(m_tagItems.size()) - 1);
+		ListView_SetItemState(m_hwndTagList, newIndex, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
+		ListView_EnsureVisible(m_hwndTagList, newIndex, FALSE);
+	}
 }

@@ -85,6 +85,16 @@ private:
 		ID_STATUS_BAR = 1005,
 		ID_CLEAR = 1006,
 		ID_PASTE = 1007,
-		ID_COPY = 1008
+		ID_COPY = 1008,
+		ID_CONTEXT_MOVE_TO_TOP = 1009,
+		ID_CONTEXT_MOVE_TO_BOTTOM = 1010,
+		ID_CONTEXT_DELETE = 1011
 	};
+
+	// コンテキストメニュー関連のメソッド
+	void OnTagListContextMenu(int x, int y);
+	void OnTagListContextCommand(int commandId);
+	void MoveTagToTop(int index);
+	void MoveTagToBottom(int index);
+	void DeleteTag(int index);
 };
