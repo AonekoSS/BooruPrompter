@@ -76,6 +76,13 @@ private:
 	bool m_isDraggingSplitter;
 	int m_draggingSplitterType;  // 0: なし, 1: 垂直, 2: 水平
 
+	// 設定保存用のメンバー変数
+	int m_windowX;
+	int m_windowY;
+	int m_windowWidth;
+	int m_windowHeight;
+	std::wstring m_savedPrompt;
+
 	// コントロールIDの定義
 	enum {
 		ID_EDIT = 1001,
@@ -97,4 +104,9 @@ private:
 	void MoveTagToTop(int index);
 	void MoveTagToBottom(int index);
 	void DeleteTag(int index);
+
+	// 設定の保存・復帰機能
+	void SaveSettings();
+	void LoadSettings();
+	std::wstring GetIniFilePath();
 };

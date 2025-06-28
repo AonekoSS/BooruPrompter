@@ -38,11 +38,14 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	return app.Run();
 }
 
-BooruPrompter::BooruPrompter() : m_hwnd(NULL), m_hwndEdit(NULL), m_hwndSuggestions(NULL), m_hwndTagList(NULL), m_hwndToolbar(NULL), m_hwndStatusBar(NULL), m_dragIndex(-1), m_dragTargetIndex(-1), m_isDragging(false), m_splitterX(0), m_splitterY(0), m_minLeftWidth(200), m_minRightWidth(150), m_minTopHeight(100), m_minBottomHeight(100), m_isDraggingSplitter(false), m_draggingSplitterType(0) {}
+BooruPrompter::BooruPrompter() : m_hwnd(NULL), m_hwndEdit(NULL), m_hwndSuggestions(NULL), m_hwndTagList(NULL), m_hwndToolbar(NULL), m_hwndStatusBar(NULL), m_dragIndex(-1), m_dragTargetIndex(-1), m_isDragging(false), m_splitterX(0), m_splitterY(0), m_minLeftWidth(200), m_minRightWidth(150), m_minTopHeight(100), m_minBottomHeight(100), m_isDraggingSplitter(false), m_draggingSplitterType(0), m_windowX(CW_USEDEFAULT), m_windowY(CW_USEDEFAULT), m_windowWidth(800), m_windowHeight(600) {}
 
 BooruPrompter::~BooruPrompter() {}
 
 bool BooruPrompter::Initialize(HINSTANCE hInstance) {
+	// 設定を読み込み
+	LoadSettings();
+
 	// ウィンドウクラスの登録
 	WNDCLASSEX wcex{
 		.cbSize = sizeof(WNDCLASSEX),
@@ -66,8 +69,8 @@ bool BooruPrompter::Initialize(HINSTANCE hInstance) {
 		L"BooruPrompterClass",
 		L"BooruPrompter",
 		WS_OVERLAPPEDWINDOW,
-		CW_USEDEFAULT, CW_USEDEFAULT,
-		800, 600,
+		m_windowX, m_windowY,
+		m_windowWidth, m_windowHeight,
 		NULL,
 		NULL,
 		hInstance,
@@ -158,7 +161,7 @@ void BooruPrompter::OnCreate(HWND hwnd) {
 	// リストビューのカラム設定
 	{
 		std::array<LVCOLUMN, 2> columns{ {
-			{LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM, 0, 150, (LPWSTR)L"タグ", 0, 0},
+			{LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM, 0, 150, (LPWSTR)L"タグ（サジェスト）", 0, 0},
 			{LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM, 0, 300, (LPWSTR)L"説明", 0, 1}
 		} };
 		for (const auto& column : columns) {
@@ -190,7 +193,7 @@ void BooruPrompter::OnCreate(HWND hwnd) {
 	// リストビューのカラム設定
 	{
 		std::array<LVCOLUMN, 2> columns{ {
-			{LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM, 0, 150, (LPWSTR)L"タグ", 0, 0},
+			{LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM, 0, 150, (LPWSTR)L"タグ（編集中）", 0, 0},
 			{LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM, 0, 200, (LPWSTR)L"説明", 0, 1}
 		} };
 		for (const auto& column : columns) {
@@ -202,7 +205,11 @@ void BooruPrompter::OnCreate(HWND hwnd) {
 	SendMessage(m_hwndTagList, LVM_SETEXTENDEDLISTVIEWSTYLE, 0,
 		LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
 
-	// 初期状態ではタグリストは空
+	// 保存されたプロンプトを復元
+	if (!m_savedPrompt.empty()) {
+		SetWindowText(m_hwndEdit, m_savedPrompt.c_str());
+		SyncTagListFromPrompt(unicode_to_utf8(m_savedPrompt.c_str()));
+	}
 }
 
 void BooruPrompter::OnSize(HWND hwnd) {
@@ -512,6 +519,8 @@ LRESULT CALLBACK BooruPrompter::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, 
 		break;
 
 		case WM_DESTROY:
+			pThis->m_suggestionManager.Cancel();
+			pThis->SaveSettings();
 			PostQuitMessage(0);
 			return 0;
 
@@ -901,5 +910,66 @@ void BooruPrompter::DeleteTag(int index) {
 		int newIndex = std::min(index, static_cast<int>(m_tagItems.size()) - 1);
 		ListView_SetItemState(m_hwndTagList, newIndex, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
 		ListView_EnsureVisible(m_hwndTagList, newIndex, FALSE);
+	}
+}
+
+// 設定の保存・復帰機能
+std::wstring BooruPrompter::GetIniFilePath() {
+	wchar_t exePath[MAX_PATH];
+	GetModuleFileName(NULL, exePath, MAX_PATH);
+
+	// 実行ファイルのパスからディレクトリを取得
+	std::wstring exePathStr(exePath);
+	size_t lastSlash = exePathStr.find_last_of(L"\\/");
+	if (lastSlash != std::wstring::npos) {
+		exePathStr = exePathStr.substr(0, lastSlash + 1);
+	}
+
+	return exePathStr + L"BooruPrompter.ini";
+}
+
+void BooruPrompter::SaveSettings() {
+	std::wstring iniPath = GetIniFilePath();
+
+	// ウィンドウの位置とサイズを取得
+	RECT windowRect;
+	GetWindowRect(m_hwnd, &windowRect);
+
+	// 現在のプロンプトテキストを取得
+	int length = GetWindowTextLength(m_hwndEdit) + 1;
+	std::vector<wchar_t> buffer(length);
+	GetWindowText(m_hwndEdit, buffer.data(), length);
+	std::wstring currentPrompt(buffer.data(), length - 1);
+
+	// INIファイルに保存
+	WritePrivateProfileString(L"Window", L"X", std::to_wstring(windowRect.left).c_str(), iniPath.c_str());
+	WritePrivateProfileString(L"Window", L"Y", std::to_wstring(windowRect.top).c_str(), iniPath.c_str());
+	WritePrivateProfileString(L"Window", L"Width", std::to_wstring(windowRect.right - windowRect.left).c_str(), iniPath.c_str());
+	WritePrivateProfileString(L"Window", L"Height", std::to_wstring(windowRect.bottom - windowRect.top).c_str(), iniPath.c_str());
+	WritePrivateProfileString(L"Prompt", L"Text", currentPrompt.c_str(), iniPath.c_str());
+}
+
+void BooruPrompter::LoadSettings() {
+	std::wstring iniPath = GetIniFilePath();
+
+	// ウィンドウの位置とサイズを読み込み
+	m_windowX = GetPrivateProfileInt(L"Window", L"X", CW_USEDEFAULT, iniPath.c_str());
+	m_windowY = GetPrivateProfileInt(L"Window", L"Y", CW_USEDEFAULT, iniPath.c_str());
+	m_windowWidth = GetPrivateProfileInt(L"Window", L"Width", 800, iniPath.c_str());
+	m_windowHeight = GetPrivateProfileInt(L"Window", L"Height", 600, iniPath.c_str());
+
+	// プロンプトテキストを読み込み
+	wchar_t promptBuffer[4096];
+	GetPrivateProfileString(L"Prompt", L"Text", L"", promptBuffer, 4096, iniPath.c_str());
+	m_savedPrompt = std::wstring(promptBuffer);
+
+	// ウィンドウが画面外にある場合はデフォルト位置に修正
+	RECT workArea;
+	SystemParametersInfo(SPI_GETWORKAREA, 0, &workArea, 0);
+
+	if (m_windowX < workArea.left || m_windowX > workArea.right ||
+		m_windowY < workArea.top || m_windowY > workArea.bottom) {
+		m_windowX = CW_USEDEFAULT;
+		m_windowY = CW_USEDEFAULT;
 	}
 }

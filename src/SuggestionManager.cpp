@@ -13,7 +13,7 @@ SuggestionManager::SuggestionManager() : m_SuggestTimer(nullptr) {
 
 SuggestionManager::~SuggestionManager() {
 	BooruDB::GetInstance().Cancel();
-	CancelTimer();
+	Cancel();
 	s_instance = nullptr;
 }
 
@@ -30,6 +30,13 @@ void SuggestionManager::Request(const std::string& input) {
 	CancelTimer();
 	m_currentInput = input;
 	CreateTimerQueueTimer(&m_SuggestTimer, nullptr, SuggestTimerProc, this, SUGGEST_DELAY_MS, 0, 0);
+}
+
+// キャンセル
+void SuggestionManager::Cancel() {
+	m_callback = nullptr;
+	CancelTimer();
+	BooruDB::GetInstance().Cancel();
 }
 
 void SuggestionManager::CancelTimer() {
@@ -58,13 +65,13 @@ void SuggestionManager::Suggestion() {
 		// 通常のサジェスト（前方一致→曖昧検索）
 		SuggestionList saggestions;
 		if (!BooruDB::GetInstance().QuickSuggestion(saggestions, input, 8)) return;
-		m_callback(saggestions);
+		if (m_callback) m_callback(saggestions);
 		if (!BooruDB::GetInstance().FuzzySuggestion(saggestions, input, 32)) return;
-		m_callback(saggestions);
+		if (m_callback) m_callback(saggestions);
 	} else {
 		// 日本語を含むので逆引きサジェスト
 		SuggestionList saggestions;
 		if (!BooruDB::GetInstance().ReverseSuggestion(saggestions, input, 40)) return;
-		m_callback(saggestions);
+		if (m_callback) m_callback(saggestions);
 	}
 }
