@@ -35,8 +35,8 @@ void SuggestionManager::Request(const std::string& input) {
 // キャンセル
 void SuggestionManager::Cancel() {
 	m_callback = nullptr;
-	BooruDB::GetInstance().Cancel();
 	CancelTimer();
+	BooruDB::GetInstance().Cancel();
 }
 
 void SuggestionManager::CancelTimer() {
