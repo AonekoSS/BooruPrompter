@@ -200,7 +200,7 @@ void BooruPrompter::OnCreate(HWND hwnd) {
 
 	// リストビューのスタイル設定（ドラッグ＆ドロップ対応）
 	SendMessage(m_hwndTagList, LVM_SETEXTENDEDLISTVIEWSTYLE, 0,
-		LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_TRACKSELECT);
+		LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
 
 	// 初期状態ではタグリストは空
 }
@@ -582,12 +582,6 @@ void BooruPrompter::OnTagListDragEnd() {
 	if (m_isDragging) {
 		for (int i = 0; i < static_cast<int>(m_tagItems.size()); ++i) {
 			ListView_SetItemState(m_hwndTagList, i, 0, LVIS_DROPHILITED);
-		}
-
-		if (m_dragIndex >= 0 && m_dragIndex < static_cast<int>(m_tagItems.size())) {
-			ListView_SetItemState(m_hwndTagList, m_dragIndex,
-				LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
-			ListView_EnsureVisible(m_hwndTagList, m_dragIndex, FALSE);
 		}
 	}
 
