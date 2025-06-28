@@ -17,6 +17,9 @@ public:
 	// リクエスト
 	void Request(const std::string& input);
 
+	// キャンセル
+	void Cancel();
+
 private:
 	static constexpr int SUGGEST_DELAY_MS = 500;
 	static SuggestionManager* s_instance;
@@ -24,6 +27,9 @@ private:
 	std::function<void(const std::vector<Suggestion>&)> m_callback;
 	HANDLE m_SuggestTimer;
 	std::string m_currentInput;
+
+	// 同期処理用
+	HANDLE m_timerEvent;
 
 	void CancelTimer();
 	static void CALLBACK SuggestTimerProc(PVOID lpParameter, BOOLEAN TimerOrWaitFired);

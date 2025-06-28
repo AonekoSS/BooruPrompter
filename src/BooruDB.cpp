@@ -73,9 +73,9 @@ bool BooruDB::FuzzySuggestion(SuggestionList& suggestions, const std::string& in
 	std::vector<std::pair<std::string, double>> scores;
 	for (const auto& entry : dictionary_) {
 		double score = rapidfuzz::fuzz::token_set_ratio(input, entry, FUZZY_SUGGESTION_CUTOFF);
+		if (query_id != active_query_) return false;
 		if (!score) continue;
 		scores.emplace_back(entry, score);
-		if (query_id != active_query_) return false;
 	}
 
 	// スコアでソート
@@ -88,6 +88,7 @@ bool BooruDB::FuzzySuggestion(SuggestionList& suggestions, const std::string& in
 		auto tag = entry.first;
 		// 登録済みのものは除外
 		if (std::any_of(suggestions.begin(), suggestions.end(), [&tag](const auto& s) { return s.tag == tag; })) continue;
+		if (query_id != active_query_) return false;
 		suggestions.push_back(MakeSuggestion(tag));
 		if (--maxSuggestions <= 0) break;
 	}
