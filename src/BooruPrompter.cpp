@@ -161,7 +161,7 @@ void BooruPrompter::OnCreate(HWND hwnd) {
 	// リストビューのカラム設定
 	{
 		std::array<LVCOLUMN, 2> columns{ {
-			{LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM, 0, 150, (LPWSTR)L"タグ", 0, 0},
+			{LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM, 0, 150, (LPWSTR)L"タグ（サジェスト）", 0, 0},
 			{LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM, 0, 300, (LPWSTR)L"説明", 0, 1}
 		} };
 		for (const auto& column : columns) {
@@ -193,7 +193,7 @@ void BooruPrompter::OnCreate(HWND hwnd) {
 	// リストビューのカラム設定
 	{
 		std::array<LVCOLUMN, 2> columns{ {
-			{LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM, 0, 150, (LPWSTR)L"タグ", 0, 0},
+			{LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM, 0, 150, (LPWSTR)L"タグ（編集中）", 0, 0},
 			{LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM, 0, 200, (LPWSTR)L"説明", 0, 1}
 		} };
 		for (const auto& column : columns) {
