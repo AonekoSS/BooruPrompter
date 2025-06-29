@@ -638,38 +638,13 @@ void BooruPrompter::UpdatePromptFromTagList() {
 
 void BooruPrompter::SyncTagListFromPrompt(const std::string& prompt) {
 	auto extractedTags = extract_tags_from_text(prompt);
-
-	// 効率的な差分検出
-	if (extractedTags.size() != m_tagItems.size()) {
-		// サイズが異なる場合は完全に再構築
-		m_tagItems.clear();
-		m_tagItems.reserve(extractedTags.size());
-		for (const auto& tag : extractedTags) {
-			Suggestion sug = BooruDB::GetInstance().MakeSuggestion(tag);
-			m_tagItems.push_back(sug);
-		}
-		RefreshTagList();
-		return;
+	m_tagItems.clear();
+	m_tagItems.reserve(extractedTags.size());
+	for (const auto& tag : extractedTags) {
+		Suggestion sug = BooruDB::GetInstance().MakeSuggestion(tag);
+		m_tagItems.push_back(sug);
 	}
-
-	// サイズが同じ場合は要素ごとに比較
-	bool needsUpdate = false;
-	for (size_t i = 0; i < extractedTags.size(); ++i) {
-		if (extractedTags[i] != m_tagItems[i].tag) {
-			needsUpdate = true;
-			break;
-		}
-	}
-
-	if (needsUpdate) {
-		m_tagItems.clear();
-		m_tagItems.reserve(extractedTags.size());
-		for (const auto& tag : extractedTags) {
-			Suggestion sug = BooruDB::GetInstance().MakeSuggestion(tag);
-			m_tagItems.push_back(sug);
-		}
-		RefreshTagList();
-	}
+	RefreshTagList();
 }
 
 // スプリッター関連のメソッド
