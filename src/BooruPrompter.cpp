@@ -33,7 +33,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	return app.Run();
 }
 
-BooruPrompter::BooruPrompter() : m_hwnd(NULL), m_hwndEdit(NULL), m_hwndSuggestions(NULL), m_hwndTagList(NULL), m_hwndToolbar(NULL), m_hwndStatusBar(NULL), m_splitterX(0), m_splitterY(0), m_minLeftWidth(200), m_minRightWidth(150), m_minTopHeight(100), m_minBottomHeight(100), m_isDraggingSplitter(false), m_draggingSplitterType(0), m_windowX(CW_USEDEFAULT), m_windowY(CW_USEDEFAULT), m_windowWidth(800), m_windowHeight(600) {}
+BooruPrompter::BooruPrompter() : m_hwnd(NULL), m_hwndEdit(NULL), m_hwndSuggestions(NULL), m_hwndTagList(NULL), m_hwndToolbar(NULL), m_hwndStatusBar(NULL), m_splitterX(0), m_splitterY(0), m_minLeftWidth(DEFAULT_MIN_LEFT_WIDTH), m_minRightWidth(DEFAULT_MIN_RIGHT_WIDTH), m_minTopHeight(DEFAULT_MIN_TOP_HEIGHT), m_minBottomHeight(DEFAULT_MIN_BOTTOM_HEIGHT), m_isDraggingSplitter(false), m_draggingSplitterType(0), m_windowX(CW_USEDEFAULT), m_windowY(CW_USEDEFAULT), m_windowWidth(DEFAULT_WINDOW_WIDTH), m_windowHeight(DEFAULT_WINDOW_HEIGHT) {}
 
 BooruPrompter::~BooruPrompter() {}
 
@@ -141,31 +141,11 @@ void BooruPrompter::OnCreate(HWND hwnd) {
 	);
 
 	// サジェスト表示用リストビューの作成
-	m_hwndSuggestions = CreateWindowEx(
-		WS_EX_CLIENTEDGE,
-		WC_LISTVIEW,
-		L"",
-		WS_CHILD | WS_VISIBLE | LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS,
-		0, 0, 0, 0,
-		hwnd,
-		(HMENU)ID_SUGGESTIONS,
-		GetModuleHandle(NULL),
-		NULL
-	);
-
-	// リストビューのカラム設定
-	{
-		std::array<LVCOLUMN, 2> columns{ {
-			{LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM, 0, 150, (LPWSTR)L"タグ（サジェスト）", 0, 0},
-			{LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM, 0, 300, (LPWSTR)L"説明", 0, 1}
-		} };
-		for (const auto& column : columns) {
-			ListView_InsertColumn(m_hwndSuggestions, column.iSubItem, &column);
-		}
-	}
-
-	// リストビューのスタイル設定
-	ListView_SetExtendedListViewStyle(m_hwndSuggestions, LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
+	std::vector<std::pair<std::wstring, int>> suggestionColumns = {
+		{L"タグ（サジェスト）", 150},
+		{L"説明", 300}
+	};
+	m_hwndSuggestions = CreateListView(hwnd, ID_SUGGESTIONS, L"", suggestionColumns);
 
 	// サジェスト開始
 	m_suggestionManager.StartSuggestion([this](const SuggestionList& suggestions) {
@@ -173,37 +153,76 @@ void BooruPrompter::OnCreate(HWND hwnd) {
 	});
 
 	// タグリストの初期化
-	m_hwndTagList = CreateWindowEx(
+	std::vector<std::pair<std::wstring, int>> tagColumns = {
+		{L"タグ（編集中）", 150},
+		{L"説明", 200}
+	};
+	m_hwndTagList = CreateListView(hwnd, ID_TAG_LIST, L"", tagColumns);
+
+	// 保存されたプロンプトを復元
+	if (!m_savedPrompt.empty()) {
+		SetEditText(m_savedPrompt);
+		TagListHandler::SyncTagListFromPrompt(this, unicode_to_utf8(m_savedPrompt.c_str()));
+	}
+}
+
+HWND BooruPrompter::CreateListView(HWND parent, int id, const std::wstring& title, const std::vector<std::pair<std::wstring, int>>& columns) {
+	HWND hwnd = CreateWindowEx(
 		WS_EX_CLIENTEDGE,
 		WC_LISTVIEW,
-		L"",
+		title.c_str(),
 		WS_CHILD | WS_VISIBLE | LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS,
 		0, 0, 0, 0,
-		hwnd,
-		(HMENU)ID_TAG_LIST,
+		parent,
+		(HMENU)id,
 		GetModuleHandle(NULL),
 		NULL
 	);
 
-	// リストビューのカラム設定
-	{
-		std::array<LVCOLUMN, 2> columns{ {
-			{LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM, 0, 150, (LPWSTR)L"タグ（編集中）", 0, 0},
-			{LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM, 0, 200, (LPWSTR)L"説明", 0, 1}
-		} };
-		for (const auto& column : columns) {
-			ListView_InsertColumn(m_hwndTagList, column.iSubItem, &column);
-		}
+	// カラム設定
+	for (size_t i = 0; i < columns.size(); ++i) {
+		LVCOLUMN lvc{
+			LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM,
+			0,
+			columns[i].second,
+			(LPWSTR)columns[i].first.c_str(),
+			0,
+			static_cast<int>(i)
+		};
+		ListView_InsertColumn(hwnd, i, &lvc);
 	}
 
-	// リストビューのスタイル設定（ドラッグ＆ドロップ対応）
-	SendMessage(m_hwndTagList, LVM_SETEXTENDEDLISTVIEWSTYLE, 0,
-		LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
+	// スタイル設定
+	ListView_SetExtendedListViewStyle(hwnd, LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
 
-	// 保存されたプロンプトを復元
-	if (!m_savedPrompt.empty()) {
-		SetWindowText(m_hwndEdit, m_savedPrompt.c_str());
-		TagListHandler::SyncTagListFromPrompt(this, unicode_to_utf8(m_savedPrompt.c_str()));
+	return hwnd;
+}
+
+std::wstring BooruPrompter::GetEditText() const {
+	const int length = GetWindowTextLength(m_hwndEdit) + 1;
+	std::vector<wchar_t> buffer(length);
+	GetWindowText(m_hwndEdit, buffer.data(), length);
+	return std::wstring(buffer.data());
+}
+
+void BooruPrompter::SetEditText(const std::wstring& text) {
+	SetWindowText(m_hwndEdit, text.c_str());
+}
+
+void BooruPrompter::AddListViewItem(HWND hwndListView, int index, const std::vector<std::wstring>& texts) {
+	LVITEM lvi{};
+	lvi.mask = LVIF_TEXT;
+	lvi.iItem = index;
+
+	for (size_t i = 0; i < texts.size(); ++i) {
+		lvi.iSubItem = static_cast<int>(i);
+		lvi.pszText = (LPWSTR)texts[i].c_str();
+
+		if (i == 0) {
+			ListView_InsertItem(hwndListView, &lvi);
+		} else {
+			ListView_SetItem(hwndListView, &lvi);
+		}
 	}
 }
 
@@ -239,30 +258,29 @@ void BooruPrompter::OnSize(HWND hwnd) {
 	const int rightWidth = clientWidth - leftWidth;
 	const int topHeight = m_splitterY - toolbarHeight;
 	const int bottomHeight = clientHeight - m_splitterY - statusHeight;
-	const int margin = 4;
 
 	// 左上: 入力欄
 	SetWindowPos(m_hwndEdit, NULL,
-		margin,
-		toolbarHeight + margin,
-		leftWidth - margin * 2,
-		topHeight - margin,
+		LAYOUT_MARGIN,
+		toolbarHeight + LAYOUT_MARGIN,
+		leftWidth - LAYOUT_MARGIN * 2,
+		topHeight - LAYOUT_MARGIN,
 		SWP_NOZORDER);
 
 	// 左下: サジェストリスト
 	SetWindowPos(m_hwndSuggestions, NULL,
-		margin,
-		m_splitterY + margin,
-		leftWidth - margin * 2,
-		bottomHeight - margin,
+		LAYOUT_MARGIN,
+		m_splitterY + LAYOUT_MARGIN,
+		leftWidth - LAYOUT_MARGIN * 2,
+		bottomHeight - LAYOUT_MARGIN,
 		SWP_NOZORDER);
 
 	// 右側: タグリスト
 	SetWindowPos(m_hwndTagList, NULL,
-		leftWidth + margin,
-		toolbarHeight + margin,
-		rightWidth - margin * 2,
-		clientHeight - toolbarHeight - statusHeight - margin * 2,
+		leftWidth + LAYOUT_MARGIN,
+		toolbarHeight + LAYOUT_MARGIN,
+		rightWidth - LAYOUT_MARGIN * 2,
+		clientHeight - toolbarHeight - statusHeight - LAYOUT_MARGIN * 2,
 		SWP_NOZORDER);
 }
 
@@ -409,10 +427,7 @@ void BooruPrompter::OnTextChanged(HWND hwnd) {
 	SendMessage(m_hwndEdit, EM_GETSEL, (WPARAM)&startPos, (LPARAM)&endPos);
 
 	// 現在のテキストを取得
-	const int length = GetWindowTextLength(m_hwndEdit) + 1;
-	std::vector<wchar_t> buffer(length);
-	GetWindowText(m_hwndEdit, buffer.data(), length);
-	std::wstring currentText(buffer.data());
+	std::wstring currentText = GetEditText();
 
 	// カーソル位置のワードを取得
 	const auto [start, end] = get_span_at_cursor(currentText, startPos);

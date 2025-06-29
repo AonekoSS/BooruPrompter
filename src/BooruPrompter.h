@@ -13,6 +13,15 @@ constexpr int SPLITTER_TYPE_NONE = 0;
 constexpr int SPLITTER_TYPE_VERTICAL = 1;
 constexpr int SPLITTER_TYPE_HORIZONTAL = 2;
 
+// レイアウト関連の定数
+constexpr int DEFAULT_MIN_LEFT_WIDTH = 200;
+constexpr int DEFAULT_MIN_RIGHT_WIDTH = 150;
+constexpr int DEFAULT_MIN_TOP_HEIGHT = 100;
+constexpr int DEFAULT_MIN_BOTTOM_HEIGHT = 100;
+constexpr int DEFAULT_WINDOW_WIDTH = 800;
+constexpr int DEFAULT_WINDOW_HEIGHT = 600;
+constexpr int LAYOUT_MARGIN = 4;
+
 class BooruPrompter {
 public:
 	BooruPrompter();
@@ -48,6 +57,12 @@ private:
 	void HandleSplitterMouseUp();
 	void UpdateSplitterCursor(int x, int y);
 	std::pair<int, int> GetToolbarAndStatusHeight();
+
+	// ヘルパーメソッド
+	HWND CreateListView(HWND parent, int id, const std::wstring& title, const std::vector<std::pair<std::wstring, int>>& columns);
+	std::wstring GetEditText() const;
+	void SetEditText(const std::wstring& text);
+	void AddListViewItem(HWND hwndListView, int index, const std::vector<std::wstring>& texts);
 
 	HWND m_hwnd;
 	HWND m_hwndEdit;        // メイン入力欄

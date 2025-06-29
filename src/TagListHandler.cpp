@@ -14,21 +14,12 @@ bool TagListHandler::s_isDragging = false;
 void TagListHandler::RefreshTagList(BooruPrompter* pThis) {
 	ListView_DeleteAllItems(pThis->m_hwndTagList);
 
-	LVITEM lvi{};
-	lvi.mask = LVIF_TEXT;
-
 	for (size_t i = 0; i < s_tagItems.size(); ++i) {
 		const auto& item = s_tagItems[i];
 		const auto tag = utf8_to_unicode(item.tag);
 
-		lvi.iItem = static_cast<int>(i);
-		lvi.iSubItem = 0;
-		lvi.pszText = (LPWSTR)tag.c_str();
-		ListView_InsertItem(pThis->m_hwndTagList, &lvi);
-
-		lvi.iSubItem = 1;
-		lvi.pszText = (LPWSTR)item.description.c_str();
-		ListView_SetItem(pThis->m_hwndTagList, &lvi);
+		std::vector<std::wstring> texts = {tag, item.description};
+		pThis->AddListViewItem(pThis->m_hwndTagList, static_cast<int>(i), texts);
 	}
 }
 
@@ -79,7 +70,7 @@ void TagListHandler::UpdatePromptFromTagList(BooruPrompter* pThis) {
 		newPrompt += utf8_to_unicode(s_tagItems[i].tag);
 	}
 
-	SetWindowText(pThis->m_hwndEdit, newPrompt.c_str());
+	pThis->SetEditText(newPrompt);
 }
 
 void TagListHandler::SyncTagListFromPrompt(BooruPrompter* pThis, const std::string& prompt) {

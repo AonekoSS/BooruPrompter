@@ -12,21 +12,12 @@ void SuggestionHandler::UpdateSuggestionList(BooruPrompter* pThis, const Suggest
 	pThis->m_currentSuggestions = suggestions;
 
 	// 新しいサジェストを追加
-	LVITEM lvi{};
-	lvi.mask = LVIF_TEXT;
-
 	for (size_t i = 0; i < suggestions.size(); ++i) {
 		const auto tag = utf8_to_unicode(suggestions[i].tag);
 		const auto& description = suggestions[i].description;
 
-		lvi.iItem = static_cast<int>(i);
-		lvi.iSubItem = 0;
-		lvi.pszText = (LPWSTR)tag.c_str();
-		ListView_InsertItem(pThis->m_hwndSuggestions, &lvi);
-
-		lvi.iSubItem = 1;
-		lvi.pszText = (LPWSTR)description.c_str();
-		ListView_SetItem(pThis->m_hwndSuggestions, &lvi);
+		std::vector<std::wstring> texts = {tag, description};
+		pThis->AddListViewItem(pThis->m_hwndSuggestions, static_cast<int>(i), texts);
 	}
 }
 
@@ -43,10 +34,7 @@ void SuggestionHandler::OnSuggestionSelected(BooruPrompter* pThis, int index) {
 	SendMessage(pThis->m_hwndEdit, EM_GETSEL, (WPARAM)&startPos, (LPARAM)&endPos);
 
 	// 現在のテキストを取得
-	const int length = GetWindowTextLength(pThis->m_hwndEdit) + 1;
-	std::vector<wchar_t> buffer(length);
-	GetWindowText(pThis->m_hwndEdit, buffer.data(), length);
-	std::wstring currentText(buffer.data());
+	std::wstring currentText = pThis->GetEditText();
 
 	// カーソル位置のワード範囲を取得
 	const auto [start, end] = get_span_at_cursor(currentText, startPos);
@@ -56,7 +44,7 @@ void SuggestionHandler::OnSuggestionSelected(BooruPrompter* pThis, int index) {
 	if (start != 0) insertTag = L" " + insertTag;
 	if (currentText[end] != L',') insertTag = insertTag + L", ";
 	std::wstring newText = currentText.substr(0, start) + insertTag + currentText.substr(end);
-	SetWindowText(pThis->m_hwndEdit, newText.c_str());
+	pThis->SetEditText(newText);
 
 	// カーソル位置を更新
 	auto newPos = start + insertTag.length();
