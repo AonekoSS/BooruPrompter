@@ -20,6 +20,9 @@ bool utf8_has_multibyte(const std::string& str);
 // カーソル位置のワード範囲取得
 std::tuple<size_t,size_t> get_span_at_cursor(const std::wstring& text, int pos);
 
+// カンマ区切り文字列からタグを抽出
+std::vector<std::string> extract_tags_from_text(const std::string& text);
+
 // トリミング
 std::wstring trim(const std::wstring& text);
 std::string trim(const std::string& text);

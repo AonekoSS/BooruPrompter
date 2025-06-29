@@ -1,9 +1,10 @@
 ﻿#pragma once
 #include "SuggestionManager.h"
 #include "BooruDB.h"
+#include "SuggestionHandler.h"
+#include "TagListHandler.h"
 #include <vector>
 #include <string>
-#include <windows.h>
 #include "Suggestion.h"
 
 // スプリッター関連の定数
@@ -11,6 +12,15 @@ constexpr int SPLITTER_HIT_AREA = 8;  // スプリッターの判定領域（ピ
 constexpr int SPLITTER_TYPE_NONE = 0;
 constexpr int SPLITTER_TYPE_VERTICAL = 1;
 constexpr int SPLITTER_TYPE_HORIZONTAL = 2;
+
+// レイアウト関連の定数
+constexpr int DEFAULT_MIN_LEFT_WIDTH = 200;
+constexpr int DEFAULT_MIN_RIGHT_WIDTH = 150;
+constexpr int DEFAULT_MIN_TOP_HEIGHT = 100;
+constexpr int DEFAULT_MIN_BOTTOM_HEIGHT = 100;
+constexpr int DEFAULT_WINDOW_WIDTH = 800;
+constexpr int DEFAULT_WINDOW_HEIGHT = 600;
+constexpr int LAYOUT_MARGIN = 4;
 
 class BooruPrompter {
 public:
@@ -20,27 +30,24 @@ public:
 	bool Initialize(HINSTANCE hInstance);
 	int Run();
 
+	// ハンドラークラスをfriendとして宣言
+	friend class SuggestionHandler;
+	friend class TagListHandler;
+
 private:
 	static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+
+	// ウィンドウメッセージの個別処理
 	void OnCreate(HWND hwnd);
 	void OnSize(HWND hwnd);
 	void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify);
+	void OnNotifyMessage(HWND hwnd, WPARAM wParam, LPARAM lParam);
+	void OnDropFiles(HWND hwnd, WPARAM wParam);
+	void OnContextMenu(HWND hwnd, WPARAM wParam, LPARAM lParam);
+	void OnMouseMove(HWND hwnd, LPARAM lParam);
+	void OnLButtonDown(HWND hwnd, LPARAM lParam);
+	void OnLButtonUp(HWND hwnd, LPARAM lParam);
 	void OnTextChanged(HWND hwnd);
-	void UpdateSuggestionList(const SuggestionList& suggestions);
-	void OnSuggestionSelected(int index);
-
-	// タグリスト関連のメソッド
-	void InitializeTagList();
-	void RefreshTagList();
-	void OnTagListDragDrop(int fromIndex, int toIndex);
-	void OnTagListDragStart(int index);
-	void OnTagListDragEnd();
-	void AddTagToList(const Suggestion& suggestion);
-
-	// プロンプトとタグリストの同期機能
-	void SyncTagListFromPrompt(const std::string& prompt);
-	void UpdatePromptFromTagList();
-	std::vector<std::string> ExtractTagsFromPrompt(const std::string& prompt);
 
 	// スプリッター関連のメソッド
 	void UpdateLayout();
@@ -51,6 +58,12 @@ private:
 	void UpdateSplitterCursor(int x, int y);
 	std::pair<int, int> GetToolbarAndStatusHeight();
 
+	// ヘルパーメソッド
+	HWND CreateListView(HWND parent, int id, const std::wstring& title, const std::vector<std::pair<std::wstring, int>>& columns);
+	std::wstring GetEditText() const;
+	void SetEditText(const std::wstring& text);
+	void AddListViewItem(HWND hwndListView, int index, const std::vector<std::wstring>& texts);
+
 	HWND m_hwnd;
 	HWND m_hwndEdit;        // メイン入力欄
 	HWND m_hwndSuggestions; // サジェスト表示用リストビュー
@@ -59,12 +72,6 @@ private:
 	HWND m_hwndStatusBar;  // ステータスバーのハンドル
 	SuggestionManager m_suggestionManager;
 	SuggestionList m_currentSuggestions;
-
-	// タグリスト関連のメンバー変数
-	SuggestionList m_tagItems;
-	int m_dragIndex;        // ドラッグ中のアイテムインデックス
-	int m_dragTargetIndex;  // ドラッグ先のアイテムインデックス
-	bool m_isDragging;      // ドラッグ中かどうか
 
 	// スプリッター関連
 	int m_splitterX;
@@ -97,13 +104,6 @@ private:
 		ID_CONTEXT_MOVE_TO_BOTTOM = 1010,
 		ID_CONTEXT_DELETE = 1011
 	};
-
-	// コンテキストメニュー関連のメソッド
-	void OnTagListContextMenu(int x, int y);
-	void OnTagListContextCommand(int commandId);
-	void MoveTagToTop(int index);
-	void MoveTagToBottom(int index);
-	void DeleteTag(int index);
 
 	// 設定の保存・復帰機能
 	void SaveSettings();
