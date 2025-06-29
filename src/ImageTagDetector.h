@@ -27,6 +27,7 @@ public:
 
     // モデルファイルのパスを取得
     std::wstring GetModelFilePath() const;
+    std::wstring GetTagListFilePath() const;
 
 private:
     // ONNXランタイム関連
@@ -36,9 +37,11 @@ private:
 
     // モデルファイルのパス
     std::wstring m_modelFilePath;
+    std::wstring m_tagListFilePath;
 
     // モデルファイルのダウンロードURL
     std::wstring m_modelDownloadUrl;
+    std::wstring m_tagListDownloadUrl;
 
     // 初期化済みフラグ
     bool m_initialized;

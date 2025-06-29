@@ -7,9 +7,8 @@
 #include <shellapi.h>
 #include <shlobj.h>
 #include <dlgs.h>
-
 #include <commctrl.h>
-#pragma comment(lib, "Comctl32.lib")
+#include <urlmon.h>
 
-#include <wininet.h>
-#pragma comment(lib, "wininet.lib")
+#pragma comment(lib, "urlmon.lib")
+#pragma comment(lib, "Comctl32.lib")

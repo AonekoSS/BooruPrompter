@@ -3,48 +3,20 @@
 #include <fstream>
 #include <filesystem>
 
-// IDC_STATICが定義されていない場合の対策
-#ifndef IDC_STATIC
-#define IDC_STATIC (-1)
-#endif
-
-// ダウンロード確認ダイアログのリソースID
-#define ID_DOWNLOAD_CONFIRM_DIALOG 2001
-#define ID_DOWNLOAD_OK 2002
-#define ID_DOWNLOAD_CANCEL 2003
-
-// ダウンロード確認ダイアログのプロシージャ
-INT_PTR CALLBACK DownloadConfirmDialogProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
-    switch (uMsg) {
-    case WM_INITDIALOG:
-        // ダイアログの初期化
-        SetDlgItemText(hwnd, IDC_STATIC, L"画像タグ検出のためのモデルファイルをダウンロードします。\n\n"
-                                      L"この機能を使用するには、約100MBのモデルファイルが必要です。\n"
-                                      L"ダウンロードを続行しますか？");
-        return TRUE;
-
-    case WM_COMMAND:
-        switch (LOWORD(wParam)) {
-        case ID_DOWNLOAD_OK:
-            EndDialog(hwnd, IDOK);
-            return TRUE;
-        case ID_DOWNLOAD_CANCEL:
-        case IDCANCEL:
-            EndDialog(hwnd, IDCANCEL);
-            return TRUE;
-        }
-        break;
-    }
-    return FALSE;
-}
-
 ImageTagDetector::ImageTagDetector() : m_initialized(false) {
-    // モデルファイルのパスを設定
-    wchar_t appDataPath[MAX_PATH];
-    if (SUCCEEDED(SHGetFolderPath(NULL, CSIDL_APPDATA, NULL, 0, appDataPath))) {
-        m_modelFilePath = std::wstring(appDataPath) + L"\\BooruPrompter\\models\\tag_detection_model.onnx";
-        m_modelDownloadUrl = L"https://example.com/models/tag_detection_model.onnx"; // 実際のURLに変更
-    }
+    // 実行ファイルのパスを取得
+    wchar_t exePath[MAX_PATH];
+    GetModuleFileName(NULL, exePath, MAX_PATH);
+    std::wstring exePathStr(exePath);
+    std::filesystem::path exeDir = std::filesystem::path(exePathStr).parent_path();
+
+    // モデルファイルのパスを設定（実行ファイルと同じ場所）
+    m_modelFilePath = (exeDir / L"wd-v1-4-moat-tagger-v2.onnx").wstring();
+    m_tagListFilePath = (exeDir / L"wd-v1-4-moat-tagger-v2.csv").wstring();
+
+    // モデルファイルのダウンロードURL
+    m_modelDownloadUrl = L"https://huggingface.co/lllyasviel/misc/resolve/main/wd-v1-4-moat-tagger-v2.onnx?download=true";
+    m_tagListDownloadUrl = L"https://huggingface.co/lllyasviel/misc/resolve/main/wd-v1-4-moat-tagger-v2.csv?download=true";
 }
 
 ImageTagDetector::~ImageTagDetector() {
@@ -93,87 +65,16 @@ bool ImageTagDetector::Initialize() {
 }
 
 bool ImageTagDetector::ShowDownloadConfirmDialog(HWND parentHwnd) {
-    // カスタムダイアログを作成
-    HWND hwndDialog = CreateWindowEx(
-        WS_EX_DLGMODALFRAME | WS_EX_TOPMOST,
-        L"#32770", // ダイアログクラス
+    int result = MessageBox(parentHwnd,
+        L"画像タグ検出のためのモデルファイルをダウンロードします。\n\n"
+        L"以下のファイルがダウンロードされます：\n"
+        L"・wd-v1-4-moat-tagger-v2.onnx (約300MB)\n"
+        L"・wd-v1-4-moat-tagger-v2.csv (タグリスト)\n\n"
+        L"ダウンロードを続行しますか？",
         L"モデルファイルのダウンロード",
-        WS_POPUP | WS_CAPTION | WS_SYSMENU | DS_MODALFRAME | DS_CENTER,
-        0, 0, 400, 200,
-        parentHwnd,
-        NULL,
-        GetModuleHandle(NULL),
-        NULL
-    );
+        MB_YESNO | MB_ICONQUESTION);
 
-    if (!hwndDialog) {
-        return false;
-    }
-
-    // ダイアログの内容を作成
-    CreateWindow(L"STATIC", L"画像タグ検出のためのモデルファイルをダウンロードします。\n\n"
-                           L"この機能を使用するには、約100MBのモデルファイルが必要です。\n"
-                           L"ダウンロードを続行しますか？",
-                WS_CHILD | WS_VISIBLE | SS_CENTER,
-                20, 20, 360, 80,
-                hwndDialog, (HMENU)IDC_STATIC, GetModuleHandle(NULL), NULL);
-
-    CreateWindow(L"BUTTON", L"OK",
-                WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-                120, 120, 80, 25,
-                hwndDialog, (HMENU)ID_DOWNLOAD_OK, GetModuleHandle(NULL), NULL);
-
-    CreateWindow(L"BUTTON", L"キャンセル",
-                WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-                220, 120, 80, 25,
-                hwndDialog, (HMENU)ID_DOWNLOAD_CANCEL, GetModuleHandle(NULL), NULL);
-
-    // ダイアログを中央に配置
-    RECT rc;
-    GetWindowRect(hwndDialog, &rc);
-    int x = (GetSystemMetrics(SM_CXSCREEN) - (rc.right - rc.left)) / 2;
-    int y = (GetSystemMetrics(SM_CYSCREEN) - (rc.bottom - rc.top)) / 2;
-    SetWindowPos(hwndDialog, NULL, x, y, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
-
-    // ダイアログを表示
-    ShowWindow(hwndDialog, SW_SHOW);
-    UpdateWindow(hwndDialog);
-
-    // メッセージループ
-    MSG msg;
-    BOOL result = FALSE;
-    bool dialogClosed = false;
-
-    while (!dialogClosed && GetMessage(&msg, NULL, 0, 0)) {
-        if (msg.hwnd == hwndDialog) {
-            switch (msg.message) {
-            case WM_COMMAND:
-                switch (LOWORD(msg.wParam)) {
-                case ID_DOWNLOAD_OK:
-                    result = true;
-                    dialogClosed = true;
-                    break;
-                case ID_DOWNLOAD_CANCEL:
-                    result = false;
-                    dialogClosed = true;
-                    break;
-                }
-                break;
-            case WM_CLOSE:
-                result = false;
-                dialogClosed = true;
-                break;
-            }
-        }
-
-        if (!dialogClosed) {
-            TranslateMessage(&msg);
-            DispatchMessage(&msg);
-        }
-    }
-
-    DestroyWindow(hwndDialog);
-    return result;
+    return (result == IDYES);
 }
 
 std::vector<std::string> ImageTagDetector::DetectTags(const std::wstring& imagePath) {
@@ -183,63 +84,35 @@ std::vector<std::string> ImageTagDetector::DetectTags(const std::wstring& imageP
 }
 
 bool ImageTagDetector::DownloadModelFile() {
-    if (m_modelFilePath.empty() || m_modelDownloadUrl.empty()) {
+    if (m_modelFilePath.empty() || m_modelDownloadUrl.empty() ||
+        m_tagListFilePath.empty() || m_tagListDownloadUrl.empty()) {
         return false;
     }
 
-    // ディレクトリを作成
-    std::filesystem::path modelPath(m_modelFilePath);
-    std::filesystem::create_directories(modelPath.parent_path());
+    // 両方のファイルをダウンロード
+    bool modelSuccess = DownloadFile(m_modelDownloadUrl, m_modelFilePath);
+    bool tagListSuccess = DownloadFile(m_tagListDownloadUrl, m_tagListFilePath);
 
-    return DownloadFile(m_modelDownloadUrl, m_modelFilePath);
+    return modelSuccess && tagListSuccess;
 }
 
 bool ImageTagDetector::IsModelFileExists() const {
-    if (m_modelFilePath.empty()) {
+    if (m_modelFilePath.empty() || m_tagListFilePath.empty()) {
         return false;
     }
-    return std::filesystem::exists(m_modelFilePath);
+    return std::filesystem::exists(m_modelFilePath) && std::filesystem::exists(m_tagListFilePath);
 }
 
 std::wstring ImageTagDetector::GetModelFilePath() const {
     return m_modelFilePath;
 }
 
+std::wstring ImageTagDetector::GetTagListFilePath() const {
+    return m_tagListFilePath;
+}
+
 bool ImageTagDetector::DownloadFile(const std::wstring& url, const std::wstring& filePath) {
-    // WinINetを使用してファイルをダウンロード
-    HINTERNET hInternet = InternetOpen(L"BooruPrompter", INTERNET_OPEN_TYPE_DIRECT, NULL, NULL, 0);
-    if (!hInternet) {
-        return false;
-    }
-
-    HINTERNET hUrl = InternetOpenUrl(hInternet, url.c_str(), NULL, 0, INTERNET_FLAG_RELOAD, 0);
-    if (!hUrl) {
-        InternetCloseHandle(hInternet);
-        return false;
-    }
-
-    std::ofstream file(filePath, std::ios::binary);
-    if (!file.is_open()) {
-        InternetCloseHandle(hUrl);
-        InternetCloseHandle(hInternet);
-        return false;
-    }
-
-    char buffer[8192];
-    DWORD bytesRead;
-    bool success = true;
-
-    while (InternetReadFile(hUrl, buffer, sizeof(buffer), &bytesRead) && bytesRead > 0) {
-        file.write(buffer, bytesRead);
-        if (!file.good()) {
-            success = false;
-            break;
-        }
-    }
-
-    file.close();
-    InternetCloseHandle(hUrl);
-    InternetCloseHandle(hInternet);
-
-    return success;
+    // URLDownloadToFileを使用してファイルをダウンロード
+    HRESULT hr = URLDownloadToFile(NULL, url.c_str(), filePath.c_str(), 0, NULL);
+    return SUCCEEDED(hr);
 }
