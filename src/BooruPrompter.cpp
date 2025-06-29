@@ -624,34 +624,6 @@ void BooruPrompter::AddTagToList(const Suggestion& suggestion) {
 	RefreshTagList();
 }
 
-std::vector<std::string> BooruPrompter::ExtractTagsFromPrompt(const std::string& prompt) {
-	std::vector<std::string> tags;
-	std::string currentTag;
-
-	for (char c : prompt) {
-		if (c == ',') {
-			if (!currentTag.empty()) {
-				std::string trimmedTag = trim(currentTag);
-				if (!trimmedTag.empty()) {
-					tags.push_back(trimmedTag);
-				}
-				currentTag.clear();
-			}
-		} else {
-			currentTag += c;
-		}
-	}
-
-	if (!currentTag.empty()) {
-		std::string trimmedTag = trim(currentTag);
-		if (!trimmedTag.empty()) {
-			tags.push_back(trimmedTag);
-		}
-	}
-
-	return tags;
-}
-
 void BooruPrompter::UpdatePromptFromTagList() {
 	std::wstring newPrompt;
 	for (size_t i = 0; i < m_tagItems.size(); ++i) {
@@ -665,7 +637,7 @@ void BooruPrompter::UpdatePromptFromTagList() {
 }
 
 void BooruPrompter::SyncTagListFromPrompt(const std::string& prompt) {
-	auto extractedTags = ExtractTagsFromPrompt(prompt);
+	auto extractedTags = extract_tags_from_text(prompt);
 
 	// 効率的な差分検出
 	if (extractedTags.size() != m_tagItems.size()) {

@@ -40,7 +40,6 @@ private:
 	// プロンプトとタグリストの同期機能
 	void SyncTagListFromPrompt(const std::string& prompt);
 	void UpdatePromptFromTagList();
-	std::vector<std::string> ExtractTagsFromPrompt(const std::string& prompt);
 
 	// スプリッター関連のメソッド
 	void UpdateLayout();

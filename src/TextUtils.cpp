@@ -117,3 +117,36 @@ std::string trim(const std::string& text) {
 	ward.erase(ward.find_last_not_of(" \t") + 1);
 	return ward;
 }
+
+// カンマ区切り文字列からタグを抽出
+std::vector<std::string> extract_tags_from_text(const std::string& text) {
+	std::vector<std::string> tags;
+	if (text.empty()) {
+		return tags;
+	}
+
+	size_t start = 0;
+	size_t end = 0;
+
+	while (end < text.length()) {
+		// 次のカンマを探す
+		end = text.find(',', start);
+		if (end == std::string::npos) {
+			end = text.length();
+		}
+
+		// タグを抽出してトリミング
+		if (end > start) {
+			std::string tag = text.substr(start, end - start);
+			std::string trimmedTag = trim(tag);
+			if (!trimmedTag.empty()) {
+				tags.push_back(trimmedTag);
+			}
+		}
+
+		// 次の開始位置を設定（カンマの次の位置）
+		start = end + 1;
+	}
+
+	return tags;
+}
