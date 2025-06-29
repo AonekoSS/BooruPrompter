@@ -1,5 +1,6 @@
 ﻿#include "framework.h"
 #include <filesystem>
+#include <sstream>
 
 
 #include "TextUtils.h"
@@ -149,4 +150,21 @@ std::vector<std::string> extract_tags_from_text(const std::string& text) {
 	}
 
 	return tags;
+}
+
+// 文字列を指定した区切り文字で分割
+std::vector<std::string> split_string(const std::string& str, char delimiter) {
+	std::vector<std::string> tokens;
+	if (str.empty()) {
+		return tokens;
+	}
+
+	std::istringstream ss(str);
+	std::string token;
+
+	while (std::getline(ss, token, delimiter)) {
+		tokens.push_back(token);
+	}
+
+	return tokens;
 }

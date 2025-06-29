@@ -293,6 +293,8 @@ void BooruPrompter::OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify) 
 		break;
 	case ID_CLEAR:
 		SetWindowText(m_hwndEdit, L"");
+		TagListHandler::SyncTagListFromPrompt(this, "");
+		m_suggestionManager.Request({});
 		break;
 	case ID_PASTE:
 		// テキストをクリップボードから貼り付け
@@ -302,6 +304,8 @@ void BooruPrompter::OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify) 
 				wchar_t* pszText = (wchar_t*)GlobalLock(hData);
 				if (pszText) {
 					SetWindowText(m_hwndEdit, pszText);
+					TagListHandler::SyncTagListFromPrompt(this, unicode_to_utf8(pszText));
+					m_suggestionManager.Request({});
 				}
 				GlobalUnlock(hData);
 			}
@@ -357,10 +361,50 @@ void BooruPrompter::OnDropFiles(HWND hwnd, WPARAM wParam) {
 	wchar_t szFile[MAX_PATH];
 	if (DragQueryFile(hDrop, 0, szFile, MAX_PATH)) {
 		std::wstring filePath(szFile);
-		auto metadata = ReadFileInfo(filePath);
-		SetWindowText(m_hwndEdit, metadata.c_str());
+		ProcessImageFile(filePath);
 	}
 	DragFinish(hDrop);
+}
+
+void BooruPrompter::ProcessImageFile(const std::wstring& filePath) {
+	// まずメタデータからプロンプトを取得
+	auto metadata = ReadFileInfo(filePath);
+	if (!metadata.empty()) {
+		SetEditText(metadata);
+		TagListHandler::SyncTagListFromPrompt(this, unicode_to_utf8(metadata.c_str()));
+		return;
+	}
+
+	// 駄目なら画像タグ検出
+	if (TryInitializeImageTagDetector()) {
+		auto detectedTags = m_imageTagDetector.DetectTags(filePath);
+		if (detectedTags.empty()) {
+			return;
+		}
+		TagListHandler::SyncTagList(this, detectedTags);
+		TagListHandler::UpdatePromptFromTagList(this);
+	}
+}
+
+bool BooruPrompter::TryInitializeImageTagDetector() {
+	// 画像タグ検出機能の初期化を試行
+	if (m_imageTagDetector.Initialize()) {
+		return true;
+	}
+
+	// 初期化に失敗した場合、モデルファイルのダウンロードを提案
+	if (m_imageTagDetector.ShowDownloadConfirmDialog(m_hwnd)) {
+		// ユーザーがダウンロードを承認した場合
+		if (m_imageTagDetector.DownloadModelFile()) {
+			// ダウンロード成功後、再度初期化を試行
+			return m_imageTagDetector.Initialize();
+		} else {
+			// ダウンロード失敗
+			MessageBox(m_hwnd, L"モデルファイルのダウンロードに失敗しました。", L"エラー", MB_OK | MB_ICONERROR);
+		}
+	}
+
+	return false;
 }
 
 void BooruPrompter::OnContextMenu(HWND hwnd, WPARAM wParam, LPARAM lParam) {
@@ -655,7 +699,7 @@ LRESULT CALLBACK BooruPrompter::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, 
 			break;
 
 		case WM_DESTROY:
-			pThis->m_suggestionManager.Cancel();
+			pThis->m_suggestionManager.Shutdown();
 			pThis->SaveSettings();
 			PostQuitMessage(0);
 			return 0;

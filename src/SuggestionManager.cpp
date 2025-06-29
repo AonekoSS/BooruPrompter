@@ -5,16 +5,11 @@
 
 #include "SuggestionManager.h"
 
-SuggestionManager* SuggestionManager::s_instance = nullptr;
-
 SuggestionManager::SuggestionManager() : m_SuggestTimer(nullptr) {
-	s_instance = this;
 }
 
 SuggestionManager::~SuggestionManager() {
-	BooruDB::GetInstance().Cancel();
-	Cancel();
-	s_instance = nullptr;
+	Shutdown();
 }
 
 // サジェスト処理の開始
@@ -32,8 +27,8 @@ void SuggestionManager::Request(const std::string& input) {
 	CreateTimerQueueTimer(&m_SuggestTimer, nullptr, SuggestTimerProc, this, SUGGEST_DELAY_MS, 0, 0);
 }
 
-// キャンセル
-void SuggestionManager::Cancel() {
+// シャットダウン
+void SuggestionManager::Shutdown() {
 	m_callback = nullptr;
 	CancelTimer();
 	BooruDB::GetInstance().Cancel();

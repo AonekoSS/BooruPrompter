@@ -23,6 +23,9 @@ std::tuple<size_t,size_t> get_span_at_cursor(const std::wstring& text, int pos);
 // カンマ区切り文字列からタグを抽出
 std::vector<std::string> extract_tags_from_text(const std::string& text);
 
+// 文字列を指定した区切り文字で分割
+std::vector<std::string> split_string(const std::string& str, char delimiter);
+
 // トリミング
 std::wstring trim(const std::wstring& text);
 std::string trim(const std::string& text);
