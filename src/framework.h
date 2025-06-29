@@ -1,8 +1,15 @@
 ﻿#pragma once
-#define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
+#define WIN32_LEAN_AND_MEAN
 #include <windows.h>
-#include <shellapi.h>
+#include <winbase.h>
 #include <windowsx.h>
+#include <shellapi.h>
+#include <shlobj.h>
+#include <dlgs.h>
+
 #include <commctrl.h>
 #pragma comment(lib, "Comctl32.lib")
+
+#include <wininet.h>
+#pragma comment(lib, "wininet.lib")

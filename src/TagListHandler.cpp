@@ -75,9 +75,13 @@ void TagListHandler::UpdatePromptFromTagList(BooruPrompter* pThis) {
 
 void TagListHandler::SyncTagListFromPrompt(BooruPrompter* pThis, const std::string& prompt) {
 	auto extractedTags = extract_tags_from_text(prompt);
+	SyncTagList(pThis, extractedTags);
+}
+
+void TagListHandler::SyncTagList(BooruPrompter* pThis, const std::vector<std::string>& tags) {
 	s_tagItems.clear();
-	s_tagItems.reserve(extractedTags.size());
-	for (const auto& tag : extractedTags) {
+	s_tagItems.reserve(tags.size());
+	for (const auto& tag : tags) {
 		Suggestion sug = BooruDB::GetInstance().MakeSuggestion(tag);
 		s_tagItems.push_back(sug);
 	}

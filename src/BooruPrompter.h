@@ -3,6 +3,7 @@
 #include "BooruDB.h"
 #include "SuggestionHandler.h"
 #include "TagListHandler.h"
+#include "ImageTagDetector.h"
 #include <vector>
 #include <string>
 #include "Suggestion.h"
@@ -64,6 +65,10 @@ private:
 	void SetEditText(const std::wstring& text);
 	void AddListViewItem(HWND hwndListView, int index, const std::vector<std::wstring>& texts);
 
+	// 画像タグ検出関連
+	void ProcessImageFile(const std::wstring& filePath);
+	bool TryInitializeImageTagDetector();
+
 	HWND m_hwnd;
 	HWND m_hwndEdit;        // メイン入力欄
 	HWND m_hwndSuggestions; // サジェスト表示用リストビュー
@@ -72,6 +77,7 @@ private:
 	HWND m_hwndStatusBar;  // ステータスバーのハンドル
 	SuggestionManager m_suggestionManager;
 	SuggestionList m_currentSuggestions;
+	ImageTagDetector m_imageTagDetector; // 画像タグ検出機能
 
 	// スプリッター関連
 	int m_splitterX;

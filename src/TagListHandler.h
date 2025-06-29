@@ -19,6 +19,7 @@ public:
 	// プロンプト・タグ同期
 	static void UpdatePromptFromTagList(BooruPrompter* pThis);
 	static void SyncTagListFromPrompt(BooruPrompter* pThis, const std::string& prompt);
+	static void SyncTagList(BooruPrompter* pThis, const std::vector<std::string>& tags);
 
 	// コンテキストメニュー関連
 	static void OnTagListContextMenu(BooruPrompter* pThis, int x, int y);
