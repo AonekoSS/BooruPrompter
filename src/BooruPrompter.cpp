@@ -271,6 +271,154 @@ void BooruPrompter::OnSize(HWND hwnd) {
 		SWP_NOZORDER);
 }
 
+void BooruPrompter::OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify) {
+	switch (id) {
+	case ID_EDIT:
+		if (codeNotify == EN_CHANGE) {
+			OnTextChanged(hwnd);
+		}
+		break;
+	case ID_CLEAR:
+		SetWindowText(m_hwndEdit, L"");
+		break;
+	case ID_PASTE:
+		// テキストをクリップボードから貼り付け
+		if (OpenClipboard(hwnd)) {
+			HANDLE hData = GetClipboardData(CF_UNICODETEXT);
+			if (hData) {
+				wchar_t* pszText = (wchar_t*)GlobalLock(hData);
+				if (pszText) {
+					SetWindowText(m_hwndEdit, pszText);
+				}
+				GlobalUnlock(hData);
+			}
+			CloseClipboard();
+		}
+		break;
+	case ID_COPY:
+	{
+		// テキストをクリップボードにコピー
+		int length = GetWindowTextLength(m_hwndEdit) + 1;
+		std::vector<wchar_t> buffer(length);
+		GetWindowText(m_hwndEdit, buffer.data(), length);
+
+		if (OpenClipboard(hwnd)) {
+			EmptyClipboard();
+			HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, length * sizeof(wchar_t));
+			if (hMem) {
+				wchar_t* pMem = (wchar_t*)GlobalLock(hMem);
+				wcscpy_s(pMem, length, buffer.data());
+				GlobalUnlock(hMem);
+				SetClipboardData(CF_UNICODETEXT, hMem);
+			}
+			CloseClipboard();
+		}
+		break;
+	}
+	case ID_CONTEXT_MOVE_TO_TOP:
+	case ID_CONTEXT_MOVE_TO_BOTTOM:
+	case ID_CONTEXT_DELETE:
+		OnTagListContextCommand(id);
+		break;
+	}
+}
+
+void BooruPrompter::OnNotifyMessage(HWND hwnd, WPARAM wParam, LPARAM lParam) {
+	LPNMHDR pnmh = reinterpret_cast<LPNMHDR>(lParam);
+
+	if (pnmh->idFrom == ID_SUGGESTIONS && pnmh->code == NM_DBLCLK) {
+		// ダブルクリックでタグを挿入
+		LPNMITEMACTIVATE pnmia = reinterpret_cast<LPNMITEMACTIVATE>(lParam);
+		OnSuggestionSelected(pnmia->iItem);
+	}
+	else if (pnmh->idFrom == ID_TAG_LIST && pnmh->code == LVN_BEGINDRAG) {
+		// ドラッグ開始
+		LPNMLISTVIEW pnmlv = reinterpret_cast<LPNMLISTVIEW>(lParam);
+		OnTagListDragStart(pnmlv->iItem);
+		SetCapture(hwnd);
+	}
+}
+
+void BooruPrompter::OnDropFiles(HWND hwnd, WPARAM wParam) {
+	HDROP hDrop = (HDROP)wParam;
+	wchar_t szFile[MAX_PATH];
+	if (DragQueryFile(hDrop, 0, szFile, MAX_PATH)) {
+		std::wstring filePath(szFile);
+		auto metadata = ReadFileInfo(filePath);
+		SetWindowText(m_hwndEdit, metadata.c_str());
+	}
+	DragFinish(hDrop);
+}
+
+void BooruPrompter::OnContextMenu(HWND hwnd, WPARAM wParam, LPARAM lParam) {
+	HWND hwndContext = (HWND)wParam;
+	int xPos = GET_X_LPARAM(lParam);
+	int yPos = GET_Y_LPARAM(lParam);
+
+	if (hwndContext == m_hwndTagList) {
+		OnTagListContextMenu(xPos, yPos);
+	}
+}
+
+void BooruPrompter::OnMouseMove(HWND hwnd, LPARAM lParam) {
+	int x = GET_X_LPARAM(lParam);
+	int y = GET_Y_LPARAM(lParam);
+
+	// スプリッターカーソルの更新
+	UpdateSplitterCursor(x, y);
+
+	if (m_isDragging) {
+		// ドラッグ中のマウス移動処理
+		// メインウィンドウのクライアント座標をタグリストのクライアント座標に変換
+		POINT pt = { x, y };
+		MapWindowPoints(hwnd, m_hwndTagList, &pt, 1);
+
+		// マウス位置のアイテムを取得
+		LVHITTESTINFO ht = { 0 };
+		ht.pt = pt;
+		int targetIndex = ListView_HitTest(m_hwndTagList, &ht);
+
+		// すべてのアイテムのハイライトをクリア
+		for (int i = 0; i < static_cast<int>(m_tagItems.size()); ++i) {
+			ListView_SetItemState(m_hwndTagList, i, 0, LVIS_DROPHILITED);
+		}
+
+		// ドラッグ先が有効な場合、ハイライト表示
+		if (targetIndex >= 0 && targetIndex < static_cast<int>(m_tagItems.size())) {
+			ListView_SetItemState(m_hwndTagList, targetIndex,
+				LVIS_DROPHILITED, LVIS_DROPHILITED);
+			m_dragTargetIndex = targetIndex;
+		} else {
+			m_dragTargetIndex = -1;
+		}
+	}
+	else if (m_isDraggingSplitter) {
+		HandleSplitterMouseMove(x, y);
+	}
+}
+
+void BooruPrompter::OnLButtonDown(HWND hwnd, LPARAM lParam) {
+	int x = GET_X_LPARAM(lParam);
+	int y = GET_Y_LPARAM(lParam);
+	HandleSplitterMouseDown(x, y);
+}
+
+void BooruPrompter::OnLButtonUp(HWND hwnd, LPARAM lParam) {
+	if (m_isDragging) {
+		// ドラッグ終了時に実際の移動を実行
+		if (m_dragTargetIndex >= 0 && m_dragTargetIndex != m_dragIndex) {
+			OnTagListDragDrop(m_dragIndex, m_dragTargetIndex);
+		}
+
+		// ドラッグ終了処理
+		OnTagListDragEnd();
+		ReleaseCapture();
+	}
+	else if (m_isDraggingSplitter) {
+		HandleSplitterMouseUp();
+	}
+}
+
 void BooruPrompter::OnTextChanged(HWND hwnd) {
 	// 現在のカーソル位置を取得
 	DWORD startPos, endPos;
@@ -356,203 +504,6 @@ void BooruPrompter::OnSuggestionSelected(int index) {
 	SyncTagListFromPrompt(unicode_to_utf8(newText.c_str()));
 
 	m_suggestionManager.Request({});
-}
-
-void BooruPrompter::OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify) {
-	switch (id) {
-	case ID_EDIT:
-		if (codeNotify == EN_CHANGE) {
-			OnTextChanged(hwnd);
-		}
-		break;
-	case ID_CLEAR:
-		SetWindowText(m_hwndEdit, L"");
-		break;
-	case ID_PASTE:
-		// テキストをクリップボードから貼り付け
-		if (OpenClipboard(hwnd)) {
-			HANDLE hData = GetClipboardData(CF_UNICODETEXT);
-			if (hData) {
-				wchar_t* pszText = (wchar_t*)GlobalLock(hData);
-				if (pszText) {
-					SetWindowText(m_hwndEdit, pszText);
-				}
-				GlobalUnlock(hData);
-			}
-			CloseClipboard();
-		}
-		break;
-	case ID_COPY:
-	{
-		// テキストをクリップボードにコピー
-		int length = GetWindowTextLength(m_hwndEdit) + 1;
-		std::vector<wchar_t> buffer(length);
-		GetWindowText(m_hwndEdit, buffer.data(), length);
-
-		if (OpenClipboard(hwnd)) {
-			EmptyClipboard();
-			HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, length * sizeof(wchar_t));
-			if (hMem) {
-				wchar_t* pMem = (wchar_t*)GlobalLock(hMem);
-				wcscpy_s(pMem, length, buffer.data());
-				GlobalUnlock(hMem);
-				SetClipboardData(CF_UNICODETEXT, hMem);
-			}
-			CloseClipboard();
-		}
-		break;
-	}
-	case ID_CONTEXT_MOVE_TO_TOP:
-	case ID_CONTEXT_MOVE_TO_BOTTOM:
-	case ID_CONTEXT_DELETE:
-		OnTagListContextCommand(id);
-		break;
-	}
-}
-
-LRESULT CALLBACK BooruPrompter::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
-	BooruPrompter* pThis = NULL;
-
-	if (uMsg == WM_NCCREATE) {
-		pThis = static_cast<BooruPrompter*>(reinterpret_cast<CREATESTRUCT*>(lParam)->lpCreateParams);
-		SetWindowLongPtr(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(pThis));
-	} else {
-		pThis = reinterpret_cast<BooruPrompter*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
-	}
-
-	if (pThis) {
-		switch (uMsg) {
-		case WM_CREATE:
-			pThis->OnCreate(hwnd);
-			return 0;
-
-		case WM_SIZE:
-			pThis->OnSize(hwnd);
-			return 0;
-
-		case WM_COMMAND:
-			pThis->OnCommand(hwnd, LOWORD(wParam), (HWND)lParam, HIWORD(wParam));
-			return 0;
-
-		case WM_NOTIFY:
-		{
-			LPNMHDR pnmh = reinterpret_cast<LPNMHDR>(lParam);
-			if (pnmh->idFrom == ID_SUGGESTIONS && pnmh->code == NM_DBLCLK) {
-				// ダブルクリックでタグを挿入
-				LPNMITEMACTIVATE pnmia = reinterpret_cast<LPNMITEMACTIVATE>(lParam);
-				pThis->OnSuggestionSelected(pnmia->iItem);
-				return 0;
-			}
-			else if (pnmh->idFrom == ID_TAG_LIST && pnmh->code == LVN_BEGINDRAG) {
-				// ドラッグ開始
-				LPNMLISTVIEW pnmlv = reinterpret_cast<LPNMLISTVIEW>(lParam);
-				pThis->OnTagListDragStart(pnmlv->iItem);
-				SetCapture(hwnd);
-				return 0;
-			}
-		}
-		break;
-
-		case WM_LBUTTONDOWN:
-		{
-			int xPos = GET_X_LPARAM(lParam);
-			int yPos = GET_Y_LPARAM(lParam);
-			pThis->HandleSplitterMouseDown(xPos, yPos);
-		}
-		break;
-
-		case WM_MOUSEMOVE:
-		{
-			int xPos = GET_X_LPARAM(lParam);
-			int yPos = GET_Y_LPARAM(lParam);
-
-			// スプリッターカーソルの更新
-			pThis->UpdateSplitterCursor(xPos, yPos);
-
-			if (pThis->m_isDragging) {
-				// ドラッグ中のマウス移動処理
-				// メインウィンドウのクライアント座標をタグリストのクライアント座標に変換
-				POINT pt = { xPos, yPos };
-				MapWindowPoints(hwnd, pThis->m_hwndTagList, &pt, 1);
-
-				// マウス位置のアイテムを取得
-				LVHITTESTINFO ht = { 0 };
-				ht.pt = pt;
-				int targetIndex = ListView_HitTest(pThis->m_hwndTagList, &ht);
-
-				// すべてのアイテムのハイライトをクリア
-				for (int i = 0; i < static_cast<int>(pThis->m_tagItems.size()); ++i) {
-					ListView_SetItemState(pThis->m_hwndTagList, i, 0, LVIS_DROPHILITED);
-				}
-
-				// ドラッグ先が有効な場合、ハイライト表示
-				if (targetIndex >= 0 && targetIndex < static_cast<int>(pThis->m_tagItems.size())) {
-					ListView_SetItemState(pThis->m_hwndTagList, targetIndex,
-						LVIS_DROPHILITED, LVIS_DROPHILITED);
-					pThis->m_dragTargetIndex = targetIndex;
-				} else {
-					pThis->m_dragTargetIndex = -1;
-				}
-			}
-			else if (pThis->m_isDraggingSplitter) {
-				pThis->HandleSplitterMouseMove(xPos, yPos);
-			}
-		}
-		break;
-
-		case WM_LBUTTONUP:
-		{
-			if (pThis->m_isDragging) {
-				// ドラッグ終了時に実際の移動を実行
-				if (pThis->m_dragTargetIndex >= 0 && pThis->m_dragTargetIndex != pThis->m_dragIndex) {
-					pThis->OnTagListDragDrop(pThis->m_dragIndex, pThis->m_dragTargetIndex);
-				}
-
-				// ドラッグ終了処理
-				pThis->OnTagListDragEnd();
-				ReleaseCapture();
-			}
-			else if (pThis->m_isDraggingSplitter) {
-				pThis->HandleSplitterMouseUp();
-			}
-		}
-		break;
-
-		case WM_DESTROY:
-			pThis->m_suggestionManager.Cancel();
-			pThis->SaveSettings();
-			PostQuitMessage(0);
-			return 0;
-
-		case WM_DROPFILES:
-		{
-			HDROP hDrop = (HDROP)wParam;
-			wchar_t szFile[MAX_PATH];
-			if (DragQueryFile(hDrop, 0, szFile, MAX_PATH)) {
-				std::wstring filePath(szFile);
-				auto metadata = ReadFileInfo(filePath);
-				SetWindowText(pThis->m_hwndEdit, metadata.c_str());
-			}
-			DragFinish(hDrop);
-			return 0;
-		}
-
-		case WM_CONTEXTMENU:
-		{
-			HWND hwndContext = (HWND)wParam;
-			int xPos = GET_X_LPARAM(lParam);
-			int yPos = GET_Y_LPARAM(lParam);
-
-			if (hwndContext == pThis->m_hwndTagList) {
-				pThis->OnTagListContextMenu(xPos, yPos);
-				return 0;
-			}
-		}
-		break;
-		}
-	}
-
-	return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
 
 int BooruPrompter::Run() {
@@ -919,4 +870,63 @@ void BooruPrompter::LoadSettings() {
 		m_windowX = CW_USEDEFAULT;
 		m_windowY = CW_USEDEFAULT;
 	}
+}
+
+LRESULT CALLBACK BooruPrompter::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+	BooruPrompter* pThis = NULL;
+
+	if (uMsg == WM_NCCREATE) {
+		pThis = static_cast<BooruPrompter*>(reinterpret_cast<CREATESTRUCT*>(lParam)->lpCreateParams);
+		SetWindowLongPtr(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(pThis));
+	} else {
+		pThis = reinterpret_cast<BooruPrompter*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
+	}
+
+	if (pThis) {
+		switch (uMsg) {
+		case WM_CREATE:
+			pThis->OnCreate(hwnd);
+			return 0;
+
+		case WM_SIZE:
+			pThis->OnSize(hwnd);
+			return 0;
+
+		case WM_COMMAND:
+			pThis->OnCommand(hwnd, LOWORD(wParam), (HWND)lParam, HIWORD(wParam));
+			return 0;
+
+		case WM_NOTIFY:
+			pThis->OnNotifyMessage(hwnd, wParam, lParam);
+			break;
+
+		case WM_LBUTTONDOWN:
+			pThis->OnLButtonDown(hwnd, lParam);
+			break;
+
+		case WM_MOUSEMOVE:
+			pThis->OnMouseMove(hwnd, lParam);
+			break;
+
+		case WM_LBUTTONUP:
+			pThis->OnLButtonUp(hwnd, lParam);
+			break;
+
+		case WM_DESTROY:
+			pThis->m_suggestionManager.Cancel();
+			pThis->SaveSettings();
+			PostQuitMessage(0);
+			return 0;
+
+		case WM_DROPFILES:
+			pThis->OnDropFiles(hwnd, wParam);
+			break;
+
+		case WM_CONTEXTMENU:
+			pThis->OnContextMenu(hwnd, wParam, lParam);
+			break;
+		}
+	}
+
+	return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }

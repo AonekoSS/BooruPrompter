@@ -22,10 +22,20 @@ public:
 
 private:
 	static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+
+	// ウィンドウメッセージの個別処理
 	void OnCreate(HWND hwnd);
 	void OnSize(HWND hwnd);
 	void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify);
+	void OnNotifyMessage(HWND hwnd, WPARAM wParam, LPARAM lParam);
+	void OnDropFiles(HWND hwnd, WPARAM wParam);
+	void OnContextMenu(HWND hwnd, WPARAM wParam, LPARAM lParam);
+	void OnMouseMove(HWND hwnd, LPARAM lParam);
+	void OnLButtonDown(HWND hwnd, LPARAM lParam);
+	void OnLButtonUp(HWND hwnd, LPARAM lParam);
 	void OnTextChanged(HWND hwnd);
+
+	// サジェストリスト関連のメソッド
 	void UpdateSuggestionList(const SuggestionList& suggestions);
 	void OnSuggestionSelected(int index);
 
