@@ -293,6 +293,8 @@ void BooruPrompter::OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify) 
 		break;
 	case ID_CLEAR:
 		SetWindowText(m_hwndEdit, L"");
+		TagListHandler::SyncTagListFromPrompt(this, "");
+		m_suggestionManager.Request({});
 		break;
 	case ID_PASTE:
 		// テキストをクリップボードから貼り付け
@@ -302,6 +304,8 @@ void BooruPrompter::OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify) 
 				wchar_t* pszText = (wchar_t*)GlobalLock(hData);
 				if (pszText) {
 					SetWindowText(m_hwndEdit, pszText);
+					TagListHandler::SyncTagListFromPrompt(this, unicode_to_utf8(pszText));
+					m_suggestionManager.Request({});
 				}
 				GlobalUnlock(hData);
 			}
@@ -695,7 +699,7 @@ LRESULT CALLBACK BooruPrompter::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, 
 			break;
 
 		case WM_DESTROY:
-			pThis->m_suggestionManager.Cancel();
+			pThis->m_suggestionManager.Shutdown();
 			pThis->SaveSettings();
 			PostQuitMessage(0);
 			return 0;

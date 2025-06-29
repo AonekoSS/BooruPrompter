@@ -17,12 +17,11 @@ public:
 	// リクエスト
 	void Request(const std::string& input);
 
-	// キャンセル
-	void Cancel();
+	// シャットダウン
+	void Shutdown();
 
 private:
 	static constexpr int SUGGEST_DELAY_MS = 500;
-	static SuggestionManager* s_instance;
 
 	std::function<void(const std::vector<Suggestion>&)> m_callback;
 	HANDLE m_SuggestTimer;
