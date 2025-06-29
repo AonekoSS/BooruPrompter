@@ -46,6 +46,22 @@ private:
     // 初期化済みフラグ
     bool m_initialized;
 
+    // タグ検出関連のメソッド
+    bool LoadLabelData(std::vector<class TaggerLabel>& master,
+                      std::vector<const class TaggerLabel*>& ratings,
+                      std::vector<const class TaggerLabel*>& generals,
+                      std::vector<const class TaggerLabel*>& charas);
+    bool PreprocessImage(const std::wstring& imagePath,
+                        std::vector<float>& modelInputData,
+                        std::vector<int64_t>& inputShapes);
+    bool RunInference(const std::vector<float>& modelInputData,
+                     const std::vector<int64_t>& inputShapes,
+                     std::vector<float>& modelOutputData);
+    std::vector<std::string> PostprocessResults(const std::vector<float>& modelOutputData,
+                                               const std::vector<class TaggerLabel>& master,
+                                               const std::vector<const class TaggerLabel*>& generals,
+                                               const std::vector<const class TaggerLabel*>& charas);
+
     // モデルファイルのダウンロード処理
     bool DownloadFile(const std::wstring& url, const std::wstring& filePath);
 
