@@ -1,7 +1,7 @@
 
-[submodule "src/rapidfuzz"]
-	path = src/rapidfuzz
+[submodule "external/rapidfuzz"]
+	path = external/rapidfuzz
 	url = https://github.com/rapidfuzz/rapidfuzz-cpp.git
-[submodule "src/booru-japanese-tag"]
-	path = src/booru-japanese-tag
+[submodule "external/booru-japanese-tag"]
+	path = external/booru-japanese-tag
 	url = https://github.com/boorutan/booru-japanese-tag.git
