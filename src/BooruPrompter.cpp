@@ -1,14 +1,9 @@
 ﻿#include "framework.h"
-#include <CommCtrl.h>
-#include <shellapi.h>
-#include <WindowsX.h>
-#pragma comment(lib, "Comctl32.lib")
 #include <algorithm>
 #include <fstream>
 #include <array>
 
 #include "Resource.h"
-
 #include "BooruPrompter.h"
 #include "TextUtils.h"
 #include "ImageInfo.h"
@@ -38,7 +33,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	return app.Run();
 }
 
-BooruPrompter::BooruPrompter() : m_hwnd(NULL), m_hwndEdit(NULL), m_hwndSuggestions(NULL), m_hwndTagList(NULL), m_hwndToolbar(NULL), m_hwndStatusBar(NULL), m_dragIndex(-1), m_dragTargetIndex(-1), m_isDragging(false), m_splitterX(0), m_splitterY(0), m_minLeftWidth(200), m_minRightWidth(150), m_minTopHeight(100), m_minBottomHeight(100), m_isDraggingSplitter(false), m_draggingSplitterType(0), m_windowX(CW_USEDEFAULT), m_windowY(CW_USEDEFAULT), m_windowWidth(800), m_windowHeight(600) {}
+BooruPrompter::BooruPrompter() : m_hwnd(NULL), m_hwndEdit(NULL), m_hwndSuggestions(NULL), m_hwndTagList(NULL), m_hwndToolbar(NULL), m_hwndStatusBar(NULL), m_splitterX(0), m_splitterY(0), m_minLeftWidth(200), m_minRightWidth(150), m_minTopHeight(100), m_minBottomHeight(100), m_isDraggingSplitter(false), m_draggingSplitterType(0), m_windowX(CW_USEDEFAULT), m_windowY(CW_USEDEFAULT), m_windowWidth(800), m_windowHeight(600) {}
 
 BooruPrompter::~BooruPrompter() {}
 
@@ -174,7 +169,7 @@ void BooruPrompter::OnCreate(HWND hwnd) {
 
 	// サジェスト開始
 	m_suggestionManager.StartSuggestion([this](const SuggestionList& suggestions) {
-		UpdateSuggestionList(suggestions);
+		SuggestionHandler::UpdateSuggestionList(this, suggestions);
 	});
 
 	// タグリストの初期化
@@ -208,7 +203,7 @@ void BooruPrompter::OnCreate(HWND hwnd) {
 	// 保存されたプロンプトを復元
 	if (!m_savedPrompt.empty()) {
 		SetWindowText(m_hwndEdit, m_savedPrompt.c_str());
-		SyncTagListFromPrompt(unicode_to_utf8(m_savedPrompt.c_str()));
+		TagListHandler::SyncTagListFromPrompt(this, unicode_to_utf8(m_savedPrompt.c_str()));
 	}
 }
 
@@ -318,7 +313,7 @@ void BooruPrompter::OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify) 
 	case ID_CONTEXT_MOVE_TO_TOP:
 	case ID_CONTEXT_MOVE_TO_BOTTOM:
 	case ID_CONTEXT_DELETE:
-		OnTagListContextCommand(id);
+		TagListHandler::OnTagListContextCommand(this, id);
 		break;
 	}
 }
@@ -329,12 +324,12 @@ void BooruPrompter::OnNotifyMessage(HWND hwnd, WPARAM wParam, LPARAM lParam) {
 	if (pnmh->idFrom == ID_SUGGESTIONS && pnmh->code == NM_DBLCLK) {
 		// ダブルクリックでタグを挿入
 		LPNMITEMACTIVATE pnmia = reinterpret_cast<LPNMITEMACTIVATE>(lParam);
-		OnSuggestionSelected(pnmia->iItem);
+		SuggestionHandler::OnSuggestionSelected(this, pnmia->iItem);
 	}
 	else if (pnmh->idFrom == ID_TAG_LIST && pnmh->code == LVN_BEGINDRAG) {
 		// ドラッグ開始
 		LPNMLISTVIEW pnmlv = reinterpret_cast<LPNMLISTVIEW>(lParam);
-		OnTagListDragStart(pnmlv->iItem);
+		TagListHandler::OnTagListDragStart(this, pnmlv->iItem);
 		SetCapture(hwnd);
 	}
 }
@@ -356,7 +351,7 @@ void BooruPrompter::OnContextMenu(HWND hwnd, WPARAM wParam, LPARAM lParam) {
 	int yPos = GET_Y_LPARAM(lParam);
 
 	if (hwndContext == m_hwndTagList) {
-		OnTagListContextMenu(xPos, yPos);
+		TagListHandler::OnTagListContextMenu(this, xPos, yPos);
 	}
 }
 
@@ -367,29 +362,21 @@ void BooruPrompter::OnMouseMove(HWND hwnd, LPARAM lParam) {
 	// スプリッターカーソルの更新
 	UpdateSplitterCursor(x, y);
 
-	if (m_isDragging) {
+	if (TagListHandler::IsDragging()) {
 		// ドラッグ中のマウス移動処理
-		// メインウィンドウのクライアント座標をタグリストのクライアント座標に変換
 		POINT pt = { x, y };
 		MapWindowPoints(hwnd, m_hwndTagList, &pt, 1);
-
-		// マウス位置のアイテムを取得
 		LVHITTESTINFO ht = { 0 };
 		ht.pt = pt;
 		int targetIndex = ListView_HitTest(m_hwndTagList, &ht);
-
-		// すべてのアイテムのハイライトをクリア
-		for (int i = 0; i < static_cast<int>(m_tagItems.size()); ++i) {
+		for (int i = 0; i < static_cast<int>(TagListHandler::GetTagItemsCount()); ++i) {
 			ListView_SetItemState(m_hwndTagList, i, 0, LVIS_DROPHILITED);
 		}
-
-		// ドラッグ先が有効な場合、ハイライト表示
-		if (targetIndex >= 0 && targetIndex < static_cast<int>(m_tagItems.size())) {
-			ListView_SetItemState(m_hwndTagList, targetIndex,
-				LVIS_DROPHILITED, LVIS_DROPHILITED);
-			m_dragTargetIndex = targetIndex;
+		if (targetIndex >= 0 && targetIndex < static_cast<int>(TagListHandler::GetTagItemsCount())) {
+			ListView_SetItemState(m_hwndTagList, targetIndex, LVIS_DROPHILITED, LVIS_DROPHILITED);
+			TagListHandler::UpdateDragTargetIndex(targetIndex);
 		} else {
-			m_dragTargetIndex = -1;
+			TagListHandler::UpdateDragTargetIndex(-1);
 		}
 	}
 	else if (m_isDraggingSplitter) {
@@ -404,14 +391,11 @@ void BooruPrompter::OnLButtonDown(HWND hwnd, LPARAM lParam) {
 }
 
 void BooruPrompter::OnLButtonUp(HWND hwnd, LPARAM lParam) {
-	if (m_isDragging) {
-		// ドラッグ終了時に実際の移動を実行
-		if (m_dragTargetIndex >= 0 && m_dragTargetIndex != m_dragIndex) {
-			OnTagListDragDrop(m_dragIndex, m_dragTargetIndex);
+	if (TagListHandler::IsDragging()) {
+		if (TagListHandler::GetDragTargetIndex() >= 0 && TagListHandler::GetDragTargetIndex() != TagListHandler::GetDragIndex()) {
+			TagListHandler::OnTagListDragDrop(this, TagListHandler::GetDragIndex(), TagListHandler::GetDragTargetIndex());
 		}
-
-		// ドラッグ終了処理
-		OnTagListDragEnd();
+		TagListHandler::OnTagListDragEnd(this);
 		ReleaseCapture();
 	}
 	else if (m_isDraggingSplitter) {
@@ -438,72 +422,7 @@ void BooruPrompter::OnTextChanged(HWND hwnd) {
 	m_suggestionManager.Request(unicode_to_utf8(currentWord.c_str()));
 
 	// プロンプトが変更されたのでタグリストを更新
-	SyncTagListFromPrompt(unicode_to_utf8(currentText.c_str()));
-}
-
-void BooruPrompter::UpdateSuggestionList(const SuggestionList& suggestions) {
-	// リストをクリア
-	ListView_DeleteAllItems(m_hwndSuggestions);
-
-	// 現在のサジェストリストを保存
-	m_currentSuggestions = suggestions;
-
-	// 新しいサジェストを追加
-	LVITEM lvi{};
-	lvi.mask = LVIF_TEXT;
-
-	for (size_t i = 0; i < suggestions.size(); ++i) {
-		const auto tag = utf8_to_unicode(suggestions[i].tag);
-		const auto& description = suggestions[i].description;
-
-		lvi.iItem = static_cast<int>(i);
-		lvi.iSubItem = 0;
-		lvi.pszText = (LPWSTR)tag.c_str();
-		ListView_InsertItem(m_hwndSuggestions, &lvi);
-
-		lvi.iSubItem = 1;
-		lvi.pszText = (LPWSTR)description.c_str();
-		ListView_SetItem(m_hwndSuggestions, &lvi);
-	}
-}
-
-void BooruPrompter::OnSuggestionSelected(int index) {
-	if (index < 0 || index >= static_cast<int>(m_currentSuggestions.size())) {
-		return;
-	}
-
-	// 選択したタグを取得
-	const auto& selectedTag = utf8_to_unicode(m_currentSuggestions[index].tag);
-
-	// 現在のカーソル位置を取得
-	DWORD startPos, endPos;
-	SendMessage(m_hwndEdit, EM_GETSEL, (WPARAM)&startPos, (LPARAM)&endPos);
-
-	// 現在のテキストを取得
-	const int length = GetWindowTextLength(m_hwndEdit) + 1;
-	std::vector<wchar_t> buffer(length);
-	GetWindowText(m_hwndEdit, buffer.data(), length);
-	std::wstring currentText(buffer.data());
-
-	// カーソル位置のワード範囲を取得
-	const auto [start, end] = get_span_at_cursor(currentText, startPos);
-
-	// タグを挿入
-	auto insertTag = selectedTag;
-	if (start != 0) insertTag = L" " + insertTag;
-	if (currentText[end] != L',') insertTag = insertTag + L", ";
-	std::wstring newText = currentText.substr(0, start) + insertTag + currentText.substr(end);
-	SetWindowText(m_hwndEdit, newText.c_str());
-
-	// カーソル位置を更新
-	auto newPos = start + insertTag.length();
-	SendMessage(m_hwndEdit, EM_SETSEL, newPos, newPos);
-	SetFocus(m_hwndEdit);
-
-	// タグリストを更新
-	SyncTagListFromPrompt(unicode_to_utf8(newText.c_str()));
-
-	m_suggestionManager.Request({});
+	TagListHandler::SyncTagListFromPrompt(this, unicode_to_utf8(currentText.c_str()));
 }
 
 int BooruPrompter::Run() {
@@ -513,89 +432,6 @@ int BooruPrompter::Run() {
 		DispatchMessage(&msg);
 	}
 	return static_cast<int>(msg.wParam);
-}
-
-
-void BooruPrompter::RefreshTagList() {
-	ListView_DeleteAllItems(m_hwndTagList);
-
-	LVITEM lvi{};
-	lvi.mask = LVIF_TEXT;
-
-	for (size_t i = 0; i < m_tagItems.size(); ++i) {
-		const auto& item = m_tagItems[i];
-		const auto tag = utf8_to_unicode(item.tag);
-
-		lvi.iItem = static_cast<int>(i);
-		lvi.iSubItem = 0;
-		lvi.pszText = (LPWSTR)tag.c_str();
-		ListView_InsertItem(m_hwndTagList, &lvi);
-
-		lvi.iSubItem = 1;
-		lvi.pszText = (LPWSTR)item.description.c_str();
-		ListView_SetItem(m_hwndTagList, &lvi);
-	}
-}
-
-void BooruPrompter::OnTagListDragDrop(int fromIndex, int toIndex) {
-	if (fromIndex < 0 || fromIndex >= static_cast<int>(m_tagItems.size()) ||
-		toIndex < 0 || toIndex >= static_cast<int>(m_tagItems.size()) ||
-		fromIndex == toIndex) {
-		return;
-	}
-
-	std::swap(m_tagItems[fromIndex], m_tagItems[toIndex]);
-
-	RefreshTagList();
-	UpdatePromptFromTagList();
-
-	m_dragIndex = toIndex;
-}
-
-void BooruPrompter::OnTagListDragStart(int index) {
-	m_dragIndex = index;
-	m_dragTargetIndex = index;
-	m_isDragging = true;
-}
-
-void BooruPrompter::OnTagListDragEnd() {
-	if (m_isDragging) {
-		for (int i = 0; i < static_cast<int>(m_tagItems.size()); ++i) {
-			ListView_SetItemState(m_hwndTagList, i, 0, LVIS_DROPHILITED);
-		}
-	}
-
-	m_dragIndex = -1;
-	m_dragTargetIndex = -1;
-	m_isDragging = false;
-}
-
-void BooruPrompter::AddTagToList(const Suggestion& suggestion) {
-	m_tagItems.push_back(suggestion);
-	RefreshTagList();
-}
-
-void BooruPrompter::UpdatePromptFromTagList() {
-	std::wstring newPrompt;
-	for (size_t i = 0; i < m_tagItems.size(); ++i) {
-		if (i > 0) {
-			newPrompt += L", ";
-		}
-		newPrompt += utf8_to_unicode(m_tagItems[i].tag);
-	}
-
-	SetWindowText(m_hwndEdit, newPrompt.c_str());
-}
-
-void BooruPrompter::SyncTagListFromPrompt(const std::string& prompt) {
-	auto extractedTags = extract_tags_from_text(prompt);
-	m_tagItems.clear();
-	m_tagItems.reserve(extractedTags.size());
-	for (const auto& tag : extractedTags) {
-		Suggestion sug = BooruDB::GetInstance().MakeSuggestion(tag);
-		m_tagItems.push_back(sug);
-	}
-	RefreshTagList();
 }
 
 // スプリッター関連のメソッド
@@ -675,7 +511,7 @@ void BooruPrompter::HandleSplitterMouseUp() {
 }
 
 void BooruPrompter::UpdateSplitterCursor(int x, int y) {
-	if (m_isDragging || m_isDraggingSplitter) return;
+	if (TagListHandler::IsDragging() || m_isDraggingSplitter) return;
 
 	if (x >= m_splitterX - SPLITTER_HIT_AREA && x <= m_splitterX + SPLITTER_HIT_AREA) {
 		SetCursor(LoadCursor(NULL, IDC_SIZEWE));  // 左右サイズ変更カーソル
@@ -700,115 +536,6 @@ std::pair<int, int> BooruPrompter::GetToolbarAndStatusHeight() {
 	const int statusHeight = rc.bottom - rc.top;
 
 	return {toolbarHeight, statusHeight};
-}
-
-// コンテキストメニュー関連のメソッド
-void BooruPrompter::OnTagListContextMenu(int x, int y) {
-	// マウス位置のアイテムを取得
-	POINT pt = { x, y };
-	ScreenToClient(m_hwndTagList, &pt);
-
-	LVHITTESTINFO ht = { 0 };
-	ht.pt = pt;
-	int itemIndex = ListView_HitTest(m_hwndTagList, &ht);
-
-	// アイテムが選択されていない場合は何もしない
-	if (itemIndex < 0 || itemIndex >= static_cast<int>(m_tagItems.size())) {
-		return;
-	}
-
-	// コンテキストメニューを作成
-	HMENU hMenu = CreatePopupMenu();
-	if (!hMenu) return;
-
-	// メニュー項目を追加
-	AppendMenu(hMenu, MF_STRING, ID_CONTEXT_MOVE_TO_TOP, L"先頭に移動");
-	AppendMenu(hMenu, MF_STRING, ID_CONTEXT_MOVE_TO_BOTTOM, L"最後に移動");
-	AppendMenu(hMenu, MF_SEPARATOR, 0, NULL);
-	AppendMenu(hMenu, MF_STRING, ID_CONTEXT_DELETE, L"削除");
-
-	// メニューを表示
-	ClientToScreen(m_hwndTagList, &pt);
-	TrackPopupMenu(hMenu, TPM_LEFTALIGN | TPM_RIGHTBUTTON, pt.x, pt.y, 0, m_hwnd, NULL);
-
-	// メニューを破棄
-	DestroyMenu(hMenu);
-}
-
-void BooruPrompter::OnTagListContextCommand(int commandId) {
-	// 現在選択されているアイテムを取得
-	int selectedIndex = ListView_GetNextItem(m_hwndTagList, -1, LVNI_SELECTED);
-	if (selectedIndex < 0 || selectedIndex >= static_cast<int>(m_tagItems.size())) {
-		return;
-	}
-
-	switch (commandId) {
-	case ID_CONTEXT_MOVE_TO_TOP:
-		MoveTagToTop(selectedIndex);
-		break;
-	case ID_CONTEXT_MOVE_TO_BOTTOM:
-		MoveTagToBottom(selectedIndex);
-		break;
-	case ID_CONTEXT_DELETE:
-		DeleteTag(selectedIndex);
-		break;
-	}
-}
-
-void BooruPrompter::MoveTagToTop(int index) {
-	if (index <= 0 || index >= static_cast<int>(m_tagItems.size())) {
-		return;
-	}
-
-	// アイテムを先頭に移動
-	Suggestion item = m_tagItems[index];
-	m_tagItems.erase(m_tagItems.begin() + index);
-	m_tagItems.insert(m_tagItems.begin(), item);
-
-	RefreshTagList();
-	UpdatePromptFromTagList();
-
-	// 移動したアイテムを選択状態にする
-	ListView_SetItemState(m_hwndTagList, 0, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
-	ListView_EnsureVisible(m_hwndTagList, 0, FALSE);
-}
-
-void BooruPrompter::MoveTagToBottom(int index) {
-	if (index < 0 || index >= static_cast<int>(m_tagItems.size()) - 1) {
-		return;
-	}
-
-	// アイテムを最後に移動
-	Suggestion item = m_tagItems[index];
-	m_tagItems.erase(m_tagItems.begin() + index);
-	m_tagItems.push_back(item);
-
-	RefreshTagList();
-	UpdatePromptFromTagList();
-
-	// 移動したアイテムを選択状態にする
-	int newIndex = static_cast<int>(m_tagItems.size()) - 1;
-	ListView_SetItemState(m_hwndTagList, newIndex, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
-	ListView_EnsureVisible(m_hwndTagList, newIndex, FALSE);
-}
-
-void BooruPrompter::DeleteTag(int index) {
-	if (index < 0 || index >= static_cast<int>(m_tagItems.size())) {
-		return;
-	}
-
-	// アイテムを削除
-	m_tagItems.erase(m_tagItems.begin() + index);
-
-	RefreshTagList();
-	UpdatePromptFromTagList();
-
-	// 削除後に適切なアイテムを選択
-	if (!m_tagItems.empty()) {
-		int newIndex = std::min(index, static_cast<int>(m_tagItems.size()) - 1);
-		ListView_SetItemState(m_hwndTagList, newIndex, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
-		ListView_EnsureVisible(m_hwndTagList, newIndex, FALSE);
-	}
 }
 
 // 設定の保存・復帰機能

@@ -1,9 +1,10 @@
 ﻿#pragma once
 #include "SuggestionManager.h"
 #include "BooruDB.h"
+#include "SuggestionHandler.h"
+#include "TagListHandler.h"
 #include <vector>
 #include <string>
-#include <windows.h>
 #include "Suggestion.h"
 
 // スプリッター関連の定数
@@ -20,6 +21,10 @@ public:
 	bool Initialize(HINSTANCE hInstance);
 	int Run();
 
+	// ハンドラークラスをfriendとして宣言
+	friend class SuggestionHandler;
+	friend class TagListHandler;
+
 private:
 	static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
@@ -34,22 +39,6 @@ private:
 	void OnLButtonDown(HWND hwnd, LPARAM lParam);
 	void OnLButtonUp(HWND hwnd, LPARAM lParam);
 	void OnTextChanged(HWND hwnd);
-
-	// サジェストリスト関連のメソッド
-	void UpdateSuggestionList(const SuggestionList& suggestions);
-	void OnSuggestionSelected(int index);
-
-	// タグリスト関連のメソッド
-	void InitializeTagList();
-	void RefreshTagList();
-	void OnTagListDragDrop(int fromIndex, int toIndex);
-	void OnTagListDragStart(int index);
-	void OnTagListDragEnd();
-	void AddTagToList(const Suggestion& suggestion);
-
-	// プロンプトとタグリストの同期機能
-	void SyncTagListFromPrompt(const std::string& prompt);
-	void UpdatePromptFromTagList();
 
 	// スプリッター関連のメソッド
 	void UpdateLayout();
@@ -68,12 +57,6 @@ private:
 	HWND m_hwndStatusBar;  // ステータスバーのハンドル
 	SuggestionManager m_suggestionManager;
 	SuggestionList m_currentSuggestions;
-
-	// タグリスト関連のメンバー変数
-	SuggestionList m_tagItems;
-	int m_dragIndex;        // ドラッグ中のアイテムインデックス
-	int m_dragTargetIndex;  // ドラッグ先のアイテムインデックス
-	bool m_isDragging;      // ドラッグ中かどうか
 
 	// スプリッター関連
 	int m_splitterX;
@@ -106,13 +89,6 @@ private:
 		ID_CONTEXT_MOVE_TO_BOTTOM = 1010,
 		ID_CONTEXT_DELETE = 1011
 	};
-
-	// コンテキストメニュー関連のメソッド
-	void OnTagListContextMenu(int x, int y);
-	void OnTagListContextCommand(int commandId);
-	void MoveTagToTop(int index);
-	void MoveTagToBottom(int index);
-	void DeleteTag(int index);
 
 	// 設定の保存・復帰機能
 	void SaveSettings();
