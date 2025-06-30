@@ -89,7 +89,7 @@ static std::string ReadPNGInfo(const std::wstring& filePath) {
 		auto text = data.substr(null_pos + 1);
 
 		// ここに生成パラメータが入ってる
-		if (keyword == "parameters") {
+		if (keyword == "parameters" || keyword == "Description") {
 			parameters = text;
 			continue;
 		}
@@ -116,10 +116,16 @@ static std::string ReadPNGInfo(const std::wstring& filePath) {
 		}
 	}
 	else {
-		// a1111形式は改行の手前を取り出せばOK
 		auto lf_pos = parameters.find('\n');
 		if (lf_pos != std::string::npos) {
 			prompt = parameters.substr(0, lf_pos);
+		} else {
+			auto opt_pos = parameters.find("--");
+			if (opt_pos != std::string::npos) {
+				prompt = parameters.substr(0, opt_pos);
+			} else {
+				prompt = parameters;
+			}
 		}
 	}
 
