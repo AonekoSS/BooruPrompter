@@ -7,6 +7,8 @@
 #include <vector>
 #include <string>
 #include "Suggestion.h"
+#include <thread>
+#include <mutex>
 
 // スプリッター関連の定数
 constexpr int SPLITTER_HIT_AREA = 8;  // スプリッターの判定領域（ピクセル）
@@ -22,6 +24,10 @@ constexpr int DEFAULT_MIN_BOTTOM_HEIGHT = 100;
 constexpr int DEFAULT_WINDOW_WIDTH = 800;
 constexpr int DEFAULT_WINDOW_HEIGHT = 600;
 constexpr int LAYOUT_MARGIN = 4;
+
+// カスタムメッセージ
+#define WM_UPDATE_PROGRESS (WM_USER + 100)
+#define WM_IMAGE_PROCESSING_COMPLETE (WM_USER + 101)
 
 class BooruPrompter {
 public:
@@ -67,6 +73,8 @@ private:
 
 	// 画像タグ検出関連
 	void ProcessImageFile(const std::wstring& filePath);
+	void ProcessImageFileAsync(const std::wstring& filePath);
+	void OnImageProcessingComplete(int resultType);
 	bool TryInitializeImageTagDetector();
 
 	HWND m_hwnd;
@@ -75,6 +83,7 @@ private:
 	HWND m_hwndTagList;     // タグリスト表示用リストビュー
 	HWND m_hwndToolbar;    // ツールバーのハンドル
 	HWND m_hwndStatusBar;  // ステータスバーのハンドル
+	HWND m_hwndProgressBar; // プログレスバーのハンドル
 	SuggestionManager m_suggestionManager;
 	SuggestionList m_currentSuggestions;
 	ImageTagDetector m_imageTagDetector; // 画像タグ検出機能
@@ -96,6 +105,17 @@ private:
 	int m_windowHeight;
 	std::wstring m_savedPrompt;
 
+	// 進捗表示関連
+	std::wstring m_currentStatusText;
+	int m_currentProgress;
+
+	// 画像処理スレッド関連
+	std::thread m_imageProcessingThread;
+	std::mutex m_imageProcessingMutex;
+	bool m_isImageProcessing;
+	std::vector<std::string> m_pendingDetectedTags;
+	std::wstring m_pendingMetadata;
+
 	// コントロールIDの定義
 	enum {
 		ID_EDIT = 1001,
@@ -103,16 +123,21 @@ private:
 		ID_TAG_LIST = 1003,
 		ID_TOOLBAR = 1004,
 		ID_STATUS_BAR = 1005,
-		ID_CLEAR = 1006,
-		ID_PASTE = 1007,
-		ID_COPY = 1008,
-		ID_CONTEXT_MOVE_TO_TOP = 1009,
-		ID_CONTEXT_MOVE_TO_BOTTOM = 1010,
-		ID_CONTEXT_DELETE = 1011
+		ID_PROGRESS_BAR = 1006,
+		ID_CLEAR = 1007,
+		ID_PASTE = 1008,
+		ID_COPY = 1009,
+		ID_CONTEXT_MOVE_TO_TOP = 1010,
+		ID_CONTEXT_MOVE_TO_BOTTOM = 1011,
+		ID_CONTEXT_DELETE = 1012
 	};
 
 	// 設定の保存・復帰機能
 	void SaveSettings();
 	void LoadSettings();
 	std::wstring GetIniFilePath();
+
+	// 進捗表示関連のメソッド
+	void UpdateProgress(int progress, const std::wstring& statusText);
+	void UpdateStatusText(const std::wstring& text);
 };

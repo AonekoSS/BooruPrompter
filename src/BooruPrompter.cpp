@@ -33,7 +33,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	return app.Run();
 }
 
-BooruPrompter::BooruPrompter() : m_hwnd(NULL), m_hwndEdit(NULL), m_hwndSuggestions(NULL), m_hwndTagList(NULL), m_hwndToolbar(NULL), m_hwndStatusBar(NULL), m_splitterX(0), m_splitterY(0), m_minLeftWidth(DEFAULT_MIN_LEFT_WIDTH), m_minRightWidth(DEFAULT_MIN_RIGHT_WIDTH), m_minTopHeight(DEFAULT_MIN_TOP_HEIGHT), m_minBottomHeight(DEFAULT_MIN_BOTTOM_HEIGHT), m_isDraggingSplitter(false), m_draggingSplitterType(0), m_windowX(CW_USEDEFAULT), m_windowY(CW_USEDEFAULT), m_windowWidth(DEFAULT_WINDOW_WIDTH), m_windowHeight(DEFAULT_WINDOW_HEIGHT) {}
+BooruPrompter::BooruPrompter() : m_hwnd(NULL), m_hwndEdit(NULL), m_hwndSuggestions(NULL), m_hwndTagList(NULL), m_hwndToolbar(NULL), m_hwndStatusBar(NULL), m_hwndProgressBar(NULL), m_splitterX(0), m_splitterY(0), m_minLeftWidth(DEFAULT_MIN_LEFT_WIDTH), m_minRightWidth(DEFAULT_MIN_RIGHT_WIDTH), m_minTopHeight(DEFAULT_MIN_TOP_HEIGHT), m_minBottomHeight(DEFAULT_MIN_BOTTOM_HEIGHT), m_isDraggingSplitter(false), m_draggingSplitterType(0), m_windowX(CW_USEDEFAULT), m_windowY(CW_USEDEFAULT), m_windowWidth(DEFAULT_WINDOW_WIDTH), m_windowHeight(DEFAULT_WINDOW_HEIGHT), m_currentProgress(0), m_isImageProcessing(false) {}
 
 BooruPrompter::~BooruPrompter() {}
 
@@ -127,6 +127,38 @@ void BooruPrompter::OnCreate(HWND hwnd) {
 		NULL
 	);
 
+	// ステータスバーを3つのパーツに分割（テキスト、プログレスバー、サイズグリップ）
+	{
+		int statusParts[] = { 200, 300, -1 }; // -1は右端まで
+		SendMessage(m_hwndStatusBar, SB_SETPARTS, 3, (LPARAM)statusParts);
+	}
+
+	// プログレスバーの作成（ステータスバーの2番目のパーツ内に配置）
+	m_hwndProgressBar = CreateWindowEx(
+		0,
+		PROGRESS_CLASS,
+		NULL,
+		WS_CHILD | WS_VISIBLE | PBS_SMOOTH,
+		0, 0, 0, 0,
+		m_hwndStatusBar, // 親をステータスバーに変更
+		(HMENU)ID_PROGRESS_BAR,
+		GetModuleHandle(NULL),
+		NULL
+	);
+
+	// プログレスバーを初期状態で表示し、0%に設定
+	ShowWindow(m_hwndProgressBar, SW_SHOW);
+	SendMessage(m_hwndProgressBar, PBM_SETRANGE, 0, MAKELPARAM(0, 100));
+	SendMessage(m_hwndProgressBar, PBM_SETPOS, 0, 0);
+
+	// ステータスバーの高さを調整（プログレスバーが見やすいように）
+	SendMessage(m_hwndStatusBar, SB_SETMINHEIGHT, 20, 0);
+
+	// ImageTagDetectorに進捗コールバックを設定
+	m_imageTagDetector.SetProgressCallback([this](int progress, const std::wstring& status) {
+		UpdateProgress(progress, status);
+	});
+
 	// メイン入力欄の作成
 	m_hwndEdit = CreateWindowEx(
 		WS_EX_CLIENTEDGE,
@@ -164,6 +196,15 @@ void BooruPrompter::OnCreate(HWND hwnd) {
 		SetEditText(m_savedPrompt);
 		TagListHandler::SyncTagListFromPrompt(this, unicode_to_utf8(m_savedPrompt.c_str()));
 	}
+
+	// 初期状態のステータスバーパーツを設定（プログレスバーあり）
+	{
+		int statusParts[] = { 200, 300, -1 };
+		SendMessage(m_hwndStatusBar, SB_SETPARTS, 3, (LPARAM)statusParts);
+	}
+
+	// 初期状態のステータステキストを設定
+	UpdateStatusText(L"準備完了");
 }
 
 HWND BooruPrompter::CreateListView(HWND parent, int id, const std::wstring& title, const std::vector<std::pair<std::wstring, int>>& columns) {
@@ -282,6 +323,22 @@ void BooruPrompter::OnSize(HWND hwnd) {
 		rightWidth - LAYOUT_MARGIN * 2,
 		clientHeight - toolbarHeight - statusHeight - LAYOUT_MARGIN * 2,
 		SWP_NOZORDER);
+
+	// プログレスバーの位置を更新（ステータスバー内の2番目のパーツ）
+	// ステータスバーの2番目のパーツの位置を取得
+	RECT partRect;
+	SendMessage(m_hwndStatusBar, SB_GETRECT, 1, (LPARAM)&partRect);
+
+	// プログレスバーをパーツ内に配置（マージンを少し空ける）
+	SetWindowPos(m_hwndProgressBar, NULL,
+		partRect.left + 2,
+		partRect.top + 2,
+		partRect.right - partRect.left - 4,
+		partRect.bottom - partRect.top - 4,
+		SWP_NOZORDER);
+
+	// ステータスバーのサイズを更新（プログレスバーの位置計算のため）
+	SendMessage(m_hwndStatusBar, WM_SIZE, 0, 0);
 }
 
 void BooruPrompter::OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify) {
@@ -361,9 +418,51 @@ void BooruPrompter::OnDropFiles(HWND hwnd, WPARAM wParam) {
 	wchar_t szFile[MAX_PATH];
 	if (DragQueryFile(hDrop, 0, szFile, MAX_PATH)) {
 		std::wstring filePath(szFile);
-		ProcessImageFile(filePath);
+		ProcessImageFileAsync(filePath);
 	}
 	DragFinish(hDrop);
+}
+
+void BooruPrompter::ProcessImageFileAsync(const std::wstring& filePath) {
+	// 既に処理中の場合は何もしない
+	std::lock_guard<std::mutex> lock(m_imageProcessingMutex);
+	if (m_isImageProcessing) {
+		return;
+	}
+	m_isImageProcessing = true;
+
+	// 別スレッドで画像処理を実行
+	m_imageProcessingThread = std::thread([this, filePath]() {
+		// まずメタデータからプロンプトを取得
+		auto metadata = ReadFileInfo(filePath);
+		if (!metadata.empty()) {
+			// メタデータを保存してUIスレッドで処理
+			{
+				std::lock_guard<std::mutex> lock(m_imageProcessingMutex);
+				m_pendingMetadata = metadata;
+			}
+			PostMessage(m_hwnd, WM_IMAGE_PROCESSING_COMPLETE, 0, 0);
+			return;
+		}
+
+		// 駄目なら画像タグ検出
+		if (TryInitializeImageTagDetector()) {
+			auto detectedTags = m_imageTagDetector.DetectTags(filePath);
+
+			// 検出結果を保存してUIスレッドで処理
+			{
+				std::lock_guard<std::mutex> lock(m_imageProcessingMutex);
+				m_pendingDetectedTags = detectedTags;
+			}
+			PostMessage(m_hwnd, WM_IMAGE_PROCESSING_COMPLETE, 1, 0);
+		} else {
+			// 初期化失敗
+			PostMessage(m_hwnd, WM_IMAGE_PROCESSING_COMPLETE, 2, 0);
+		}
+	});
+
+	// スレッドをデタッチ（自動的に終了を待たない）
+	m_imageProcessingThread.detach();
 }
 
 void BooruPrompter::ProcessImageFile(const std::wstring& filePath) {
@@ -378,11 +477,40 @@ void BooruPrompter::ProcessImageFile(const std::wstring& filePath) {
 	// 駄目なら画像タグ検出
 	if (TryInitializeImageTagDetector()) {
 		auto detectedTags = m_imageTagDetector.DetectTags(filePath);
+
 		if (detectedTags.empty()) {
 			return;
 		}
 		TagListHandler::SyncTagList(this, detectedTags);
 		TagListHandler::UpdatePromptFromTagList(this);
+	}
+}
+
+void BooruPrompter::OnImageProcessingComplete(int resultType) {
+	// 処理完了フラグをリセット
+	{
+		std::lock_guard<std::mutex> lock(m_imageProcessingMutex);
+		m_isImageProcessing = false;
+	}
+
+	switch (resultType) {
+	case 0: // メタデータ取得成功
+		if (!m_pendingMetadata.empty()) {
+			SetEditText(m_pendingMetadata);
+			TagListHandler::SyncTagListFromPrompt(this, unicode_to_utf8(m_pendingMetadata.c_str()));
+			m_pendingMetadata.clear();
+		}
+		break;
+	case 1: // 画像タグ検出成功
+		if (!m_pendingDetectedTags.empty()) {
+			TagListHandler::SyncTagList(this, m_pendingDetectedTags);
+			TagListHandler::UpdatePromptFromTagList(this);
+			m_pendingDetectedTags.clear();
+		}
+		break;
+	case 2: // 初期化失敗
+		// 何もしない（既にエラーメッセージは表示済み）
+		break;
 	}
 }
 
@@ -397,7 +525,8 @@ bool BooruPrompter::TryInitializeImageTagDetector() {
 		// ユーザーがダウンロードを承認した場合
 		if (m_imageTagDetector.DownloadModelFile()) {
 			// ダウンロード成功後、再度初期化を試行
-			return m_imageTagDetector.Initialize();
+			bool success = m_imageTagDetector.Initialize();
+			return success;
 		} else {
 			// ダウンロード失敗
 			MessageBox(m_hwnd, L"モデルファイルのダウンロードに失敗しました。", L"エラー", MB_OK | MB_ICONERROR);
@@ -597,6 +726,22 @@ std::pair<int, int> BooruPrompter::GetToolbarAndStatusHeight() {
 	return {toolbarHeight, statusHeight};
 }
 
+// 進捗表示関連のメソッド
+void BooruPrompter::UpdateProgress(int progress, const std::wstring& statusText) {
+	m_currentProgress = progress;
+	m_currentStatusText = statusText;
+
+	// UIスレッドで実行
+	PostMessage(m_hwnd, WM_UPDATE_PROGRESS, progress, 0);
+}
+
+
+
+void BooruPrompter::UpdateStatusText(const std::wstring& text) {
+	m_currentStatusText = text;
+	SendMessage(m_hwndStatusBar, SB_SETTEXT, 0, (LPARAM)text.c_str());
+}
+
 // 設定の保存・復帰機能
 std::wstring BooruPrompter::GetIniFilePath() {
 	wchar_t exePath[MAX_PATH];
@@ -710,6 +855,15 @@ LRESULT CALLBACK BooruPrompter::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, 
 
 		case WM_CONTEXTMENU:
 			pThis->OnContextMenu(hwnd, wParam, lParam);
+			break;
+
+		case WM_UPDATE_PROGRESS:
+			SendMessage(pThis->m_hwndProgressBar, PBM_SETPOS, (int)wParam, 0);
+			SendMessage(pThis->m_hwndStatusBar, SB_SETTEXT, 0, (LPARAM)pThis->m_currentStatusText.c_str());
+			break;
+
+		case WM_IMAGE_PROCESSING_COMPLETE:
+			pThis->OnImageProcessingComplete((int)wParam);
 			break;
 		}
 	}

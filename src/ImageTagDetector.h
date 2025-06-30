@@ -3,6 +3,7 @@
 #include <vector>
 #include <memory>
 #include <functional>
+#include <urlmon.h>
 #include "onnxruntime_cxx_api.h"
 
 class ImageTagDetector {
@@ -21,6 +22,9 @@ public:
 
     // モデルファイルのダウンロード
     bool DownloadModelFile();
+
+    // 進捗コールバックの設定
+    void SetProgressCallback(std::function<void(int progress, const std::wstring& status)> callback);
 
     // モデルファイルの存在確認
     bool IsModelFileExists() const;
@@ -63,8 +67,9 @@ private:
                                                const std::vector<const class TaggerLabel*>& charas);
 
     // モデルファイルのダウンロード処理
-    bool DownloadFile(const std::wstring& url, const std::wstring& filePath);
+    bool DownloadFile(const std::wstring& url, const std::wstring& filePath, int progressStart = 0, int progressEnd = 100);
 
     // プログレスコールバック
-    std::function<void(int)> m_progressCallback;
+    std::function<void(int progress, const std::wstring& status)> m_progressCallback;
 };
+
