@@ -29,6 +29,11 @@ constexpr int LAYOUT_MARGIN = 4;
 #define WM_UPDATE_PROGRESS (WM_USER + 100)
 #define WM_IMAGE_PROCESSING_COMPLETE (WM_USER + 101)
 
+// 画像処理完了タイプ
+#define IMAGE_PROCESSING_INIT_FAILED 0
+#define IMAGE_PROCESSING_METADATA_SUCCESS 1
+#define IMAGE_PROCESSING_TAG_DETECTION_SUCCESS 2
+
 class BooruPrompter {
 public:
 	BooruPrompter();

@@ -385,6 +385,7 @@ void BooruPrompter::OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify) 
 				SetClipboardData(CF_UNICODETEXT, hMem);
 			}
 			CloseClipboard();
+			UpdateProgress(100, L"プロンプトをクリップボードにコピー");
 		}
 		break;
 	}
@@ -436,16 +437,16 @@ void BooruPrompter::ProcessImageFileAsync(const std::wstring& filePath) {
 		auto metadata = ReadFileInfo(filePath);
 		if (!metadata.empty()) {
 			m_pendingMetadata = metadata;
-			PostMessage(m_hwnd, WM_IMAGE_PROCESSING_COMPLETE, 0, 0);
+			PostMessage(m_hwnd, WM_IMAGE_PROCESSING_COMPLETE, IMAGE_PROCESSING_METADATA_SUCCESS, 0);
 			return;
 		}
 
 		// 駄目なら画像タグ検出
 		if (TryInitializeImageTagDetector()) {
 			m_pendingDetectedTags = m_imageTagDetector.DetectTags(filePath);
-			PostMessage(m_hwnd, WM_IMAGE_PROCESSING_COMPLETE, 1, 0);
+			PostMessage(m_hwnd, WM_IMAGE_PROCESSING_COMPLETE, IMAGE_PROCESSING_TAG_DETECTION_SUCCESS, 0);
 		} else {
-			PostMessage(m_hwnd, WM_IMAGE_PROCESSING_COMPLETE, 2, 0);
+			PostMessage(m_hwnd, WM_IMAGE_PROCESSING_COMPLETE, IMAGE_PROCESSING_INIT_FAILED, 0);
 		}
 	});
 
@@ -477,12 +478,13 @@ void BooruPrompter::OnImageProcessingComplete(int resultType) {
 	m_isImageProcessing = false;
 
 	switch (resultType) {
-	case 0: // メタデータ取得成功
+	case IMAGE_PROCESSING_METADATA_SUCCESS: // メタデータ取得成功
 		SetEditText(m_pendingMetadata);
 		TagListHandler::SyncTagListFromPrompt(this, unicode_to_utf8(m_pendingMetadata.c_str()));
+		UpdateProgress(100, L"ファイルからプロンプトを取得");
 		m_pendingMetadata.clear();
 		break;
-	case 1: // 画像タグ検出成功
+	case IMAGE_PROCESSING_TAG_DETECTION_SUCCESS: // 画像タグ検出成功
 		TagListHandler::SyncTagList(this, m_pendingDetectedTags);
 		TagListHandler::UpdatePromptFromTagList(this);
 		m_pendingDetectedTags.clear();

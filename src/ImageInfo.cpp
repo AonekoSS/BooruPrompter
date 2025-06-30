@@ -95,7 +95,7 @@ static std::string ExtractPromptFromJson(const std::string& parameters) {
 
 // 通常形式のパラメータからプロンプトを抽出
 static std::string ExtractPromptFromNormal(const std::string& parameters) {
-	// 改行文字で分割（a1111の場合は最初の行がプロンプト）
+	// 改行文字で分割（a1111の場合）
 	auto lf_pos = parameters.find('\n');
 	if (lf_pos != std::string::npos) {
 		return parameters.substr(0, lf_pos);
