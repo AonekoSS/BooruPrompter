@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <fstream>
 #include <array>
+#include <future>
 
 #include "Resource.h"
 #include "BooruPrompter.h"
@@ -33,7 +34,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	return app.Run();
 }
 
-BooruPrompter::BooruPrompter() : m_hwnd(NULL), m_hwndEdit(NULL), m_hwndSuggestions(NULL), m_hwndTagList(NULL), m_hwndToolbar(NULL), m_hwndStatusBar(NULL), m_hwndProgressBar(NULL), m_splitterX(0), m_splitterY(0), m_minLeftWidth(DEFAULT_MIN_LEFT_WIDTH), m_minRightWidth(DEFAULT_MIN_RIGHT_WIDTH), m_minTopHeight(DEFAULT_MIN_TOP_HEIGHT), m_minBottomHeight(DEFAULT_MIN_BOTTOM_HEIGHT), m_isDraggingSplitter(false), m_draggingSplitterType(0), m_windowX(CW_USEDEFAULT), m_windowY(CW_USEDEFAULT), m_windowWidth(DEFAULT_WINDOW_WIDTH), m_windowHeight(DEFAULT_WINDOW_HEIGHT), m_currentProgress(0), m_isImageProcessing(false) {}
+BooruPrompter::BooruPrompter() : m_hwnd(NULL), m_hwndEdit(NULL), m_hwndSuggestions(NULL), m_hwndTagList(NULL), m_hwndToolbar(NULL), m_hwndStatusBar(NULL), m_hwndProgressBar(NULL), m_splitterX(0), m_splitterY(0), m_minLeftWidth(DEFAULT_MIN_LEFT_WIDTH), m_minRightWidth(DEFAULT_MIN_RIGHT_WIDTH), m_minTopHeight(DEFAULT_MIN_TOP_HEIGHT), m_minBottomHeight(DEFAULT_MIN_BOTTOM_HEIGHT), m_isDraggingSplitter(false), m_draggingSplitterType(0), m_windowX(CW_USEDEFAULT), m_windowY(CW_USEDEFAULT), m_windowWidth(DEFAULT_WINDOW_WIDTH), m_windowHeight(DEFAULT_WINDOW_HEIGHT) {}
 
 BooruPrompter::~BooruPrompter() {}
 
@@ -425,32 +426,29 @@ void BooruPrompter::OnDropFiles(HWND hwnd, WPARAM wParam) {
 
 void BooruPrompter::ProcessImageFileAsync(const std::wstring& filePath) {
 	// 既に処理中の場合は何もしない
-	{
-		std::lock_guard<std::mutex> lock(m_imageProcessingMutex);
-		if (m_isImageProcessing) return;
-		m_isImageProcessing = true;
-	}
+	if (m_imageProcessingFuture.valid()) return;
 
-	// 別スレッドで画像処理を実行
-	m_imageProcessingThread = std::thread([this, filePath]() {
-		// まずメタデータからプロンプトを取得
-		auto metadata = ReadFileInfo(filePath);
-		if (!metadata.empty()) {
-			m_pendingMetadata = metadata;
-			PostMessage(m_hwnd, WM_IMAGE_PROCESSING_COMPLETE, IMAGE_PROCESSING_METADATA_SUCCESS, 0);
-			return;
-		}
+	// std::asyncを使って非同期処理を実行し、結果を直接取得
+	m_imageProcessingFuture = std::async(std::launch::async, [this, filePath]() -> ImageProcessingResult {
+		try {
+			// まずメタデータからプロンプトを取得
+			auto metadata = ReadFileInfo(filePath);
+			if (!metadata.empty()) {
+				return ImageProcessingResult(IMAGE_PROCESSING_METADATA_SUCCESS, metadata);
+			}
 
-		// 駄目なら画像タグ検出
-		if (TryInitializeImageTagDetector()) {
-			m_pendingDetectedTags = m_imageTagDetector.DetectTags(filePath);
-			PostMessage(m_hwnd, WM_IMAGE_PROCESSING_COMPLETE, IMAGE_PROCESSING_TAG_DETECTION_SUCCESS, 0);
-		} else {
-			PostMessage(m_hwnd, WM_IMAGE_PROCESSING_COMPLETE, IMAGE_PROCESSING_INIT_FAILED, 0);
+			// 駄目なら画像タグ検出
+			if (TryInitializeImageTagDetector()) {
+				auto detectedTags = m_imageTagDetector.DetectTags(filePath);
+				return ImageProcessingResult(IMAGE_PROCESSING_TAG_DETECTION_SUCCESS, detectedTags);
+			} else {
+				return ImageProcessingResult(IMAGE_PROCESSING_INIT_FAILED);
+			}
+		} catch (const std::exception& e) {
+			// エラーが発生した場合は初期化失敗として扱う
+			return ImageProcessingResult(IMAGE_PROCESSING_INIT_FAILED);
 		}
 	});
-
-	m_imageProcessingThread.detach();
 }
 
 void BooruPrompter::ProcessImageFile(const std::wstring& filePath) {
@@ -474,20 +472,20 @@ void BooruPrompter::ProcessImageFile(const std::wstring& filePath) {
 	}
 }
 
-void BooruPrompter::OnImageProcessingComplete(int resultType) {
-	m_isImageProcessing = false;
-
-	switch (resultType) {
+void BooruPrompter::OnImageProcessingComplete(const ImageProcessingResult& result) {
+	switch (result.type) {
 	case IMAGE_PROCESSING_METADATA_SUCCESS: // メタデータ取得成功
-		SetEditText(m_pendingMetadata);
-		TagListHandler::SyncTagListFromPrompt(this, unicode_to_utf8(m_pendingMetadata.c_str()));
+		SetEditText(result.metadata);
+		TagListHandler::SyncTagListFromPrompt(this, unicode_to_utf8(result.metadata.c_str()));
 		UpdateProgress(100, L"ファイルからプロンプトを取得");
-		m_pendingMetadata.clear();
 		break;
 	case IMAGE_PROCESSING_TAG_DETECTION_SUCCESS: // 画像タグ検出成功
-		TagListHandler::SyncTagList(this, m_pendingDetectedTags);
+		TagListHandler::SyncTagList(this, result.tags);
 		TagListHandler::UpdatePromptFromTagList(this);
-		m_pendingDetectedTags.clear();
+		UpdateProgress(100, L"画像からタグを検出");
+		break;
+	case IMAGE_PROCESSING_INIT_FAILED: // 初期化失敗
+		UpdateProgress(0, L"画像処理の初期化に失敗しました");
 		break;
 	}
 }
@@ -506,8 +504,8 @@ bool BooruPrompter::TryInitializeImageTagDetector() {
 			bool success = m_imageTagDetector.Initialize();
 			return success;
 		} else {
-			// ダウンロード失敗
-			MessageBox(m_hwnd, L"モデルファイルのダウンロードに失敗しました。", L"エラー", MB_OK | MB_ICONERROR);
+			// ダウンロード失敗 - ステータスバーに表示
+			UpdateProgress(0, L"モデルファイルのダウンロードに失敗しました");
 		}
 	}
 
@@ -597,6 +595,20 @@ void BooruPrompter::OnTextChanged(HWND hwnd) {
 int BooruPrompter::Run() {
 	MSG msg{};
 	while (GetMessage(&msg, NULL, 0, 0)) {
+		// 非同期処理の結果をチェック
+		if (m_imageProcessingFuture.valid()) {
+			auto status = m_imageProcessingFuture.wait_for(std::chrono::milliseconds(0));
+			if (status == std::future_status::ready) {
+				try {
+					auto result = m_imageProcessingFuture.get();
+					OnImageProcessingComplete(result);
+				} catch (const std::exception& e) {
+					// エラー処理 - ステータスバーに表示
+					UpdateProgress(0, L"画像処理中にエラーが発生しました");
+				}
+			}
+		}
+
 		TranslateMessage(&msg);
 		DispatchMessage(&msg);
 	}
@@ -708,12 +720,9 @@ std::pair<int, int> BooruPrompter::GetToolbarAndStatusHeight() {
 }
 
 void BooruPrompter::UpdateProgress(int progress, const std::wstring& statusText) {
-	m_currentProgress = progress;
-	m_currentStatusText = statusText;
-	PostMessage(m_hwnd, WM_UPDATE_PROGRESS, progress, 0);
+	SendMessage(m_hwndProgressBar, PBM_SETPOS, progress, 0);
+	SendMessage(m_hwndStatusBar, SB_SETTEXT, 0, (LPARAM)statusText.c_str());
 }
-
-
 
 void BooruPrompter::UpdateStatusText(const std::wstring& text) {
 	SendMessage(m_hwndStatusBar, SB_SETTEXT, 0, (LPARAM)text.c_str());
@@ -839,14 +848,7 @@ LRESULT CALLBACK BooruPrompter::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, 
 			pThis->OnContextMenu(hwnd, wParam, lParam);
 			break;
 
-		case WM_UPDATE_PROGRESS:
-			SendMessage(pThis->m_hwndProgressBar, PBM_SETPOS, (int)wParam, 0);
-			SendMessage(pThis->m_hwndStatusBar, SB_SETTEXT, 0, (LPARAM)pThis->m_currentStatusText.c_str());
-			break;
 
-		case WM_IMAGE_PROCESSING_COMPLETE:
-			pThis->OnImageProcessingComplete((int)wParam);
-			break;
 		}
 	}
 

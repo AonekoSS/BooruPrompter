@@ -7,8 +7,8 @@
 #include <vector>
 #include <string>
 #include "Suggestion.h"
-#include <thread>
-#include <mutex>
+#include <future>
+#include <atomic>
 
 // スプリッター関連の定数
 constexpr int SPLITTER_HIT_AREA = 8;  // スプリッターの判定領域（ピクセル）
@@ -25,14 +25,21 @@ constexpr int DEFAULT_WINDOW_WIDTH = 800;
 constexpr int DEFAULT_WINDOW_HEIGHT = 600;
 constexpr int LAYOUT_MARGIN = 4;
 
-// カスタムメッセージ
-#define WM_UPDATE_PROGRESS (WM_USER + 100)
-#define WM_IMAGE_PROCESSING_COMPLETE (WM_USER + 101)
-
 // 画像処理完了タイプ
 #define IMAGE_PROCESSING_INIT_FAILED 0
 #define IMAGE_PROCESSING_METADATA_SUCCESS 1
 #define IMAGE_PROCESSING_TAG_DETECTION_SUCCESS 2
+
+// 画像処理結果を表す構造体
+struct ImageProcessingResult {
+	int type;
+	std::wstring metadata;
+	std::vector<std::string> tags;
+
+	ImageProcessingResult(int t) : type(t) {}
+	ImageProcessingResult(int t, const std::wstring& meta) : type(t), metadata(meta) {}
+	ImageProcessingResult(int t, const std::vector<std::string>& tgs) : type(t), tags(tgs) {}
+};
 
 class BooruPrompter {
 public:
@@ -79,7 +86,7 @@ private:
 	// 画像タグ検出関連
 	void ProcessImageFile(const std::wstring& filePath);
 	void ProcessImageFileAsync(const std::wstring& filePath);
-	void OnImageProcessingComplete(int resultType);
+	void OnImageProcessingComplete(const ImageProcessingResult& result);
 	bool TryInitializeImageTagDetector();
 
 	HWND m_hwnd;
@@ -110,16 +117,8 @@ private:
 	int m_windowHeight;
 	std::wstring m_savedPrompt;
 
-	// 進捗表示関連
-	std::wstring m_currentStatusText;
-	int m_currentProgress;
-
-	// 画像処理スレッド関連
-	std::thread m_imageProcessingThread;
-	std::mutex m_imageProcessingMutex;
-	bool m_isImageProcessing;
-	std::vector<std::string> m_pendingDetectedTags;
-	std::wstring m_pendingMetadata;
+	// 画像処理非同期関連（簡素化）
+	std::future<ImageProcessingResult> m_imageProcessingFuture;
 
 	// コントロールIDの定義
 	enum {
