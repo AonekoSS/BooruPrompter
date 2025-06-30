@@ -71,5 +71,8 @@ private:
 
     // プログレスコールバック
     std::function<void(int progress, const std::wstring& status)> m_progressCallback;
+
+    // 進捗通知のヘルパーメソッド
+    void NotifyProgress(int progress, const std::wstring& status);
 };
 

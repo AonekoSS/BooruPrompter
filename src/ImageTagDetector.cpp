@@ -118,58 +118,41 @@ std::vector<std::string> ImageTagDetector::DetectTags(const std::wstring& imageP
         return {};
     }
 
-    // タグ検出開始を通知
-    if (m_progressCallback) {
-        m_progressCallback(0, L"画像のタグ検出を開始しています...");
-    }
+    NotifyProgress(0, L"画像のタグ検出を開始...");
 
     // ラベルデータの読み込み
     TaggerLabelVec master;
     TaggerLabelPtrVec ratings, generals, charas;
     if (!LoadLabelData(master, ratings, generals, charas)) {
-        if (m_progressCallback) {
-            m_progressCallback(100, L"タグリストの読み込みに失敗しました。");
-        }
+        NotifyProgress(100, L"タグリストの読み込みに失敗");
         return {};
     }
 
-    if (m_progressCallback) {
-        m_progressCallback(10, L"タグリストの読み込みが完了しました。画像を前処理中...");
-    }
+    NotifyProgress(10, L"タグリストの読み込み完了。画像を前処理中...");
 
     // 画像の読み込みと前処理
     std::vector<float> modelInputData;
     std::vector<int64_t> inputShapes;
     if (!PreprocessImage(imagePath, modelInputData, inputShapes)) {
-        if (m_progressCallback) {
-            m_progressCallback(100, L"画像の前処理に失敗しました。");
-        }
+        NotifyProgress(100, L"画像の前処理に失敗");
         return {};
     }
 
-    if (m_progressCallback) {
-        m_progressCallback(30, L"画像の前処理が完了しました。AIモデルを準備中...");
-    }
+    NotifyProgress(30, L"画像の前処理が完了。AIモデルを準備中...");
 
     // モデルの推論実行
     std::vector<float> modelOutputData;
     if (!RunInference(modelInputData, inputShapes, modelOutputData)) {
-        if (m_progressCallback) {
-            m_progressCallback(100, L"AIモデルの実行に失敗しました。");
-        }
+        NotifyProgress(100, L"AIモデルの実行に失敗");
         return {};
     }
 
-    if (m_progressCallback) {
-        m_progressCallback(80, L"AIモデルの推論が完了しました。検出結果を処理中...");
-    }
+    NotifyProgress(80, L"AIモデルの推論が完了。検出結果を処理中...");
 
     // 結果の後処理とタグの抽出
     auto result = PostprocessResults(modelOutputData, master, generals, charas);
 
-    if (m_progressCallback) {
-        m_progressCallback(100, L"タグ検出が完了しました。");
-    }
+    NotifyProgress(100, L"タグ検出完了");
 
     return result;
 }
@@ -318,9 +301,7 @@ bool ImageTagDetector::RunInference(const std::vector<float>& modelInputData,
         outputTensorShapes.data(), outputTensorShapes.size());
 
     // 推論実行前の進捗通知
-    if (m_progressCallback) {
-        m_progressCallback(40, L"AIモデルで推論を実行中...（この処理には数秒かかります）");
-    }
+    NotifyProgress(40, L"AIモデルで推論を実行中...");
 
     // 推論実行
     try {
@@ -336,22 +317,16 @@ bool ImageTagDetector::RunInference(const std::vector<float>& modelInputData,
                         outputNames, &outputTensor, 1);
 
         // 推論完了の進捗通知
-        if (m_progressCallback) {
-            m_progressCallback(70, L"AIモデルの推論が完了しました。");
-        }
+        NotifyProgress(70, L"AIモデルの推論が完了");
     }
     catch (const Ort::Exception& e) {
         OutputDebugStringA(("ONNX Runtime Inference Exception: " + std::string(e.what())).c_str());
-        if (m_progressCallback) {
-            m_progressCallback(100, L"AIモデルの実行中にエラーが発生しました。");
-        }
+        NotifyProgress(100, L"AIモデルの実行中にエラーが発生");
         return false;
     }
     catch (...) {
         OutputDebugStringA("ONNX Runtime: Unknown error occurred during inference");
-        if (m_progressCallback) {
-            m_progressCallback(100, L"AIモデルの実行中に予期しないエラーが発生しました。");
-        }
+        NotifyProgress(100, L"AIモデルの実行中に予期しないエラーが発生");
         return false;
     }
 
@@ -405,31 +380,24 @@ bool ImageTagDetector::DownloadModelFile() {
         return false;
     }
 
-    // ダウンロード開始を通知
-    if (m_progressCallback) {
-        m_progressCallback(0, L"モデルファイルのダウンロードを開始しています...");
-    }
+    NotifyProgress(0, L"モデルファイルのダウンロードを開始...");
 
     // モデルファイルをダウンロード（0-90%）
     bool modelSuccess = DownloadFile(m_modelDownloadUrl, m_modelFilePath, 0, 90);
-    if (m_progressCallback) {
-        if (modelSuccess) {
-            m_progressCallback(90, L"モデルファイルのダウンロードが完了しました。タグリストをダウンロード中...");
-        } else {
-            m_progressCallback(100, L"モデルファイルのダウンロードに失敗しました。");
-            return false;
-        }
+    if (modelSuccess) {
+        NotifyProgress(90, L"モデルファイルのダウンロードが完了。タグリストをダウンロード中...");
+    } else {
+        NotifyProgress(100, L"モデルファイルのダウンロードに失敗");
+        return false;
     }
 
     // タグリストファイルをダウンロード（90-100%）
     bool tagListSuccess = DownloadFile(m_tagListDownloadUrl, m_tagListFilePath, 90, 100);
 
-    if (m_progressCallback) {
-        if (modelSuccess && tagListSuccess) {
-            m_progressCallback(100, L"ダウンロードが完了しました。");
-        } else {
-            m_progressCallback(100, L"タグリストのダウンロードに失敗しました。");
-        }
+    if (modelSuccess && tagListSuccess) {
+        NotifyProgress(100, L"ダウンロード完了");
+    } else {
+        NotifyProgress(100, L"タグリストのダウンロードに失敗");
     }
 
     return modelSuccess && tagListSuccess;
@@ -452,6 +420,12 @@ std::wstring ImageTagDetector::GetTagListFilePath() const {
 
 void ImageTagDetector::SetProgressCallback(std::function<void(int progress, const std::wstring& status)> callback) {
     m_progressCallback = callback;
+}
+
+void ImageTagDetector::NotifyProgress(int progress, const std::wstring& status) {
+    if (m_progressCallback) {
+        m_progressCallback(progress, status);
+    }
 }
 
 // ダウンロード進捗コールバッククラス
