@@ -147,7 +147,6 @@ void BooruPrompter::OnCreate(HWND hwnd) {
 	);
 
 	// プログレスバーを初期状態で表示し、0%に設定
-	ShowWindow(m_hwndProgressBar, SW_SHOW);
 	SendMessage(m_hwndProgressBar, PBM_SETRANGE, 0, MAKELPARAM(0, 100));
 	SendMessage(m_hwndProgressBar, PBM_SETPOS, 0, 0);
 
@@ -425,43 +424,31 @@ void BooruPrompter::OnDropFiles(HWND hwnd, WPARAM wParam) {
 
 void BooruPrompter::ProcessImageFileAsync(const std::wstring& filePath) {
 	// 既に処理中の場合は何もしない
-	std::lock_guard<std::mutex> lock(m_imageProcessingMutex);
-	if (m_isImageProcessing) {
-		return;
+	{
+		std::lock_guard<std::mutex> lock(m_imageProcessingMutex);
+		if (m_isImageProcessing) return;
+		m_isImageProcessing = true;
 	}
-	m_isImageProcessing = true;
 
 	// 別スレッドで画像処理を実行
 	m_imageProcessingThread = std::thread([this, filePath]() {
 		// まずメタデータからプロンプトを取得
 		auto metadata = ReadFileInfo(filePath);
 		if (!metadata.empty()) {
-			// メタデータを保存してUIスレッドで処理
-			{
-				std::lock_guard<std::mutex> lock(m_imageProcessingMutex);
-				m_pendingMetadata = metadata;
-			}
+			m_pendingMetadata = metadata;
 			PostMessage(m_hwnd, WM_IMAGE_PROCESSING_COMPLETE, 0, 0);
 			return;
 		}
 
 		// 駄目なら画像タグ検出
 		if (TryInitializeImageTagDetector()) {
-			auto detectedTags = m_imageTagDetector.DetectTags(filePath);
-
-			// 検出結果を保存してUIスレッドで処理
-			{
-				std::lock_guard<std::mutex> lock(m_imageProcessingMutex);
-				m_pendingDetectedTags = detectedTags;
-			}
+			m_pendingDetectedTags = m_imageTagDetector.DetectTags(filePath);
 			PostMessage(m_hwnd, WM_IMAGE_PROCESSING_COMPLETE, 1, 0);
 		} else {
-			// 初期化失敗
 			PostMessage(m_hwnd, WM_IMAGE_PROCESSING_COMPLETE, 2, 0);
 		}
 	});
 
-	// スレッドをデタッチ（自動的に終了を待たない）
 	m_imageProcessingThread.detach();
 }
 
@@ -487,29 +474,18 @@ void BooruPrompter::ProcessImageFile(const std::wstring& filePath) {
 }
 
 void BooruPrompter::OnImageProcessingComplete(int resultType) {
-	// 処理完了フラグをリセット
-	{
-		std::lock_guard<std::mutex> lock(m_imageProcessingMutex);
-		m_isImageProcessing = false;
-	}
+	m_isImageProcessing = false;
 
 	switch (resultType) {
 	case 0: // メタデータ取得成功
-		if (!m_pendingMetadata.empty()) {
-			SetEditText(m_pendingMetadata);
-			TagListHandler::SyncTagListFromPrompt(this, unicode_to_utf8(m_pendingMetadata.c_str()));
-			m_pendingMetadata.clear();
-		}
+		SetEditText(m_pendingMetadata);
+		TagListHandler::SyncTagListFromPrompt(this, unicode_to_utf8(m_pendingMetadata.c_str()));
+		m_pendingMetadata.clear();
 		break;
 	case 1: // 画像タグ検出成功
-		if (!m_pendingDetectedTags.empty()) {
-			TagListHandler::SyncTagList(this, m_pendingDetectedTags);
-			TagListHandler::UpdatePromptFromTagList(this);
-			m_pendingDetectedTags.clear();
-		}
-		break;
-	case 2: // 初期化失敗
-		// 何もしない（既にエラーメッセージは表示済み）
+		TagListHandler::SyncTagList(this, m_pendingDetectedTags);
+		TagListHandler::UpdatePromptFromTagList(this);
+		m_pendingDetectedTags.clear();
 		break;
 	}
 }
@@ -726,19 +702,15 @@ std::pair<int, int> BooruPrompter::GetToolbarAndStatusHeight() {
 	return {toolbarHeight, statusHeight};
 }
 
-// 進捗表示関連のメソッド
 void BooruPrompter::UpdateProgress(int progress, const std::wstring& statusText) {
 	m_currentProgress = progress;
 	m_currentStatusText = statusText;
-
-	// UIスレッドで実行
 	PostMessage(m_hwnd, WM_UPDATE_PROGRESS, progress, 0);
 }
 
 
 
 void BooruPrompter::UpdateStatusText(const std::wstring& text) {
-	m_currentStatusText = text;
 	SendMessage(m_hwndStatusBar, SB_SETTEXT, 0, (LPARAM)text.c_str());
 }
 
