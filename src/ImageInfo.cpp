@@ -71,6 +71,46 @@ static std::vector<std::vector<uint8_t>> ReadPNG_TextChunks(const std::wstring& 
 	return chunks;
 }
 
+// JSON形式のパラメータからプロンプトを抽出
+static std::string ExtractPromptFromJson(const std::string& parameters) {
+	const std::string prompt_key = "\"full_prompt\":";
+	auto prompt_pos = parameters.find(prompt_key);
+	if (prompt_pos == std::string::npos) {
+		return std::string();
+	}
+
+	auto param = parameters.substr(prompt_pos + prompt_key.length());
+	auto begin = param.find('"');
+	if (begin == std::string::npos) {
+		return std::string();
+	}
+
+	auto end = param.find('"', begin + 1);
+	if (end == std::string::npos) {
+		return std::string();
+	}
+
+	return param.substr(begin + 1, end - begin - 1);
+}
+
+// 通常形式のパラメータからプロンプトを抽出
+static std::string ExtractPromptFromNormal(const std::string& parameters) {
+	// 改行文字で分割（a1111の場合は最初の行がプロンプト）
+	auto lf_pos = parameters.find('\n');
+	if (lf_pos != std::string::npos) {
+		return parameters.substr(0, lf_pos);
+	}
+
+	// オプション区切り文字で分割（Midjourneyの場合）
+	auto opt_pos = parameters.find("--");
+	if (opt_pos != std::string::npos) {
+		return parameters.substr(0, opt_pos);
+	}
+
+	// 区切り文字が見つからない場合は全体（NovelAI等の場合）
+	return parameters;
+}
+
 // PNG画像のプロンプト抽出
 static std::string ReadPNGInfo(const std::wstring& filePath) {
 	// PNGファイルのチャンクを読み込む
@@ -102,34 +142,7 @@ static std::string ReadPNGInfo(const std::wstring& filePath) {
 	}
 
 	// パラメータからプロンプトを取り出す
-	std::string prompt;
-	if (parameters_is_json) {
-		// json形式は簡易対応
-		auto prompt_pos = parameters.find("\"full_prompt\":");
-		auto param = parameters.substr(prompt_pos + 14);
-		auto begin = param.find('"');
-		if (begin != std::string::npos) {
-			auto end = param.find('"', begin + 1);
-			if (end != std::string::npos) {
-				prompt = param.substr(begin + 1, end - begin - 1);
-			}
-		}
-	}
-	else {
-		auto lf_pos = parameters.find('\n');
-		if (lf_pos != std::string::npos) {
-			prompt = parameters.substr(0, lf_pos);
-		} else {
-			auto opt_pos = parameters.find("--");
-			if (opt_pos != std::string::npos) {
-				prompt = parameters.substr(0, opt_pos);
-			} else {
-				prompt = parameters;
-			}
-		}
-	}
-
-	return prompt;
+	return (parameters_is_json) ? ExtractPromptFromJson(parameters) : ExtractPromptFromNormal(parameters);
 }
 
 // EXIFチャンクからプロンプトを取り出す
