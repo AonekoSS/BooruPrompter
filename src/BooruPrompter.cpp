@@ -202,8 +202,8 @@ void BooruPrompter::OnCreate(HWND hwnd) {
 		SendMessage(m_hwndStatusBar, SB_SETPARTS, 3, (LPARAM)statusParts);
 	}
 
-	// 初期状態のステータステキストを設定
-	UpdateStatusText(L"準備完了");
+	// 進捗表示をクリア
+	ClearProgress();
 }
 
 HWND BooruPrompter::CreateListView(HWND parent, int id, const std::wstring& title, const std::vector<std::pair<std::wstring, int>>& columns) {
@@ -571,6 +571,9 @@ void BooruPrompter::OnLButtonUp(HWND hwnd, LPARAM lParam) {
 }
 
 void BooruPrompter::OnTextChanged(HWND hwnd) {
+	// 進捗表示をクリア
+	ClearProgress();
+
 	// 現在のカーソル位置を取得
 	DWORD startPos, endPos;
 	SendMessage(m_hwndEdit, EM_GETSEL, (WPARAM)&startPos, (LPARAM)&endPos);
@@ -712,6 +715,11 @@ void BooruPrompter::UpdateProgress(int progress, const std::wstring& statusText)
 
 void BooruPrompter::UpdateStatusText(const std::wstring& text) {
 	SendMessage(m_hwndStatusBar, SB_SETTEXT, 0, (LPARAM)text.c_str());
+}
+
+void BooruPrompter::ClearProgress() {
+	SendMessage(m_hwndProgressBar, PBM_SETPOS, 0, 0);
+	UpdateStatusText(L"");
 }
 
 // 設定の保存・復帰機能

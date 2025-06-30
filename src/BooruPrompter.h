@@ -140,4 +140,5 @@ private:
 	// 進捗表示関連のメソッド
 	void UpdateProgress(int progress, const std::wstring& statusText);
 	void UpdateStatusText(const std::wstring& text);
+	void ClearProgress();
 };
