@@ -370,7 +370,7 @@ void BooruPrompter::ApplyLayout(const LayoutInfo& layout) {
 		layout.leftWidth + LAYOUT_MARGIN,
 		layout.toolbarHeight + LAYOUT_MARGIN,
 		layout.rightWidth - LAYOUT_MARGIN * 2,
-		layout.toolbarHeight + layout.topHeight + layout.bottomHeight - LAYOUT_MARGIN * 2,
+		layout.topHeight + layout.bottomHeight - LAYOUT_MARGIN * 2,
 		SWP_NOZORDER);
 
 	// プログレスバーの位置を更新（ステータスバー内の2番目のパーツ）
