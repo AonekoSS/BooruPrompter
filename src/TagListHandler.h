@@ -1,10 +1,18 @@
 ﻿#pragma once
-#include "Suggestion.h"
-#include <windows.h>
-#include <string>
+
 #include <vector>
+#include <windows.h>
+
+#include "Suggestion.h"
 
 class BooruPrompter;
+
+// コンテキストメニュー関連のID
+enum {
+	ID_CONTEXT_MOVE_TO_TOP = 1010,
+	ID_CONTEXT_MOVE_TO_BOTTOM = 1011,
+	ID_CONTEXT_DELETE = 1012
+};
 
 // タグリスト関連のメソッド
 class TagListHandler {

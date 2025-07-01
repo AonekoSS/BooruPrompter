@@ -1,38 +1,31 @@
 ﻿#pragma once
-#include "SuggestionManager.h"
-#include "BooruDB.h"
-#include "SuggestionHandler.h"
-#include "TagListHandler.h"
-#include "ImageTagDetector.h"
-#include <vector>
+
+#include <future>
 #include <string>
+#include <vector>
+
+#include "BooruDB.h"
+#include "ImageTagDetector.h"
 #include "Suggestion.h"
-#include <thread>
-#include <mutex>
+#include "SuggestionHandler.h"
+#include "SuggestionManager.h"
+#include "TagListHandler.h"
 
 // スプリッター関連の定数
-constexpr int SPLITTER_HIT_AREA = 8;  // スプリッターの判定領域（ピクセル）
 constexpr int SPLITTER_TYPE_NONE = 0;
 constexpr int SPLITTER_TYPE_VERTICAL = 1;
 constexpr int SPLITTER_TYPE_HORIZONTAL = 2;
 
-// レイアウト関連の定数
-constexpr int DEFAULT_MIN_LEFT_WIDTH = 200;
-constexpr int DEFAULT_MIN_RIGHT_WIDTH = 150;
-constexpr int DEFAULT_MIN_TOP_HEIGHT = 100;
-constexpr int DEFAULT_MIN_BOTTOM_HEIGHT = 100;
-constexpr int DEFAULT_WINDOW_WIDTH = 800;
-constexpr int DEFAULT_WINDOW_HEIGHT = 600;
-constexpr int LAYOUT_MARGIN = 4;
+// 画像処理結果を表す構造体
+struct ImageProcessingResult {
+	int type;
+	std::wstring metadata;
+	std::vector<std::string> tags;
 
-// カスタムメッセージ
-#define WM_UPDATE_PROGRESS (WM_USER + 100)
-#define WM_IMAGE_PROCESSING_COMPLETE (WM_USER + 101)
-
-// 画像処理完了タイプ
-#define IMAGE_PROCESSING_INIT_FAILED 0
-#define IMAGE_PROCESSING_METADATA_SUCCESS 1
-#define IMAGE_PROCESSING_TAG_DETECTION_SUCCESS 2
+	ImageProcessingResult(int t) : type(t) {}
+	ImageProcessingResult(int t, const std::wstring& meta) : type(t), metadata(meta) {}
+	ImageProcessingResult(int t, const std::vector<std::string>& tgs) : type(t), tags(tgs) {}
+};
 
 class BooruPrompter {
 public:
@@ -63,10 +56,7 @@ private:
 
 	// スプリッター関連のメソッド
 	void UpdateLayout();
-	bool IsInSplitterArea(int x, int y);
-	void HandleSplitterMouseDown(int x, int y);
-	void HandleSplitterMouseMove(int x, int y);
-	void HandleSplitterMouseUp();
+	void HandleSplitterMouse(int x, int y, bool isDown, bool isUp);
 	void UpdateSplitterCursor(int x, int y);
 	std::pair<int, int> GetToolbarAndStatusHeight();
 
@@ -77,9 +67,8 @@ private:
 	void AddListViewItem(HWND hwndListView, int index, const std::vector<std::wstring>& texts);
 
 	// 画像タグ検出関連
-	void ProcessImageFile(const std::wstring& filePath);
 	void ProcessImageFileAsync(const std::wstring& filePath);
-	void OnImageProcessingComplete(int resultType);
+	void OnImageProcessingComplete(const ImageProcessingResult& result);
 	bool TryInitializeImageTagDetector();
 
 	HWND m_hwnd;
@@ -94,14 +83,12 @@ private:
 	ImageTagDetector m_imageTagDetector; // 画像タグ検出機能
 
 	// スプリッター関連
-	int m_splitterX;
-	int m_splitterY;
-	int m_minLeftWidth;
-	int m_minRightWidth;
-	int m_minTopHeight;
-	int m_minBottomHeight;
-	bool m_isDraggingSplitter;
-	int m_draggingSplitterType;  // 0: なし, 1: 垂直, 2: 水平
+	struct Splitter {
+		int x = 0;
+		int y = 0;
+		bool isDragging = false;
+		int draggingType = SPLITTER_TYPE_NONE;
+	} m_splitter;
 
 	// 設定保存用のメンバー変数
 	int m_windowX;
@@ -110,32 +97,8 @@ private:
 	int m_windowHeight;
 	std::wstring m_savedPrompt;
 
-	// 進捗表示関連
-	std::wstring m_currentStatusText;
-	int m_currentProgress;
-
-	// 画像処理スレッド関連
-	std::thread m_imageProcessingThread;
-	std::mutex m_imageProcessingMutex;
-	bool m_isImageProcessing;
-	std::vector<std::string> m_pendingDetectedTags;
-	std::wstring m_pendingMetadata;
-
-	// コントロールIDの定義
-	enum {
-		ID_EDIT = 1001,
-		ID_SUGGESTIONS = 1002,
-		ID_TAG_LIST = 1003,
-		ID_TOOLBAR = 1004,
-		ID_STATUS_BAR = 1005,
-		ID_PROGRESS_BAR = 1006,
-		ID_CLEAR = 1007,
-		ID_PASTE = 1008,
-		ID_COPY = 1009,
-		ID_CONTEXT_MOVE_TO_TOP = 1010,
-		ID_CONTEXT_MOVE_TO_BOTTOM = 1011,
-		ID_CONTEXT_DELETE = 1012
-	};
+	// 画像処理非同期関連（簡素化）
+	std::future<ImageProcessingResult> m_imageProcessingFuture;
 
 	// 設定の保存・復帰機能
 	void SaveSettings();
@@ -146,4 +109,23 @@ private:
 	void UpdateProgress(int progress, const std::wstring& statusText);
 	void UpdateStatusText(const std::wstring& text);
 	void ClearProgress();
+
+	// クリップボード操作のユーティリティ
+	bool CopyToClipboard(const std::wstring& text);
+	std::wstring GetFromClipboard();
+
+	// レイアウト計算用の構造体
+	struct LayoutInfo {
+		int leftWidth, rightWidth, topHeight, bottomHeight;
+		int toolbarHeight, statusHeight;
+		POINT splitter;
+	};
+
+	// レイアウト計算
+	LayoutInfo CalculateLayout(int clientWidth, int clientHeight);
+	void ApplyLayout(const LayoutInfo& layout);
+
+	// マウスイベント処理の分離
+	void HandleTagListDrag(int x, int y);
+	void HandleSplitterDrag(int x, int y);
 };

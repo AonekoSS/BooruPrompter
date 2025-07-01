@@ -1,7 +1,9 @@
 ﻿#pragma once
+
 #include <string>
-#include <vector>
 #include <unordered_map>
+#include <vector>
+
 #include "Suggestion.h"
 
 class BooruDB {

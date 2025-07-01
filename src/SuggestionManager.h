@@ -1,10 +1,11 @@
 ﻿#pragma once
+
 #include <functional>
 #include <string>
 #include <vector>
 
-#include "Suggestion.h"
 #include "BooruDB.h"
+#include "Suggestion.h"
 
 class SuggestionManager {
 public:

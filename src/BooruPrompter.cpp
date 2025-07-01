@@ -2,12 +2,42 @@
 #include <algorithm>
 #include <fstream>
 #include <array>
+#include <future>
 
 #include "Resource.h"
 #include "BooruPrompter.h"
 #include "TextUtils.h"
 #include "ImageInfo.h"
 
+// スプリッター関連の定数
+constexpr int SPLITTER_HIT_AREA = 8;  // スプリッターの判定領域（ピクセル）
+
+// レイアウト関連の定数
+constexpr int DEFAULT_MIN_LEFT_WIDTH = 200;
+constexpr int DEFAULT_MIN_RIGHT_WIDTH = 150;
+constexpr int DEFAULT_MIN_TOP_HEIGHT = 100;
+constexpr int DEFAULT_MIN_BOTTOM_HEIGHT = 100;
+constexpr int DEFAULT_WINDOW_WIDTH = 800;
+constexpr int DEFAULT_WINDOW_HEIGHT = 600;
+constexpr int LAYOUT_MARGIN = 4;
+
+// 画像処理完了タイプ
+constexpr int IMAGE_PROCESSING_INIT_FAILED = 0;
+constexpr int IMAGE_PROCESSING_METADATA_SUCCESS = 1;
+constexpr int IMAGE_PROCESSING_TAG_DETECTION_SUCCESS = 2;
+
+// コントロールIDの定義
+enum {
+	ID_EDIT = 1001,
+	ID_SUGGESTIONS = 1002,
+	ID_TAG_LIST = 1003,
+	ID_TOOLBAR = 1004,
+	ID_STATUS_BAR = 1005,
+	ID_PROGRESS_BAR = 1006,
+	ID_CLEAR = 1007,
+	ID_PASTE = 1008,
+	ID_COPY = 1009
+};
 
 // アプリケーションのエントリポイント
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
@@ -33,7 +63,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	return app.Run();
 }
 
-BooruPrompter::BooruPrompter() : m_hwnd(NULL), m_hwndEdit(NULL), m_hwndSuggestions(NULL), m_hwndTagList(NULL), m_hwndToolbar(NULL), m_hwndStatusBar(NULL), m_hwndProgressBar(NULL), m_splitterX(0), m_splitterY(0), m_minLeftWidth(DEFAULT_MIN_LEFT_WIDTH), m_minRightWidth(DEFAULT_MIN_RIGHT_WIDTH), m_minTopHeight(DEFAULT_MIN_TOP_HEIGHT), m_minBottomHeight(DEFAULT_MIN_BOTTOM_HEIGHT), m_isDraggingSplitter(false), m_draggingSplitterType(0), m_windowX(CW_USEDEFAULT), m_windowY(CW_USEDEFAULT), m_windowWidth(DEFAULT_WINDOW_WIDTH), m_windowHeight(DEFAULT_WINDOW_HEIGHT), m_currentProgress(0), m_isImageProcessing(false) {}
+BooruPrompter::BooruPrompter() : m_hwnd(NULL), m_hwndEdit(NULL), m_hwndSuggestions(NULL), m_hwndTagList(NULL), m_hwndToolbar(NULL), m_hwndStatusBar(NULL), m_hwndProgressBar(NULL), m_windowX(CW_USEDEFAULT), m_windowY(CW_USEDEFAULT), m_windowWidth(DEFAULT_WINDOW_WIDTH), m_windowHeight(DEFAULT_WINDOW_HEIGHT) {}
 
 BooruPrompter::~BooruPrompter() {}
 
@@ -214,7 +244,7 @@ HWND BooruPrompter::CreateListView(HWND parent, int id, const std::wstring& titl
 		WS_CHILD | WS_VISIBLE | LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS,
 		0, 0, 0, 0,
 		parent,
-		(HMENU)id,
+		reinterpret_cast<HMENU>(static_cast<UINT_PTR>(id)),
 		GetModuleHandle(NULL),
 		NULL
 	);
@@ -273,58 +303,72 @@ void BooruPrompter::OnSize(HWND hwnd) {
 	const int clientHeight = rc.bottom - rc.top;
 	const int clientWidth = rc.right - rc.left;
 
+	// レイアウト計算と適用
+	auto layout = CalculateLayout(clientWidth, clientHeight);
+	ApplyLayout(layout);
+
+	// ステータスバーのサイズを更新（プログレスバーの位置計算のため）
+	SendMessage(m_hwndStatusBar, WM_SIZE, 0, 0);
+}
+
+BooruPrompter::LayoutInfo BooruPrompter::CalculateLayout(int clientWidth, int clientHeight) {
+	LayoutInfo layout;
+
 	// ツールバーとステータスバーの高さを取得
-	auto [toolbarHeight, statusHeight] = GetToolbarAndStatusHeight();
+	std::tie(layout.toolbarHeight, layout.statusHeight) = GetToolbarAndStatusHeight();
 
 	// スプリッター位置の初期化（初回のみ）
-	if (m_splitterX == 0) {
-		m_splitterX = clientWidth * 2 / 3;  // 初期位置は2/3
+	if (m_splitter.x == 0) {
+		m_splitter.x = clientWidth * 2 / 3;  // 初期位置は2/3
 	}
-	if (m_splitterY == 0) {
-		m_splitterY = (clientHeight - toolbarHeight - statusHeight) / 3;  // 初期位置は1/3
+	if (m_splitter.y == 0) {
+		m_splitter.y = (clientHeight - layout.toolbarHeight - layout.statusHeight) / 3;  // 初期位置は1/3
 	}
 
 	// スプリッター位置の制限
-	const int maxSplitterX = clientWidth - m_minRightWidth;
-	const int minSplitterX = m_minLeftWidth;
-	const int maxSplitterY = clientHeight - statusHeight - m_minBottomHeight;
-	const int minSplitterY = toolbarHeight + m_minTopHeight;
+	const int maxSplitterX = clientWidth - DEFAULT_MIN_RIGHT_WIDTH;
+	const int minSplitterX = DEFAULT_MIN_LEFT_WIDTH;
+	const int maxSplitterY = clientHeight - layout.statusHeight - DEFAULT_MIN_BOTTOM_HEIGHT;
+	const int minSplitterY = layout.toolbarHeight + DEFAULT_MIN_TOP_HEIGHT;
 
-	m_splitterX = std::clamp(m_splitterX, minSplitterX, maxSplitterX);
-	m_splitterY = std::clamp(m_splitterY, minSplitterY, maxSplitterY);
+	layout.splitter.x = std::clamp(m_splitter.x, minSplitterX, maxSplitterX);
+	layout.splitter.y = std::clamp(m_splitter.y, minSplitterY, maxSplitterY);
 
 	// 4分割の設定
-	const int leftWidth = m_splitterX;
-	const int rightWidth = clientWidth - leftWidth;
-	const int topHeight = m_splitterY - toolbarHeight;
-	const int bottomHeight = clientHeight - m_splitterY - statusHeight;
+	layout.leftWidth = layout.splitter.x;
+	layout.rightWidth = clientWidth - layout.leftWidth;
+	layout.topHeight = layout.splitter.y - layout.toolbarHeight;
+	layout.bottomHeight = clientHeight - layout.splitter.y - layout.statusHeight;
 
+	return layout;
+}
+
+void BooruPrompter::ApplyLayout(const LayoutInfo& layout) {
 	// 左上: 入力欄
 	SetWindowPos(m_hwndEdit, NULL,
 		LAYOUT_MARGIN,
-		toolbarHeight + LAYOUT_MARGIN,
-		leftWidth - LAYOUT_MARGIN * 2,
-		topHeight - LAYOUT_MARGIN,
+		layout.toolbarHeight + LAYOUT_MARGIN,
+		layout.leftWidth - LAYOUT_MARGIN * 2,
+		layout.topHeight - LAYOUT_MARGIN,
 		SWP_NOZORDER);
 
 	// 左下: サジェストリスト
 	SetWindowPos(m_hwndSuggestions, NULL,
 		LAYOUT_MARGIN,
-		m_splitterY + LAYOUT_MARGIN,
-		leftWidth - LAYOUT_MARGIN * 2,
-		bottomHeight - LAYOUT_MARGIN,
+		layout.splitter.y + LAYOUT_MARGIN,
+		layout.leftWidth - LAYOUT_MARGIN * 2,
+		layout.bottomHeight - LAYOUT_MARGIN,
 		SWP_NOZORDER);
 
 	// 右側: タグリスト
 	SetWindowPos(m_hwndTagList, NULL,
-		leftWidth + LAYOUT_MARGIN,
-		toolbarHeight + LAYOUT_MARGIN,
-		rightWidth - LAYOUT_MARGIN * 2,
-		clientHeight - toolbarHeight - statusHeight - LAYOUT_MARGIN * 2,
+		layout.leftWidth + LAYOUT_MARGIN,
+		layout.toolbarHeight + LAYOUT_MARGIN,
+		layout.rightWidth - LAYOUT_MARGIN * 2,
+		layout.toolbarHeight + layout.topHeight + layout.bottomHeight - LAYOUT_MARGIN * 2,
 		SWP_NOZORDER);
 
 	// プログレスバーの位置を更新（ステータスバー内の2番目のパーツ）
-	// ステータスバーの2番目のパーツの位置を取得
 	RECT partRect;
 	SendMessage(m_hwndStatusBar, SB_GETRECT, 1, (LPARAM)&partRect);
 
@@ -335,9 +379,6 @@ void BooruPrompter::OnSize(HWND hwnd) {
 		partRect.right - partRect.left - 4,
 		partRect.bottom - partRect.top - 4,
 		SWP_NOZORDER);
-
-	// ステータスバーのサイズを更新（プログレスバーの位置計算のため）
-	SendMessage(m_hwndStatusBar, WM_SIZE, 0, 0);
 }
 
 void BooruPrompter::OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify) {
@@ -354,46 +395,29 @@ void BooruPrompter::OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify) 
 		break;
 	case ID_PASTE:
 		// テキストをクリップボードから貼り付け
-		if (OpenClipboard(hwnd)) {
-			HANDLE hData = GetClipboardData(CF_UNICODETEXT);
-			if (hData) {
-				wchar_t* pszText = (wchar_t*)GlobalLock(hData);
-				if (pszText) {
-					SetWindowText(m_hwndEdit, pszText);
-					TagListHandler::SyncTagListFromPrompt(this, unicode_to_utf8(pszText));
-					m_suggestionManager.Request({});
-				}
-				GlobalUnlock(hData);
+		{
+			std::wstring text = GetFromClipboard();
+			if (!text.empty()) {
+				SetWindowText(m_hwndEdit, text.c_str());
+				TagListHandler::SyncTagListFromPrompt(this, unicode_to_utf8(text.c_str()));
+				m_suggestionManager.Request({});
 			}
-			CloseClipboard();
 		}
 		break;
 	case ID_COPY:
-	{
-		// テキストをクリップボードにコピー
-		int length = GetWindowTextLength(m_hwndEdit) + 1;
-		std::vector<wchar_t> buffer(length);
-		GetWindowText(m_hwndEdit, buffer.data(), length);
-
-		if (OpenClipboard(hwnd)) {
-			EmptyClipboard();
-			HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, length * sizeof(wchar_t));
-			if (hMem) {
-				wchar_t* pMem = (wchar_t*)GlobalLock(hMem);
-				wcscpy_s(pMem, length, buffer.data());
-				GlobalUnlock(hMem);
-				SetClipboardData(CF_UNICODETEXT, hMem);
+		// コピー処理
+		{
+			std::wstring text = GetEditText();
+			if (CopyToClipboard(text)) {
+				UpdateProgress(100, L"プロンプトをクリップボードにコピー");
 			}
-			CloseClipboard();
-			UpdateProgress(100, L"プロンプトをクリップボードにコピー");
 		}
 		break;
 	}
-	case ID_CONTEXT_MOVE_TO_TOP:
-	case ID_CONTEXT_MOVE_TO_BOTTOM:
-	case ID_CONTEXT_DELETE:
+
+	// コンテキストメニューのコマンド処理
+	if (hwndCtl == m_hwndTagList) {
 		TagListHandler::OnTagListContextCommand(this, id);
-		break;
 	}
 }
 
@@ -425,69 +449,46 @@ void BooruPrompter::OnDropFiles(HWND hwnd, WPARAM wParam) {
 
 void BooruPrompter::ProcessImageFileAsync(const std::wstring& filePath) {
 	// 既に処理中の場合は何もしない
-	{
-		std::lock_guard<std::mutex> lock(m_imageProcessingMutex);
-		if (m_isImageProcessing) return;
-		m_isImageProcessing = true;
-	}
+	if (m_imageProcessingFuture.valid()) return;
 
-	// 別スレッドで画像処理を実行
-	m_imageProcessingThread = std::thread([this, filePath]() {
-		// まずメタデータからプロンプトを取得
-		auto metadata = ReadFileInfo(filePath);
-		if (!metadata.empty()) {
-			m_pendingMetadata = metadata;
-			PostMessage(m_hwnd, WM_IMAGE_PROCESSING_COMPLETE, IMAGE_PROCESSING_METADATA_SUCCESS, 0);
-			return;
-		}
+	// std::asyncを使って非同期処理を実行し、結果を直接取得
+	m_imageProcessingFuture = std::async(std::launch::async, [this, filePath]() -> ImageProcessingResult {
+		try {
+			// まずメタデータからプロンプトを取得
+			auto metadata = ReadFileInfo(filePath);
+			if (!metadata.empty()) {
+				return ImageProcessingResult(IMAGE_PROCESSING_METADATA_SUCCESS, metadata);
+			}
 
-		// 駄目なら画像タグ検出
-		if (TryInitializeImageTagDetector()) {
-			m_pendingDetectedTags = m_imageTagDetector.DetectTags(filePath);
-			PostMessage(m_hwnd, WM_IMAGE_PROCESSING_COMPLETE, IMAGE_PROCESSING_TAG_DETECTION_SUCCESS, 0);
-		} else {
-			PostMessage(m_hwnd, WM_IMAGE_PROCESSING_COMPLETE, IMAGE_PROCESSING_INIT_FAILED, 0);
+			// 駄目なら画像タグ検出
+			if (TryInitializeImageTagDetector()) {
+				auto detectedTags = m_imageTagDetector.DetectTags(filePath);
+				return ImageProcessingResult(IMAGE_PROCESSING_TAG_DETECTION_SUCCESS, detectedTags);
+			} else {
+				return ImageProcessingResult(IMAGE_PROCESSING_INIT_FAILED);
+			}
+		} catch (const std::exception&) {
+			// エラー処理 - ステータスバーに表示
+			UpdateProgress(0, L"画像処理中にエラーが発生しました");
+			return ImageProcessingResult(IMAGE_PROCESSING_INIT_FAILED);
 		}
 	});
-
-	m_imageProcessingThread.detach();
 }
 
-void BooruPrompter::ProcessImageFile(const std::wstring& filePath) {
-	// まずメタデータからプロンプトを取得
-	auto metadata = ReadFileInfo(filePath);
-	if (!metadata.empty()) {
-		SetEditText(metadata);
-		TagListHandler::SyncTagListFromPrompt(this, unicode_to_utf8(metadata.c_str()));
-		return;
-	}
-
-	// 駄目なら画像タグ検出
-	if (TryInitializeImageTagDetector()) {
-		auto detectedTags = m_imageTagDetector.DetectTags(filePath);
-
-		if (detectedTags.empty()) {
-			return;
-		}
-		TagListHandler::SyncTagList(this, detectedTags);
-		TagListHandler::UpdatePromptFromTagList(this);
-	}
-}
-
-void BooruPrompter::OnImageProcessingComplete(int resultType) {
-	m_isImageProcessing = false;
-
-	switch (resultType) {
+void BooruPrompter::OnImageProcessingComplete(const ImageProcessingResult& result) {
+	switch (result.type) {
 	case IMAGE_PROCESSING_METADATA_SUCCESS: // メタデータ取得成功
-		SetEditText(m_pendingMetadata);
-		TagListHandler::SyncTagListFromPrompt(this, unicode_to_utf8(m_pendingMetadata.c_str()));
+		SetEditText(result.metadata);
+		TagListHandler::SyncTagListFromPrompt(this, unicode_to_utf8(result.metadata.c_str()));
 		UpdateProgress(100, L"ファイルからプロンプトを取得");
-		m_pendingMetadata.clear();
 		break;
 	case IMAGE_PROCESSING_TAG_DETECTION_SUCCESS: // 画像タグ検出成功
-		TagListHandler::SyncTagList(this, m_pendingDetectedTags);
+		TagListHandler::SyncTagList(this, result.tags);
 		TagListHandler::UpdatePromptFromTagList(this);
-		m_pendingDetectedTags.clear();
+		UpdateProgress(100, L"画像からタグを検出");
+		break;
+	case IMAGE_PROCESSING_INIT_FAILED: // 初期化失敗
+		UpdateProgress(0, L"画像処理の初期化に失敗しました");
 		break;
 	}
 }
@@ -506,8 +507,8 @@ bool BooruPrompter::TryInitializeImageTagDetector() {
 			bool success = m_imageTagDetector.Initialize();
 			return success;
 		} else {
-			// ダウンロード失敗
-			MessageBox(m_hwnd, L"モデルファイルのダウンロードに失敗しました。", L"エラー", MB_OK | MB_ICONERROR);
+			// ダウンロード失敗 - ステータスバーに表示
+			UpdateProgress(0, L"モデルファイルのダウンロードに失敗しました");
 		}
 	}
 
@@ -531,32 +532,46 @@ void BooruPrompter::OnMouseMove(HWND hwnd, LPARAM lParam) {
 	// スプリッターカーソルの更新
 	UpdateSplitterCursor(x, y);
 
+	// タグリストのドラッグ処理
 	if (TagListHandler::IsDragging()) {
-		// ドラッグ中のマウス移動処理
-		POINT pt = { x, y };
-		MapWindowPoints(hwnd, m_hwndTagList, &pt, 1);
-		LVHITTESTINFO ht = { 0 };
-		ht.pt = pt;
-		int targetIndex = ListView_HitTest(m_hwndTagList, &ht);
-		for (int i = 0; i < static_cast<int>(TagListHandler::GetTagItemsCount()); ++i) {
-			ListView_SetItemState(m_hwndTagList, i, 0, LVIS_DROPHILITED);
-		}
-		if (targetIndex >= 0 && targetIndex < static_cast<int>(TagListHandler::GetTagItemsCount())) {
-			ListView_SetItemState(m_hwndTagList, targetIndex, LVIS_DROPHILITED, LVIS_DROPHILITED);
-			TagListHandler::UpdateDragTargetIndex(targetIndex);
-		} else {
-			TagListHandler::UpdateDragTargetIndex(-1);
-		}
+		HandleTagListDrag(x, y);
 	}
-	else if (m_isDraggingSplitter) {
-		HandleSplitterMouseMove(x, y);
+	// スプリッターのドラッグ処理
+	else if (m_splitter.isDragging) {
+		HandleSplitterDrag(x, y);
 	}
+}
+
+void BooruPrompter::HandleTagListDrag(int x, int y) {
+	// ドラッグ中のマウス移動処理
+	POINT pt = { x, y };
+	MapWindowPoints(m_hwnd, m_hwndTagList, &pt, 1);
+	LVHITTESTINFO ht = { 0 };
+	ht.pt = pt;
+	int targetIndex = ListView_HitTest(m_hwndTagList, &ht);
+
+	// すべてのアイテムのハイライトをクリア
+	for (int i = 0; i < static_cast<int>(TagListHandler::GetTagItemsCount()); ++i) {
+		ListView_SetItemState(m_hwndTagList, i, 0, LVIS_DROPHILITED);
+	}
+
+	// ターゲットアイテムをハイライト
+	if (targetIndex >= 0 && targetIndex < static_cast<int>(TagListHandler::GetTagItemsCount())) {
+		ListView_SetItemState(m_hwndTagList, targetIndex, LVIS_DROPHILITED, LVIS_DROPHILITED);
+		TagListHandler::UpdateDragTargetIndex(targetIndex);
+	} else {
+		TagListHandler::UpdateDragTargetIndex(-1);
+	}
+}
+
+void BooruPrompter::HandleSplitterDrag(int x, int y) {
+	HandleSplitterMouse(x, y, false, false);
 }
 
 void BooruPrompter::OnLButtonDown(HWND hwnd, LPARAM lParam) {
 	int x = GET_X_LPARAM(lParam);
 	int y = GET_Y_LPARAM(lParam);
-	HandleSplitterMouseDown(x, y);
+	HandleSplitterMouse(x, y, true, false);
 }
 
 void BooruPrompter::OnLButtonUp(HWND hwnd, LPARAM lParam) {
@@ -567,8 +582,8 @@ void BooruPrompter::OnLButtonUp(HWND hwnd, LPARAM lParam) {
 		TagListHandler::OnTagListDragEnd(this);
 		ReleaseCapture();
 	}
-	else if (m_isDraggingSplitter) {
-		HandleSplitterMouseUp();
+	else if (m_splitter.isDragging) {
+		HandleSplitterMouse(0, 0, false, true);
 	}
 }
 
@@ -597,6 +612,20 @@ void BooruPrompter::OnTextChanged(HWND hwnd) {
 int BooruPrompter::Run() {
 	MSG msg{};
 	while (GetMessage(&msg, NULL, 0, 0)) {
+		// 非同期処理の結果をチェック
+		if (m_imageProcessingFuture.valid()) {
+			auto status = m_imageProcessingFuture.wait_for(std::chrono::milliseconds(0));
+			if (status == std::future_status::ready) {
+				try {
+					auto result = m_imageProcessingFuture.get();
+					OnImageProcessingComplete(result);
+				} catch (const std::exception&) {
+					// エラー処理 - ステータスバーに表示
+					UpdateProgress(0, L"画像処理中にエラーが発生しました");
+				}
+			}
+		}
+
 		TranslateMessage(&msg);
 		DispatchMessage(&msg);
 	}
@@ -608,84 +637,81 @@ void BooruPrompter::UpdateLayout() {
 	OnSize(m_hwnd);
 }
 
-bool BooruPrompter::IsInSplitterArea(int x, int y) {
-	// 垂直スプリッター（左右分割）
-	bool inVertical = (x >= m_splitterX - SPLITTER_HIT_AREA && x <= m_splitterX + SPLITTER_HIT_AREA);
-	// 水平スプリッター（上下分割）
-	bool inHorizontal = (y >= m_splitterY - SPLITTER_HIT_AREA && y <= m_splitterY + SPLITTER_HIT_AREA && x <= m_splitterX);
+void BooruPrompter::HandleSplitterMouse(int x, int y, bool isDown, bool isUp) {
+	// スプリッター領域の判定
+	auto isInSplitterArea = [this](int x, int y) {
+		bool inVertical = (x >= m_splitter.x - SPLITTER_HIT_AREA && x <= m_splitter.x + SPLITTER_HIT_AREA);
+		bool inHorizontal = (y >= m_splitter.y - SPLITTER_HIT_AREA && y <= m_splitter.y + SPLITTER_HIT_AREA && x <= m_splitter.x);
+		return inVertical || inHorizontal;
+	};
 
-	return inVertical || inHorizontal;
-}
+	if (isDown) {
+		if (!isInSplitterArea(x, y)) return;
 
-void BooruPrompter::HandleSplitterMouseDown(int x, int y) {
-	if (!IsInSplitterArea(x, y)) return;
-
-	// どのスプリッターをドラッグしているかを判定
-	if (x >= m_splitterX - SPLITTER_HIT_AREA && x <= m_splitterX + SPLITTER_HIT_AREA) {
-		m_draggingSplitterType = SPLITTER_TYPE_VERTICAL;
+		// どのスプリッターをドラッグしているかを判定
+		if (x >= m_splitter.x - SPLITTER_HIT_AREA && x <= m_splitter.x + SPLITTER_HIT_AREA) {
+			m_splitter.draggingType = SPLITTER_TYPE_VERTICAL;
+		}
+		else if (y >= m_splitter.y - SPLITTER_HIT_AREA && y <= m_splitter.y + SPLITTER_HIT_AREA && x <= m_splitter.x) {
+			m_splitter.draggingType = SPLITTER_TYPE_HORIZONTAL;
+		}
+		m_splitter.isDragging = true;
+		SetCapture(m_hwnd);
 	}
-	else if (y >= m_splitterY - SPLITTER_HIT_AREA && y <= m_splitterY + SPLITTER_HIT_AREA && x <= m_splitterX) {
-		m_draggingSplitterType = SPLITTER_TYPE_HORIZONTAL;
-	}
-	m_isDraggingSplitter = true;
-	SetCapture(m_hwnd);
-}
-
-void BooruPrompter::HandleSplitterMouseMove(int x, int y) {
-	if (!m_isDraggingSplitter) return;
-
-	RECT rc;
-	GetClientRect(m_hwnd, &rc);
-	const int clientWidth = rc.right - rc.left;
-	const int clientHeight = rc.bottom - rc.top;
-
-	auto [toolbarHeight, statusHeight] = GetToolbarAndStatusHeight();
-
-	const int maxSplitterX = clientWidth - m_minRightWidth;
-	const int minSplitterX = m_minLeftWidth;
-	const int maxSplitterY = clientHeight - statusHeight - m_minBottomHeight;
-	const int minSplitterY = toolbarHeight + m_minTopHeight;
-
-	bool needsUpdate = false;
-
-	// 垂直スプリッター（左右分割）
-	if (m_draggingSplitterType == SPLITTER_TYPE_VERTICAL) {
-		int newSplitterX = std::clamp(x, minSplitterX, maxSplitterX);
-		if (newSplitterX != m_splitterX) {
-			m_splitterX = newSplitterX;
-			needsUpdate = true;
+	else if (isUp) {
+		if (m_splitter.isDragging) {
+			m_splitter.isDragging = false;
+			m_splitter.draggingType = SPLITTER_TYPE_NONE;
+			ReleaseCapture();
 		}
 	}
+	else if (m_splitter.isDragging) {
+		// マウス移動処理
+		RECT rc;
+		GetClientRect(m_hwnd, &rc);
+		const int clientWidth = rc.right - rc.left;
+		const int clientHeight = rc.bottom - rc.top;
 
-	// 水平スプリッター（上下分割）
-	if (m_draggingSplitterType == SPLITTER_TYPE_HORIZONTAL) {
-		int newSplitterY = std::clamp(y, minSplitterY, maxSplitterY);
-		if (newSplitterY != m_splitterY) {
-			m_splitterY = newSplitterY;
-			needsUpdate = true;
+		auto [toolbarHeight, statusHeight] = GetToolbarAndStatusHeight();
+
+		const int maxSplitterX = clientWidth - DEFAULT_MIN_RIGHT_WIDTH;
+		const int minSplitterX = DEFAULT_MIN_LEFT_WIDTH;
+		const int maxSplitterY = clientHeight - statusHeight - DEFAULT_MIN_BOTTOM_HEIGHT;
+		const int minSplitterY = toolbarHeight + DEFAULT_MIN_TOP_HEIGHT;
+
+		bool needsUpdate = false;
+
+		// 垂直スプリッター（左右分割）
+		if (m_splitter.draggingType == SPLITTER_TYPE_VERTICAL) {
+			int newSplitterX = std::clamp(x, minSplitterX, maxSplitterX);
+			if (newSplitterX != m_splitter.x) {
+				m_splitter.x = newSplitterX;
+				needsUpdate = true;
+			}
 		}
-	}
 
-	if (needsUpdate) {
-		UpdateLayout();
-	}
-}
+		// 水平スプリッター（上下分割）
+		if (m_splitter.draggingType == SPLITTER_TYPE_HORIZONTAL) {
+			int newSplitterY = std::clamp(y, minSplitterY, maxSplitterY);
+			if (newSplitterY != m_splitter.y) {
+				m_splitter.y = newSplitterY;
+				needsUpdate = true;
+			}
+		}
 
-void BooruPrompter::HandleSplitterMouseUp() {
-	if (m_isDraggingSplitter) {
-		m_isDraggingSplitter = false;
-		m_draggingSplitterType = SPLITTER_TYPE_NONE;
-		ReleaseCapture();
+		if (needsUpdate) {
+			UpdateLayout();
+		}
 	}
 }
 
 void BooruPrompter::UpdateSplitterCursor(int x, int y) {
-	if (TagListHandler::IsDragging() || m_isDraggingSplitter) return;
+	if (TagListHandler::IsDragging() || m_splitter.isDragging) return;
 
-	if (x >= m_splitterX - SPLITTER_HIT_AREA && x <= m_splitterX + SPLITTER_HIT_AREA) {
+	if (x >= m_splitter.x - SPLITTER_HIT_AREA && x <= m_splitter.x + SPLITTER_HIT_AREA) {
 		SetCursor(LoadCursor(NULL, IDC_SIZEWE));  // 左右サイズ変更カーソル
 	}
-	else if (y >= m_splitterY - SPLITTER_HIT_AREA && y <= m_splitterY + SPLITTER_HIT_AREA && x <= m_splitterX) {
+	else if (y >= m_splitter.y - SPLITTER_HIT_AREA && y <= m_splitter.y + SPLITTER_HIT_AREA && x <= m_splitter.x) {
 		SetCursor(LoadCursor(NULL, IDC_SIZENS));  // 上下サイズ変更カーソル
 	}
 	else {
@@ -708,12 +734,9 @@ std::pair<int, int> BooruPrompter::GetToolbarAndStatusHeight() {
 }
 
 void BooruPrompter::UpdateProgress(int progress, const std::wstring& statusText) {
-	m_currentProgress = progress;
-	m_currentStatusText = statusText;
-	PostMessage(m_hwnd, WM_UPDATE_PROGRESS, progress, 0);
+	SendMessage(m_hwndProgressBar, PBM_SETPOS, progress, 0);
+	SendMessage(m_hwndStatusBar, SB_SETTEXT, 0, (LPARAM)statusText.c_str());
 }
-
-
 
 void BooruPrompter::UpdateStatusText(const std::wstring& text) {
 	SendMessage(m_hwndStatusBar, SB_SETTEXT, 0, (LPARAM)text.c_str());
@@ -722,6 +745,43 @@ void BooruPrompter::UpdateStatusText(const std::wstring& text) {
 void BooruPrompter::ClearProgress() {
 	SendMessage(m_hwndProgressBar, PBM_SETPOS, 0, 0);
 	UpdateStatusText(L"");
+}
+
+bool BooruPrompter::CopyToClipboard(const std::wstring& text) {
+	if (text.empty()) return false;
+
+	if (OpenClipboard(m_hwnd)) {
+		EmptyClipboard();
+		HGLOBAL hData = GlobalAlloc(GMEM_MOVEABLE, (text.length() + 1) * sizeof(wchar_t));
+		if (hData) {
+			wchar_t* pData = (wchar_t*)GlobalLock(hData);
+			wcscpy_s(pData, text.length() + 1, text.c_str());
+			GlobalUnlock(hData);
+			SetClipboardData(CF_UNICODETEXT, hData);
+			CloseClipboard();
+			return true;
+		}
+		CloseClipboard();
+	}
+	return false;
+}
+
+std::wstring BooruPrompter::GetFromClipboard() {
+	if (OpenClipboard(m_hwnd)) {
+		HANDLE hData = GetClipboardData(CF_UNICODETEXT);
+		if (hData) {
+			wchar_t* pszText = (wchar_t*)GlobalLock(hData);
+			if (pszText) {
+				std::wstring text(pszText);
+				GlobalUnlock(hData);
+				CloseClipboard();
+				return text;
+			}
+			GlobalUnlock(hData);
+		}
+		CloseClipboard();
+	}
+	return L"";
 }
 
 // 設定の保存・復帰機能
@@ -839,14 +899,6 @@ LRESULT CALLBACK BooruPrompter::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, 
 			pThis->OnContextMenu(hwnd, wParam, lParam);
 			break;
 
-		case WM_UPDATE_PROGRESS:
-			SendMessage(pThis->m_hwndProgressBar, PBM_SETPOS, (int)wParam, 0);
-			SendMessage(pThis->m_hwndStatusBar, SB_SETTEXT, 0, (LPARAM)pThis->m_currentStatusText.c_str());
-			break;
-
-		case WM_IMAGE_PROCESSING_COMPLETE:
-			pThis->OnImageProcessingComplete((int)wParam);
-			break;
 		}
 	}
 

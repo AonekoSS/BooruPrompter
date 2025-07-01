@@ -2,7 +2,6 @@
 #include <algorithm>
 #include <iterator>
 #include "TextUtils.h"
-
 #include "SuggestionManager.h"
 
 SuggestionManager::SuggestionManager() : m_SuggestTimer(nullptr) {

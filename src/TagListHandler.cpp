@@ -3,7 +3,7 @@
 #include "BooruPrompter.h"
 #include "TextUtils.h"
 #include "BooruDB.h"
-#include <commctrl.h>
+
 
 // 静的メンバー変数の定義
 SuggestionList TagListHandler::s_tagItems;
@@ -103,15 +103,18 @@ void TagListHandler::OnTagListContextMenu(BooruPrompter* pThis, int x, int y) {
 	HMENU hMenu = CreatePopupMenu();
 	if (!hMenu) return;
 
-	AppendMenu(hMenu, MF_STRING, BooruPrompter::ID_CONTEXT_MOVE_TO_TOP, L"先頭に移動");
-	AppendMenu(hMenu, MF_STRING, BooruPrompter::ID_CONTEXT_MOVE_TO_BOTTOM, L"最後に移動");
+	AppendMenu(hMenu, MF_STRING, ID_CONTEXT_MOVE_TO_TOP, L"先頭に移動");
+	AppendMenu(hMenu, MF_STRING, ID_CONTEXT_MOVE_TO_BOTTOM, L"最後に移動");
 	AppendMenu(hMenu, MF_SEPARATOR, 0, NULL);
-	AppendMenu(hMenu, MF_STRING, BooruPrompter::ID_CONTEXT_DELETE, L"削除");
+	AppendMenu(hMenu, MF_STRING, ID_CONTEXT_DELETE, L"削除");
 
 	ClientToScreen(pThis->m_hwndTagList, &pt);
-	TrackPopupMenu(hMenu, TPM_LEFTALIGN | TPM_RIGHTBUTTON, pt.x, pt.y, 0, pThis->m_hwnd, NULL);
-
+	int commandId = TrackPopupMenu(hMenu, TPM_LEFTALIGN | TPM_RIGHTBUTTON | TPM_RETURNCMD, pt.x, pt.y, 0, pThis->m_hwnd, NULL);
 	DestroyMenu(hMenu);
+
+	if (commandId != 0) {
+		OnTagListContextCommand(pThis, commandId);
+	}
 }
 
 void TagListHandler::OnTagListContextCommand(BooruPrompter* pThis, int commandId) {
@@ -121,13 +124,13 @@ void TagListHandler::OnTagListContextCommand(BooruPrompter* pThis, int commandId
 	}
 
 	switch (commandId) {
-	case BooruPrompter::ID_CONTEXT_MOVE_TO_TOP:
+	case ID_CONTEXT_MOVE_TO_TOP:
 		MoveTagToTop(pThis, selectedIndex);
 		break;
-	case BooruPrompter::ID_CONTEXT_MOVE_TO_BOTTOM:
+	case ID_CONTEXT_MOVE_TO_BOTTOM:
 		MoveTagToBottom(pThis, selectedIndex);
 		break;
-	case BooruPrompter::ID_CONTEXT_DELETE:
+	case ID_CONTEXT_DELETE:
 		DeleteTag(pThis, selectedIndex);
 		break;
 	}
