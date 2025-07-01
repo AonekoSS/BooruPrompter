@@ -4,6 +4,8 @@
 #include <vector>
 #include <memory>
 #include <functional>
+#include <richedit.h>
+#include <richole.h>
 
 // タグの色情報を表す構造体
 struct TagColor {
@@ -82,3 +84,4 @@ private:
     void StopColorizeTimer();
     static void CALLBACK ColorizeTimerProc(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime);
 };
+
