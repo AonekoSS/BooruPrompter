@@ -240,12 +240,15 @@ void SyntaxHighlighter::OnPaint(HWND hwnd) {
 }
 
 void SyntaxHighlighter::ColorizeText(const std::vector<TagColor>& tagColors) {
-    // 現在のカーソル位置を保存
+    // カーソル・スクロール位置を保存
     DWORD startPos, endPos;
     SendMessage(m_hwndEdit, EM_GETSEL, (WPARAM)&startPos, (LPARAM)&endPos);
+    POINT scrollPos = {0, 0};
+    SendMessage(m_hwndEdit, EM_GETSCROLLPOS, 0, (LPARAM)&scrollPos);
 
-    // 再描画を一時的に無効化
+    // 再描画・選択表示を一時的に無効化
     SendMessage(m_hwndEdit, WM_SETREDRAW, FALSE, 0);
+    SendMessage(m_hwndEdit, EM_HIDESELECTION, TRUE, 0);
 
     // 既存の書式設定をクリア
     SendMessage(m_hwndEdit, EM_SETSEL, 0, -1);
@@ -274,18 +277,25 @@ void SyntaxHighlighter::ColorizeText(const std::vector<TagColor>& tagColors) {
         currentPos = tagPos + tagColor.tag.length();
     }
 
-    // 元のカーソル位置を復元
+    // カーソル・スクロール位置を復元
     SendMessage(m_hwndEdit, EM_SETSEL, startPos, endPos);
+    SendMessage(m_hwndEdit, EM_SETSCROLLPOS, 0, (LPARAM)&scrollPos);
 
-    // 再描画を有効化して更新
+    // 選択表示・再描画を有効化して即時更新
+    SendMessage(m_hwndEdit, EM_HIDESELECTION, FALSE, 0);
     SendMessage(m_hwndEdit, WM_SETREDRAW, TRUE, 0);
-    InvalidateRect(m_hwndEdit, NULL, TRUE);
+    UpdateWindow(m_hwndEdit);
 }
 
 void SyntaxHighlighter::ColorizeCommas() {
-    // 現在のカーソル位置を保存
+    // カーソル・スクロール位置を保存
     DWORD startPos, endPos;
     SendMessage(m_hwndEdit, EM_GETSEL, (WPARAM)&startPos, (LPARAM)&endPos);
+    POINT scrollPos = {0, 0};
+    SendMessage(m_hwndEdit, EM_GETSCROLLPOS, 0, (LPARAM)&scrollPos);
+
+    // 選択表示を一時的に無効化
+    SendMessage(m_hwndEdit, EM_HIDESELECTION, TRUE, 0);
 
     std::wstring text = GetText();
     size_t pos = 0;
@@ -304,8 +314,12 @@ void SyntaxHighlighter::ColorizeCommas() {
         pos++;
     }
 
-    // 元のカーソル位置を復元
+    // カーソル・スクロール位置を復元
     SendMessage(m_hwndEdit, EM_SETSEL, startPos, endPos);
+    SendMessage(m_hwndEdit, EM_SETSCROLLPOS, 0, (LPARAM)&scrollPos);
+
+    // 選択表示を有効化
+    SendMessage(m_hwndEdit, EM_HIDESELECTION, FALSE, 0);
 }
 
 LRESULT CALLBACK SyntaxHighlighter::EditProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
