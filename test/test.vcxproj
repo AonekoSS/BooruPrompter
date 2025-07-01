@@ -173,10 +173,7 @@
     <ClCompile Include="TextUtilsTest.cpp" />
     <ClCompile Include="BooruDBTest.cpp" />
     <ClCompile Include="SuggestionManagerTest.cpp" />
-    <ClCompile Include="ImageTagDetectorTest.cpp" />
     <ClCompile Include="SyntaxHighlighterTest.cpp" />
-    <ClCompile Include="TagListHandlerTest.cpp" />
-    <ClCompile Include="SuggestionHandlerTest.cpp" />
     <!-- メインプロジェクトのソースファイル -->
     <ClCompile Include="..\src\TextUtils.cpp" />
     <ClCompile Include="..\src\BooruDB.cpp" />
@@ -193,10 +190,7 @@
     <ClInclude Include="TextUtilsTest.h" />
     <ClInclude Include="BooruDBTest.h" />
     <ClInclude Include="SuggestionManagerTest.h" />
-    <ClInclude Include="ImageTagDetectorTest.h" />
     <ClInclude Include="SyntaxHighlighterTest.h" />
-    <ClInclude Include="TagListHandlerTest.h" />
-    <ClInclude Include="SuggestionHandlerTest.h" />
     <!-- メインプロジェクトのヘッダーファイル -->
     <ClInclude Include="..\src\TextUtils.h" />
     <ClInclude Include="..\src\BooruDB.h" />
