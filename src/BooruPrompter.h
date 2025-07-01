@@ -1,14 +1,15 @@
 ﻿#pragma once
-#include "SuggestionManager.h"
-#include "BooruDB.h"
-#include "SuggestionHandler.h"
-#include "TagListHandler.h"
-#include "ImageTagDetector.h"
-#include <vector>
-#include <string>
-#include "Suggestion.h"
+
 #include <future>
-#include <atomic>
+#include <string>
+#include <vector>
+
+#include "BooruDB.h"
+#include "ImageTagDetector.h"
+#include "Suggestion.h"
+#include "SuggestionHandler.h"
+#include "SuggestionManager.h"
+#include "TagListHandler.h"
 
 // スプリッター関連の定数
 constexpr int SPLITTER_TYPE_NONE = 0;

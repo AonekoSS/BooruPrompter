@@ -2,7 +2,6 @@
 #include <filesystem>
 #include <sstream>
 
-
 #include "TextUtils.h"
 
 // UTF-8→ユニコード変換

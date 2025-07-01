@@ -3,7 +3,7 @@
 #include "BooruPrompter.h"
 #include "TextUtils.h"
 #include "BooruDB.h"
-#include <commctrl.h>
+
 
 // 静的メンバー変数の定義
 SuggestionList TagListHandler::s_tagItems;

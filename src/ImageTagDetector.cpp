@@ -1,10 +1,11 @@
 ﻿#include "framework.h"
-#include "ImageTagDetector.h"
-#include "TextUtils.h"
 #include <fstream>
 #include <filesystem>
 #include <sstream>
 #include <algorithm>
+
+#include "ImageTagDetector.h"
+#include "TextUtils.h"
 
 // モデルファイルの定数
 #define MODEL_URL L"https://huggingface.co/lllyasviel/misc/resolve/main/"

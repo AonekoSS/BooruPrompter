@@ -1,8 +1,9 @@
 ﻿#pragma once
-#include "Suggestion.h"
-#include <windows.h>
-#include <string>
+
 #include <vector>
+#include <windows.h>
+
+#include "Suggestion.h"
 
 class BooruPrompter;
 
