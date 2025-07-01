@@ -103,48 +103,12 @@ bool SyntaxHighlighter::Initialize(HWND hwndParent, int x, int y, int width, int
     // 背景色を黒に設定
     SendMessage(m_hwndEdit, EM_SETBKGNDCOLOR, 0, RGB(0, 0, 0));
 
-    SendMessage(m_hwndEdit, EM_CANPASTE, CF_TEXT, 0);
-
-    // ドラッグ&ドロップを無効化
-    SendMessage(m_hwndEdit, EM_SETOLECALLBACK, 0, 0);
-
-    // オートURL検出を無効化
-    SendMessage(m_hwndEdit, EM_AUTOURLDETECT, FALSE, 0);
-
-    // ドロップターゲットの登録を無効化（親ウィンドウで処理するため）
-    DragAcceptFiles(m_hwndEdit, FALSE);
-
-    // Rich Editのドロップ機能を完全に無効化
-    SendMessage(m_hwndEdit, EM_SETOLECALLBACK, 0, 0);
-
     // オートURL検出を無効化（ファイルパスの自動リンク化を防ぐ）
     SendMessage(m_hwndEdit, EM_AUTOURLDETECT, FALSE, 0);
-
-    // オブジェクト挿入を無効化
-    SendMessage(m_hwndEdit, EM_SETOPTIONS, ECOOP_SET,
-                ECO_AUTOVSCROLL | ECO_AUTOHSCROLL | ECO_NOHIDESEL);
-
-    // 読み取り専用を解除（編集可能にする）
-    SendMessage(m_hwndEdit, EM_SETREADONLY, FALSE, 0);
-
-    // ドロップ機能を完全に無効化
-    SetWindowLong(m_hwndEdit, GWL_EXSTYLE,
-                  GetWindowLong(m_hwndEdit, GWL_EXSTYLE) & ~WS_EX_ACCEPTFILES);
 
     // OLEコールバックを設定（テキストのみ許可）
     TextOnlyOleCallback* pCallback = new TextOnlyOleCallback();
     SendMessage(m_hwndEdit, EM_SETOLECALLBACK, 0, (LPARAM)pCallback);
-
-    // オブジェクト挿入を無効化
-    SendMessage(m_hwndEdit, EM_SETOPTIONS, ECOOP_SET,
-                ECO_AUTOVSCROLL | ECO_AUTOHSCROLL | ECO_NOHIDESEL);
-
-    // オブジェクトの挿入を無効化（書式は保持）
-    SendMessage(m_hwndEdit, EM_SETOPTIONS, ECOOP_SET,
-                ECO_AUTOVSCROLL | ECO_AUTOHSCROLL | ECO_NOHIDESEL);
-
-    // テキストのみのモードに設定
-    SendMessage(m_hwndEdit, EM_SETLIMITTEXT, 0, 0); // 制限なし
 
     return true;
 }
@@ -347,120 +311,8 @@ void SyntaxHighlighter::ColorizeCommas() {
 LRESULT CALLBACK SyntaxHighlighter::EditProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     SyntaxHighlighter* pThis = (SyntaxHighlighter*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
 
-    // ドラッグ&ドロップを最初に無効化
-    if (uMsg == WM_DROPFILES) {
-        return 0; // ドロップを無視
-    }
-
-    // 画像の貼り付けを検出して削除
-    if (uMsg == WM_PASTE) {
-        // クリップボードの内容をチェック
-        if (OpenClipboard(hwnd)) {
-            // 画像データがある場合は無視
-            if (GetClipboardData(CF_BITMAP) || GetClipboardData(CF_DIB) ||
-                GetClipboardData(CF_DIBV5) || GetClipboardData(CF_ENHMETAFILE) ||
-                GetClipboardData(CF_METAFILEPICT) || GetClipboardData(CF_TIFF)) {
-                CloseClipboard();
-                return 0; // 画像データは無視
-            }
-            CloseClipboard();
-        }
-    }
-
     if (uMsg == WM_PAINT) {
         pThis->OnPaint(hwnd);
-        return 0;
-    }
-
-    // OLEオブジェクトの挿入を防ぐ
-    if (uMsg == WM_PASTE) {
-        // クリップボードの内容をチェック
-        if (OpenClipboard(hwnd)) {
-            // 画像データがある場合は無視
-            if (GetClipboardData(CF_BITMAP) || GetClipboardData(CF_DIB) ||
-                GetClipboardData(CF_DIBV5) || GetClipboardData(CF_ENHMETAFILE) ||
-                GetClipboardData(CF_METAFILEPICT) || GetClipboardData(CF_TIFF)) {
-                CloseClipboard();
-                return 0; // 画像データは無視
-            }
-
-            // リッチテキスト形式がある場合はプレーンテキストのみを使用
-            HANDLE hRichText = GetClipboardData(RegisterClipboardFormat(L"Rich Text Format"));
-            if (hRichText) {
-                CloseClipboard();
-                // リッチテキストは無視して、プレーンテキストのみ処理
-                if (OpenClipboard(hwnd)) {
-                    HANDLE hData = GetClipboardData(CF_UNICODETEXT);
-                    if (hData) {
-                        wchar_t* pText = (wchar_t*)GlobalLock(hData);
-                        if (pText) {
-                            SendMessage(hwnd, EM_REPLACESEL, TRUE, (LPARAM)pText);
-                            GlobalUnlock(hData);
-                        }
-                    }
-                    CloseClipboard();
-                }
-                return 0;
-            }
-
-            CloseClipboard();
-        }
-    }
-
-    // ペースト処理をカスタマイズ
-    if (uMsg == WM_PASTE) {
-        if (OpenClipboard(hwnd)) {
-            // 画像データがある場合は無視
-            if (GetClipboardData(CF_BITMAP) || GetClipboardData(CF_DIB) ||
-                GetClipboardData(CF_DIBV5) || GetClipboardData(CF_ENHMETAFILE) ||
-                GetClipboardData(CF_METAFILEPICT) || GetClipboardData(CF_TIFF)) {
-                CloseClipboard();
-                return 0; // 画像データは無視
-            }
-
-            HANDLE hData = GetClipboardData(CF_UNICODETEXT);
-            if (hData) {
-                wchar_t* pText = (wchar_t*)GlobalLock(hData);
-                if (pText) {
-                    // プレーンテキストとして貼り付け
-                    SendMessage(hwnd, EM_REPLACESEL, TRUE, (LPARAM)pText);
-                    GlobalUnlock(hData);
-                }
-            }
-            CloseClipboard();
-        }
-        return 0;
-    }
-
-    // コピー処理をカスタマイズ（プレーンテキストのみ）
-    if (uMsg == WM_COPY) {
-        // 選択範囲のテキストを取得
-        DWORD start, end;
-        SendMessage(hwnd, EM_GETSEL, (WPARAM)&start, (LPARAM)&end);
-
-        if (start != end) {
-            // 選択範囲のテキストを取得
-            int length = end - start;
-            std::vector<wchar_t> buffer(length + 1);
-            TEXTRANGEW tr = { start, end, buffer.data() };
-            SendMessage(hwnd, EM_GETTEXTRANGE, 0, (LPARAM)&tr);
-
-            // クリップボードにプレーンテキストとしてコピー
-            if (OpenClipboard(hwnd)) {
-                EmptyClipboard();
-
-                size_t size = (wcslen(buffer.data()) + 1) * sizeof(wchar_t);
-                HANDLE hData = GlobalAlloc(GMEM_MOVEABLE, size);
-                if (hData) {
-                    wchar_t* pData = (wchar_t*)GlobalLock(hData);
-                    wcscpy_s(pData, wcslen(buffer.data()) + 1, buffer.data());
-                    GlobalUnlock(hData);
-
-                    SetClipboardData(CF_UNICODETEXT, hData);
-                }
-                CloseClipboard();
-            }
-        }
         return 0;
     }
 
