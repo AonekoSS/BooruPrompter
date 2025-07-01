@@ -9,6 +9,41 @@
 #include "TextUtils.h"
 #include "ImageInfo.h"
 
+// スプリッター関連の定数
+constexpr int SPLITTER_HIT_AREA = 8;  // スプリッターの判定領域（ピクセル）
+constexpr int SPLITTER_TYPE_NONE = 0;
+constexpr int SPLITTER_TYPE_VERTICAL = 1;
+constexpr int SPLITTER_TYPE_HORIZONTAL = 2;
+
+// レイアウト関連の定数
+constexpr int DEFAULT_MIN_LEFT_WIDTH = 200;
+constexpr int DEFAULT_MIN_RIGHT_WIDTH = 150;
+constexpr int DEFAULT_MIN_TOP_HEIGHT = 100;
+constexpr int DEFAULT_MIN_BOTTOM_HEIGHT = 100;
+constexpr int DEFAULT_WINDOW_WIDTH = 800;
+constexpr int DEFAULT_WINDOW_HEIGHT = 600;
+constexpr int LAYOUT_MARGIN = 4;
+
+// 画像処理完了タイプ
+constexpr int IMAGE_PROCESSING_INIT_FAILED = 0;
+constexpr int IMAGE_PROCESSING_METADATA_SUCCESS = 1;
+constexpr int IMAGE_PROCESSING_TAG_DETECTION_SUCCESS = 2;
+
+// コントロールIDの定義
+enum {
+	ID_EDIT = 1001,
+	ID_SUGGESTIONS = 1002,
+	ID_TAG_LIST = 1003,
+	ID_TOOLBAR = 1004,
+	ID_STATUS_BAR = 1005,
+	ID_PROGRESS_BAR = 1006,
+	ID_CLEAR = 1007,
+	ID_PASTE = 1008,
+	ID_COPY = 1009,
+	ID_CONTEXT_MOVE_TO_TOP = 1010,
+	ID_CONTEXT_MOVE_TO_BOTTOM = 1011,
+	ID_CONTEXT_DELETE = 1012
+};
 
 // アプリケーションのエントリポイント
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
