@@ -10,6 +10,11 @@
 #include <future>
 #include <atomic>
 
+// スプリッター関連の定数
+constexpr int SPLITTER_TYPE_NONE = 0;
+constexpr int SPLITTER_TYPE_VERTICAL = 1;
+constexpr int SPLITTER_TYPE_HORIZONTAL = 2;
+
 // 画像処理結果を表す構造体
 struct ImageProcessingResult {
 	int type;
@@ -50,10 +55,7 @@ private:
 
 	// スプリッター関連のメソッド
 	void UpdateLayout();
-	bool IsInSplitterArea(int x, int y);
-	void HandleSplitterMouseDown(int x, int y);
-	void HandleSplitterMouseMove(int x, int y);
-	void HandleSplitterMouseUp();
+	void HandleSplitterMouse(int x, int y, bool isDown, bool isUp);
 	void UpdateSplitterCursor(int x, int y);
 	std::pair<int, int> GetToolbarAndStatusHeight();
 
@@ -81,14 +83,18 @@ private:
 	ImageTagDetector m_imageTagDetector; // 画像タグ検出機能
 
 	// スプリッター関連
-	int m_splitterX;
-	int m_splitterY;
+	struct Splitter {
+		int x = 0;
+		int y = 0;
+		bool isDragging = false;
+		int draggingType = SPLITTER_TYPE_NONE;
+	} m_splitter;
+
+	// レイアウト制約
 	int m_minLeftWidth;
 	int m_minRightWidth;
 	int m_minTopHeight;
 	int m_minBottomHeight;
-	bool m_isDraggingSplitter;
-	int m_draggingSplitterType;  // 0: なし, 1: 垂直, 2: 水平
 
 	// 設定保存用のメンバー変数
 	int m_windowX;
