@@ -5,12 +5,10 @@
 #include <shellapi.h>
 #include <objbase.h>
 #include <windows.h>
-
 #include "SyntaxHighlighter.h"
-
+#include "TextUtils.h"
 
 SyntaxHighlighter::SyntaxHighlighter() : m_hwndEdit(NULL), m_originalEditProc(NULL), m_hFont(NULL), m_hMsftedit(NULL), m_timerId(0), m_pendingColorize(false) {
-    // レインボーカラーの初期化（黒背景に最適化、隣り合っても見分けやすい明るい色）
     m_rainbowColors = {
         RGB( 25, 200, 245),
         RGB(255, 160, 134),
@@ -185,52 +183,15 @@ void CALLBACK SyntaxHighlighter::ColorizeTimerProc(HWND hwnd, UINT uMsg, UINT_PT
 
 std::vector<TagColor> SyntaxHighlighter::ExtractTagsWithColors(const std::wstring& text) {
     std::vector<TagColor> tagColors;
+    std::string utf8 = unicode_to_utf8(text);
+    auto tags = extract_tags_from_text(utf8);
     int colorIndex = 0;
-    size_t startPos = 0;
-    size_t pos = 0;
-
-    while (pos < text.length()) {
-        // カンマを探す
-        size_t commaPos = text.find(L',', pos);
-        if (commaPos == std::wstring::npos) {
-            // 最後のタグ（カンマなし）
-            std::wstring tag = text.substr(startPos);
-            // 前後の空白を除去
-            while (!tag.empty() && (tag.front() == L' ' || tag.front() == L'\t' || tag.front() == L'\n' || tag.front() == L'\r')) {
-                tag.erase(0, 1);
-            }
-            while (!tag.empty() && (tag.back() == L' ' || tag.back() == L'\t' || tag.back() == L'\n' || tag.back() == L'\r')) {
-                tag.pop_back();
-            }
-
-            if (!tag.empty()) {
-                COLORREF color = m_rainbowColors[colorIndex % m_rainbowColors.size()];
-                tagColors.emplace_back(tag, color);
-            }
-            break;
-        }
-
-        // カンマまでの範囲をタグとして抽出
-        std::wstring tag = text.substr(startPos, commaPos - startPos);
-        // 前後の空白を除去
-        while (!tag.empty() && (tag.front() == L' ' || tag.front() == L'\t' || tag.front() == L'\n' || tag.front() == L'\r')) {
-            tag.erase(0, 1);
-        }
-        while (!tag.empty() && (tag.back() == L' ' || tag.back() == L'\t' || tag.back() == L'\n' || tag.back() == L'\r')) {
-            tag.pop_back();
-        }
-
+    for (const auto& tag : tags) {
         if (!tag.empty()) {
-            COLORREF color = m_rainbowColors[colorIndex % m_rainbowColors.size()];
-            tagColors.emplace_back(tag, color);
+            tagColors.emplace_back(utf8_to_unicode(tag), m_rainbowColors[colorIndex % m_rainbowColors.size()]);
             colorIndex++;
         }
-
-        // 次のタグの開始位置を設定（カンマの次の位置）
-        pos = commaPos + 1;
-        startPos = pos;
     }
-
     return tagColors;
 }
 

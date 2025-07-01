@@ -39,6 +39,11 @@ enum {
 	ID_COPY = 1009
 };
 
+// リストビューの配色定数
+constexpr COLORREF LISTVIEW_BK_COLOR = RGB(16,16,16);
+constexpr COLORREF LISTVIEW_ALT_COLOR = RGB(32,32,32);
+constexpr COLORREF LISTVIEW_TEXT_COLOR = RGB(255,255,255);
+
 // アプリケーションのエントリポイント
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	_In_opt_ HINSTANCE hPrevInstance,
@@ -264,9 +269,9 @@ HWND BooruPrompter::CreateListView(HWND parent, int id, const std::wstring& titl
 	ListView_SetExtendedListViewStyle(hwnd, LVS_EX_FULLROWSELECT);
 
 	// 背景・文字色を黒・白に設定
-	ListView_SetBkColor(hwnd, RGB(16,16,16));
-	ListView_SetTextBkColor(hwnd, RGB(16,16,16));
-	ListView_SetTextColor(hwnd, RGB(255,255,255));
+	ListView_SetBkColor(hwnd, LISTVIEW_BK_COLOR);
+	ListView_SetTextBkColor(hwnd, LISTVIEW_BK_COLOR);
+	ListView_SetTextColor(hwnd, LISTVIEW_TEXT_COLOR);
 
 	return hwnd;
 }
@@ -873,12 +878,12 @@ LRESULT CALLBACK BooruPrompter::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, 
 					LPNMLVCUSTOMDRAW lplvcd = (LPNMLVCUSTOMDRAW)lParam;
 					switch (lplvcd->nmcd.dwDrawStage) {
 					case CDDS_PREPAINT:
-						lplvcd->clrTextBk = RGB(0,0,0); // リスト全体の背景も黒
+						lplvcd->clrTextBk = LISTVIEW_BK_COLOR;
 						return CDRF_NOTIFYITEMDRAW | CDRF_NEWFONT;
 					case CDDS_ITEMPREPAINT: {
 						int row = static_cast<int>(lplvcd->nmcd.dwItemSpec);
-						lplvcd->clrText = RGB(255,255,255);
-						lplvcd->clrTextBk = (row % 2 == 0) ? RGB(16,16,16) : RGB(32,32,32);
+						lplvcd->clrText = LISTVIEW_TEXT_COLOR;
+						lplvcd->clrTextBk = (row % 2 == 0) ? LISTVIEW_BK_COLOR : LISTVIEW_ALT_COLOR;
 						return CDRF_DODEFAULT;
 					}
 					}
