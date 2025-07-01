@@ -161,8 +161,15 @@
   <ItemGroup>
     <ClInclude Include="BooruPrompter.h" />
     <ClInclude Include="framework.h" />
+    <ClInclude Include="ImageInfo.h" />
     <ClInclude Include="ImageTagDetector.h" />
     <ClInclude Include="Resource.h" />
+    <ClInclude Include="Suggestion.h" />
+    <ClInclude Include="SuggestionHandler.h" />
+    <ClInclude Include="SuggestionManager.h" />
+    <ClInclude Include="SyntaxHighlighter.h" />
+    <ClInclude Include="TagListHandler.h" />
+    <ClInclude Include="TextUtils.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BooruDB.cpp" />
@@ -171,6 +178,7 @@
     <ClCompile Include="ImageTagDetector.cpp" />
     <ClCompile Include="SuggestionHandler.cpp" />
     <ClCompile Include="SuggestionManager.cpp" />
+    <ClCompile Include="SyntaxHighlighter.cpp" />
     <ClCompile Include="TagListHandler.cpp" />
     <ClCompile Include="TextUtils.cpp" />
   </ItemGroup>
@@ -183,6 +191,11 @@
   </ItemGroup>
   <ItemGroup>
     <CopyFileToFolders Include="..\external\booru-japanese-tag\danbooru-machine-jp.csv">
+      <FileType>Document</FileType>
+    </CopyFileToFolders>
+  </ItemGroup>
+  <ItemGroup>
+    <CopyFileToFolders Include="..\external\onnxruntime\lib\onnxruntime.dll">
       <FileType>Document</FileType>
     </CopyFileToFolders>
   </ItemGroup>
