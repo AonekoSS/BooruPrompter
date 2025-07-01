@@ -244,7 +244,7 @@ HWND BooruPrompter::CreateListView(HWND parent, int id, const std::wstring& titl
 		WS_CHILD | WS_VISIBLE | LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS,
 		0, 0, 0, 0,
 		parent,
-		(HMENU)id,
+		reinterpret_cast<HMENU>(static_cast<UINT_PTR>(id)),
 		GetModuleHandle(NULL),
 		NULL
 	);
@@ -421,7 +421,7 @@ void BooruPrompter::OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify) 
 	}
 
 	// コンテキストメニューのコマンド処理
-	if (id >= 1010 && id <= 1012) {
+	if (hwndCtl == m_hwndTagList) {
 		TagListHandler::OnTagListContextCommand(this, id);
 	}
 }
@@ -472,8 +472,9 @@ void BooruPrompter::ProcessImageFileAsync(const std::wstring& filePath) {
 			} else {
 				return ImageProcessingResult(IMAGE_PROCESSING_INIT_FAILED);
 			}
-		} catch (const std::exception& e) {
-			// エラーが発生した場合は初期化失敗として扱う
+		} catch (const std::exception&) {
+			// エラー処理 - ステータスバーに表示
+			UpdateProgress(0, L"画像処理中にエラーが発生しました");
 			return ImageProcessingResult(IMAGE_PROCESSING_INIT_FAILED);
 		}
 	});
@@ -630,7 +631,7 @@ int BooruPrompter::Run() {
 				try {
 					auto result = m_imageProcessingFuture.get();
 					OnImageProcessingComplete(result);
-				} catch (const std::exception& e) {
+				} catch (const std::exception&) {
 					// エラー処理 - ステータスバーに表示
 					UpdateProgress(0, L"画像処理中にエラーが発生しました");
 				}
