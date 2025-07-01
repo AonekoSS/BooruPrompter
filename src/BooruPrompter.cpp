@@ -261,7 +261,12 @@ HWND BooruPrompter::CreateListView(HWND parent, int id, const std::wstring& titl
 	}
 
 	// スタイル設定
-	ListView_SetExtendedListViewStyle(hwnd, LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
+	ListView_SetExtendedListViewStyle(hwnd, LVS_EX_FULLROWSELECT);
+
+	// 背景・文字色を黒・白に設定
+	ListView_SetBkColor(hwnd, RGB(16,16,16));
+	ListView_SetTextBkColor(hwnd, RGB(16,16,16));
+	ListView_SetTextColor(hwnd, RGB(255,255,255));
 
 	return hwnd;
 }
@@ -861,9 +866,28 @@ LRESULT CALLBACK BooruPrompter::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, 
 			pThis->OnCommand(hwnd, LOWORD(wParam), (HWND)lParam, HIWORD(wParam));
 			return 0;
 
-		case WM_NOTIFY:
+		case WM_NOTIFY: {
+			LPNMHDR pnmh = (LPNMHDR)lParam;
+			if (pnmh->hwndFrom == pThis->m_hwndTagList || pnmh->hwndFrom == pThis->m_hwndSuggestions) {
+				if (pnmh->code == NM_CUSTOMDRAW) {
+					LPNMLVCUSTOMDRAW lplvcd = (LPNMLVCUSTOMDRAW)lParam;
+					switch (lplvcd->nmcd.dwDrawStage) {
+					case CDDS_PREPAINT:
+						lplvcd->clrTextBk = RGB(0,0,0); // リスト全体の背景も黒
+						return CDRF_NOTIFYITEMDRAW | CDRF_NEWFONT;
+					case CDDS_ITEMPREPAINT: {
+						int row = static_cast<int>(lplvcd->nmcd.dwItemSpec);
+						lplvcd->clrText = RGB(255,255,255);
+						lplvcd->clrTextBk = (row % 2 == 0) ? RGB(16,16,16) : RGB(32,32,32);
+						return CDRF_DODEFAULT;
+					}
+					}
+				}
+			}
+			// カスタム描画以外は従来通りOnNotifyMessageを呼ぶ
 			pThis->OnNotifyMessage(hwnd, wParam, lParam);
 			break;
+		}
 
 		case WM_LBUTTONDOWN:
 			pThis->OnLButtonDown(hwnd, lParam);

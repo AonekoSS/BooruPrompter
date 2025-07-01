@@ -4,6 +4,7 @@
 #include <richedit.h>
 #include <shellapi.h>
 #include <objbase.h>
+#include <windows.h>
 
 #include "SyntaxHighlighter.h"
 
@@ -11,18 +12,17 @@
 SyntaxHighlighter::SyntaxHighlighter() : m_hwndEdit(NULL), m_originalEditProc(NULL), m_hFont(NULL), m_hMsftedit(NULL), m_timerId(0), m_pendingColorize(false) {
     // レインボーカラーの初期化（黒背景に最適化、隣り合っても見分けやすい明るい色）
     m_rainbowColors = {
-        RGB(255, 100, 100),   // 赤
-        RGB(100, 255, 100),   // 緑
-        RGB(255, 255, 100),   // 黄
-        RGB(255, 100, 255),   // マゼンタ
-        RGB(100, 255, 255),   // シアン
-        RGB(255, 150, 100),   // オレンジ
-        RGB(100, 255, 150),   // ライトグリーン
-        RGB(255, 100, 150),   // ピンク
-        RGB(255, 200, 100),   // ゴールド
-        RGB(150, 255, 100),   // ライム
+        RGB( 25, 200, 245),
+        RGB(255, 160, 134),
+        RGB( 20, 228, 100),
+        RGB(255, 112, 144),
+        RGB(156, 255, 226),
+        RGB(255, 112, 240),
+        RGB(255, 233, 120),
+        RGB(185, 112, 255),
     };
 }
+
 
 SyntaxHighlighter::~SyntaxHighlighter() {
     StopColorizeTimer();
