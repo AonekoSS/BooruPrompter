@@ -303,58 +303,72 @@ void BooruPrompter::OnSize(HWND hwnd) {
 	const int clientHeight = rc.bottom - rc.top;
 	const int clientWidth = rc.right - rc.left;
 
+	// レイアウト計算と適用
+	auto layout = CalculateLayout(clientWidth, clientHeight);
+	ApplyLayout(layout);
+
+	// ステータスバーのサイズを更新（プログレスバーの位置計算のため）
+	SendMessage(m_hwndStatusBar, WM_SIZE, 0, 0);
+}
+
+BooruPrompter::LayoutInfo BooruPrompter::CalculateLayout(int clientWidth, int clientHeight) {
+	LayoutInfo layout;
+
 	// ツールバーとステータスバーの高さを取得
-	auto [toolbarHeight, statusHeight] = GetToolbarAndStatusHeight();
+	std::tie(layout.toolbarHeight, layout.statusHeight) = GetToolbarAndStatusHeight();
 
 	// スプリッター位置の初期化（初回のみ）
 	if (m_splitter.x == 0) {
 		m_splitter.x = clientWidth * 2 / 3;  // 初期位置は2/3
 	}
 	if (m_splitter.y == 0) {
-		m_splitter.y = (clientHeight - toolbarHeight - statusHeight) / 3;  // 初期位置は1/3
+		m_splitter.y = (clientHeight - layout.toolbarHeight - layout.statusHeight) / 3;  // 初期位置は1/3
 	}
 
 	// スプリッター位置の制限
 	const int maxSplitterX = clientWidth - DEFAULT_MIN_RIGHT_WIDTH;
 	const int minSplitterX = DEFAULT_MIN_LEFT_WIDTH;
-	const int maxSplitterY = clientHeight - statusHeight - DEFAULT_MIN_BOTTOM_HEIGHT;
-	const int minSplitterY = toolbarHeight + DEFAULT_MIN_TOP_HEIGHT;
+	const int maxSplitterY = clientHeight - layout.statusHeight - DEFAULT_MIN_BOTTOM_HEIGHT;
+	const int minSplitterY = layout.toolbarHeight + DEFAULT_MIN_TOP_HEIGHT;
 
-	m_splitter.x = std::clamp(m_splitter.x, minSplitterX, maxSplitterX);
-	m_splitter.y = std::clamp(m_splitter.y, minSplitterY, maxSplitterY);
+	layout.splitter.x = std::clamp(m_splitter.x, minSplitterX, maxSplitterX);
+	layout.splitter.y = std::clamp(m_splitter.y, minSplitterY, maxSplitterY);
 
 	// 4分割の設定
-	const int leftWidth = m_splitter.x;
-	const int rightWidth = clientWidth - leftWidth;
-	const int topHeight = m_splitter.y - toolbarHeight;
-	const int bottomHeight = clientHeight - m_splitter.y - statusHeight;
+	layout.leftWidth = layout.splitter.x;
+	layout.rightWidth = clientWidth - layout.leftWidth;
+	layout.topHeight = layout.splitter.y - layout.toolbarHeight;
+	layout.bottomHeight = clientHeight - layout.splitter.y - layout.statusHeight;
 
+	return layout;
+}
+
+void BooruPrompter::ApplyLayout(const LayoutInfo& layout) {
 	// 左上: 入力欄
 	SetWindowPos(m_hwndEdit, NULL,
 		LAYOUT_MARGIN,
-		toolbarHeight + LAYOUT_MARGIN,
-		leftWidth - LAYOUT_MARGIN * 2,
-		topHeight - LAYOUT_MARGIN,
+		layout.toolbarHeight + LAYOUT_MARGIN,
+		layout.leftWidth - LAYOUT_MARGIN * 2,
+		layout.topHeight - LAYOUT_MARGIN,
 		SWP_NOZORDER);
 
 	// 左下: サジェストリスト
 	SetWindowPos(m_hwndSuggestions, NULL,
 		LAYOUT_MARGIN,
-		m_splitter.y + LAYOUT_MARGIN,
-		leftWidth - LAYOUT_MARGIN * 2,
-		bottomHeight - LAYOUT_MARGIN,
+		layout.splitter.y + LAYOUT_MARGIN,
+		layout.leftWidth - LAYOUT_MARGIN * 2,
+		layout.bottomHeight - LAYOUT_MARGIN,
 		SWP_NOZORDER);
 
 	// 右側: タグリスト
 	SetWindowPos(m_hwndTagList, NULL,
-		leftWidth + LAYOUT_MARGIN,
-		toolbarHeight + LAYOUT_MARGIN,
-		rightWidth - LAYOUT_MARGIN * 2,
-		clientHeight - toolbarHeight - statusHeight - LAYOUT_MARGIN * 2,
+		layout.leftWidth + LAYOUT_MARGIN,
+		layout.toolbarHeight + LAYOUT_MARGIN,
+		layout.rightWidth - LAYOUT_MARGIN * 2,
+		layout.toolbarHeight + layout.topHeight + layout.bottomHeight - LAYOUT_MARGIN * 2,
 		SWP_NOZORDER);
 
 	// プログレスバーの位置を更新（ステータスバー内の2番目のパーツ）
-	// ステータスバーの2番目のパーツの位置を取得
 	RECT partRect;
 	SendMessage(m_hwndStatusBar, SB_GETRECT, 1, (LPARAM)&partRect);
 
@@ -365,9 +379,6 @@ void BooruPrompter::OnSize(HWND hwnd) {
 		partRect.right - partRect.left - 4,
 		partRect.bottom - partRect.top - 4,
 		SWP_NOZORDER);
-
-	// ステータスバーのサイズを更新（プログレスバーの位置計算のため）
-	SendMessage(m_hwndStatusBar, WM_SIZE, 0, 0);
 }
 
 void BooruPrompter::OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify) {
@@ -384,37 +395,21 @@ void BooruPrompter::OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify) 
 		break;
 	case ID_PASTE:
 		// テキストをクリップボードから貼り付け
-		if (OpenClipboard(hwnd)) {
-			HANDLE hData = GetClipboardData(CF_UNICODETEXT);
-			if (hData) {
-				wchar_t* pszText = (wchar_t*)GlobalLock(hData);
-				if (pszText) {
-					SetWindowText(m_hwndEdit, pszText);
-					TagListHandler::SyncTagListFromPrompt(this, unicode_to_utf8(pszText));
-					m_suggestionManager.Request({});
-				}
-				GlobalUnlock(hData);
+		{
+			std::wstring text = GetFromClipboard();
+			if (!text.empty()) {
+				SetWindowText(m_hwndEdit, text.c_str());
+				TagListHandler::SyncTagListFromPrompt(this, unicode_to_utf8(text.c_str()));
+				m_suggestionManager.Request({});
 			}
-			CloseClipboard();
 		}
 		break;
 	case ID_COPY:
 		// コピー処理
 		{
 			std::wstring text = GetEditText();
-			if (!text.empty()) {
-				// クリップボードにコピー
-				if (OpenClipboard(m_hwnd)) {
-					EmptyClipboard();
-					HGLOBAL hData = GlobalAlloc(GMEM_MOVEABLE, (text.length() + 1) * sizeof(wchar_t));
-					if (hData) {
-						wchar_t* pData = (wchar_t*)GlobalLock(hData);
-						wcscpy_s(pData, text.length() + 1, text.c_str());
-						GlobalUnlock(hData);
-						SetClipboardData(CF_UNICODETEXT, hData);
-					}
-					CloseClipboard();
-				}
+			if (CopyToClipboard(text)) {
+				UpdateProgress(100, L"プロンプトをクリップボードにコピー");
 			}
 		}
 		break;
@@ -480,27 +475,6 @@ void BooruPrompter::ProcessImageFileAsync(const std::wstring& filePath) {
 	});
 }
 
-void BooruPrompter::ProcessImageFile(const std::wstring& filePath) {
-	// まずメタデータからプロンプトを取得
-	auto metadata = ReadFileInfo(filePath);
-	if (!metadata.empty()) {
-		SetEditText(metadata);
-		TagListHandler::SyncTagListFromPrompt(this, unicode_to_utf8(metadata.c_str()));
-		return;
-	}
-
-	// 駄目なら画像タグ検出
-	if (TryInitializeImageTagDetector()) {
-		auto detectedTags = m_imageTagDetector.DetectTags(filePath);
-
-		if (detectedTags.empty()) {
-			return;
-		}
-		TagListHandler::SyncTagList(this, detectedTags);
-		TagListHandler::UpdatePromptFromTagList(this);
-	}
-}
-
 void BooruPrompter::OnImageProcessingComplete(const ImageProcessingResult& result) {
 	switch (result.type) {
 	case IMAGE_PROCESSING_METADATA_SUCCESS: // メタデータ取得成功
@@ -558,26 +532,40 @@ void BooruPrompter::OnMouseMove(HWND hwnd, LPARAM lParam) {
 	// スプリッターカーソルの更新
 	UpdateSplitterCursor(x, y);
 
+	// タグリストのドラッグ処理
 	if (TagListHandler::IsDragging()) {
-		// ドラッグ中のマウス移動処理
-		POINT pt = { x, y };
-		MapWindowPoints(hwnd, m_hwndTagList, &pt, 1);
-		LVHITTESTINFO ht = { 0 };
-		ht.pt = pt;
-		int targetIndex = ListView_HitTest(m_hwndTagList, &ht);
-		for (int i = 0; i < static_cast<int>(TagListHandler::GetTagItemsCount()); ++i) {
-			ListView_SetItemState(m_hwndTagList, i, 0, LVIS_DROPHILITED);
-		}
-		if (targetIndex >= 0 && targetIndex < static_cast<int>(TagListHandler::GetTagItemsCount())) {
-			ListView_SetItemState(m_hwndTagList, targetIndex, LVIS_DROPHILITED, LVIS_DROPHILITED);
-			TagListHandler::UpdateDragTargetIndex(targetIndex);
-		} else {
-			TagListHandler::UpdateDragTargetIndex(-1);
-		}
+		HandleTagListDrag(x, y);
 	}
+	// スプリッターのドラッグ処理
 	else if (m_splitter.isDragging) {
-		HandleSplitterMouse(x, y, false, false);
+		HandleSplitterDrag(x, y);
 	}
+}
+
+void BooruPrompter::HandleTagListDrag(int x, int y) {
+	// ドラッグ中のマウス移動処理
+	POINT pt = { x, y };
+	MapWindowPoints(m_hwnd, m_hwndTagList, &pt, 1);
+	LVHITTESTINFO ht = { 0 };
+	ht.pt = pt;
+	int targetIndex = ListView_HitTest(m_hwndTagList, &ht);
+
+	// すべてのアイテムのハイライトをクリア
+	for (int i = 0; i < static_cast<int>(TagListHandler::GetTagItemsCount()); ++i) {
+		ListView_SetItemState(m_hwndTagList, i, 0, LVIS_DROPHILITED);
+	}
+
+	// ターゲットアイテムをハイライト
+	if (targetIndex >= 0 && targetIndex < static_cast<int>(TagListHandler::GetTagItemsCount())) {
+		ListView_SetItemState(m_hwndTagList, targetIndex, LVIS_DROPHILITED, LVIS_DROPHILITED);
+		TagListHandler::UpdateDragTargetIndex(targetIndex);
+	} else {
+		TagListHandler::UpdateDragTargetIndex(-1);
+	}
+}
+
+void BooruPrompter::HandleSplitterDrag(int x, int y) {
+	HandleSplitterMouse(x, y, false, false);
 }
 
 void BooruPrompter::OnLButtonDown(HWND hwnd, LPARAM lParam) {
@@ -757,6 +745,43 @@ void BooruPrompter::UpdateStatusText(const std::wstring& text) {
 void BooruPrompter::ClearProgress() {
 	SendMessage(m_hwndProgressBar, PBM_SETPOS, 0, 0);
 	UpdateStatusText(L"");
+}
+
+bool BooruPrompter::CopyToClipboard(const std::wstring& text) {
+	if (text.empty()) return false;
+
+	if (OpenClipboard(m_hwnd)) {
+		EmptyClipboard();
+		HGLOBAL hData = GlobalAlloc(GMEM_MOVEABLE, (text.length() + 1) * sizeof(wchar_t));
+		if (hData) {
+			wchar_t* pData = (wchar_t*)GlobalLock(hData);
+			wcscpy_s(pData, text.length() + 1, text.c_str());
+			GlobalUnlock(hData);
+			SetClipboardData(CF_UNICODETEXT, hData);
+			CloseClipboard();
+			return true;
+		}
+		CloseClipboard();
+	}
+	return false;
+}
+
+std::wstring BooruPrompter::GetFromClipboard() {
+	if (OpenClipboard(m_hwnd)) {
+		HANDLE hData = GetClipboardData(CF_UNICODETEXT);
+		if (hData) {
+			wchar_t* pszText = (wchar_t*)GlobalLock(hData);
+			if (pszText) {
+				std::wstring text(pszText);
+				GlobalUnlock(hData);
+				CloseClipboard();
+				return text;
+			}
+			GlobalUnlock(hData);
+		}
+		CloseClipboard();
+	}
+	return L"";
 }
 
 // 設定の保存・復帰機能

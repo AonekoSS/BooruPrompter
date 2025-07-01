@@ -67,7 +67,6 @@ private:
 	void AddListViewItem(HWND hwndListView, int index, const std::vector<std::wstring>& texts);
 
 	// 画像タグ検出関連
-	void ProcessImageFile(const std::wstring& filePath);
 	void ProcessImageFileAsync(const std::wstring& filePath);
 	void OnImageProcessingComplete(const ImageProcessingResult& result);
 	bool TryInitializeImageTagDetector();
@@ -110,4 +109,23 @@ private:
 	void UpdateProgress(int progress, const std::wstring& statusText);
 	void UpdateStatusText(const std::wstring& text);
 	void ClearProgress();
+
+	// クリップボード操作のユーティリティ
+	bool CopyToClipboard(const std::wstring& text);
+	std::wstring GetFromClipboard();
+
+	// レイアウト計算用の構造体
+	struct LayoutInfo {
+		int leftWidth, rightWidth, topHeight, bottomHeight;
+		int toolbarHeight, statusHeight;
+		POINT splitter;
+	};
+
+	// レイアウト計算
+	LayoutInfo CalculateLayout(int clientWidth, int clientHeight);
+	void ApplyLayout(const LayoutInfo& layout);
+
+	// マウスイベント処理の分離
+	void HandleTagListDrag(int x, int y);
+	void HandleSplitterDrag(int x, int y);
 };
