@@ -167,6 +167,7 @@
     <ClInclude Include="Suggestion.h" />
     <ClInclude Include="SuggestionHandler.h" />
     <ClInclude Include="SuggestionManager.h" />
+    <ClInclude Include="SyntaxHighlighter.h" />
     <ClInclude Include="TagListHandler.h" />
     <ClInclude Include="TextUtils.h" />
   </ItemGroup>
@@ -177,6 +178,7 @@
     <ClCompile Include="ImageTagDetector.cpp" />
     <ClCompile Include="SuggestionHandler.cpp" />
     <ClCompile Include="SuggestionManager.cpp" />
+    <ClCompile Include="SyntaxHighlighter.cpp" />
     <ClCompile Include="TagListHandler.cpp" />
     <ClCompile Include="TextUtils.cpp" />
   </ItemGroup>

@@ -70,7 +70,7 @@ void TagListHandler::UpdatePromptFromTagList(BooruPrompter* pThis) {
 		newPrompt += utf8_to_unicode(s_tagItems[i].tag);
 	}
 
-	pThis->SetEditText(newPrompt);
+	pThis->m_promptEditor->SetText(newPrompt);
 }
 
 void TagListHandler::SyncTagListFromPrompt(BooruPrompter* pThis, const std::string& prompt) {

@@ -30,11 +30,11 @@ void SuggestionHandler::OnSuggestionSelected(BooruPrompter* pThis, int index) {
 	const auto& selectedTag = utf8_to_unicode(pThis->m_currentSuggestions[index].tag);
 
 	// 現在のカーソル位置を取得
-	DWORD startPos, endPos;
-	SendMessage(pThis->m_hwndEdit, EM_GETSEL, (WPARAM)&startPos, (LPARAM)&endPos);
+	DWORD startPos = pThis->m_promptEditor->GetSelectionStart();
+	DWORD endPos = pThis->m_promptEditor->GetSelectionEnd();
 
 	// 現在のテキストを取得
-	std::wstring currentText = pThis->GetEditText();
+	std::wstring currentText = pThis->m_promptEditor->GetText();
 
 	// カーソル位置のワード範囲を取得
 	const auto [start, end] = get_span_at_cursor(currentText, startPos);
@@ -44,12 +44,12 @@ void SuggestionHandler::OnSuggestionSelected(BooruPrompter* pThis, int index) {
 	if (start != 0) insertTag = L" " + insertTag;
 	if (currentText[end] != L',') insertTag = insertTag + L", ";
 	std::wstring newText = currentText.substr(0, start) + insertTag + currentText.substr(end);
-	pThis->SetEditText(newText);
+	pThis->m_promptEditor->SetText(newText);
 
 	// カーソル位置を更新
 	auto newPos = start + insertTag.length();
-	SendMessage(pThis->m_hwndEdit, EM_SETSEL, newPos, newPos);
-	SetFocus(pThis->m_hwndEdit);
+	pThis->m_promptEditor->SetSelection(newPos, newPos);
+	pThis->m_promptEditor->SetFocus();
 
 	// タグリストを更新
 	TagListHandler::SyncTagListFromPrompt(pThis, unicode_to_utf8(newText.c_str()));
