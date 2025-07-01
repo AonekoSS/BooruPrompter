@@ -6,25 +6,24 @@
 #include "SyntaxHighlighter.h"
 
 
-SyntaxHighlighter::SyntaxHighlighter() : m_hwndEdit(NULL), m_originalEditProc(NULL), m_hFont(NULL), m_hMsftedit(NULL) {
-    // レインボーカラーの初期化
+SyntaxHighlighter::SyntaxHighlighter() : m_hwndEdit(NULL), m_originalEditProc(NULL), m_hFont(NULL), m_hMsftedit(NULL), m_timerId(0), m_pendingColorize(false) {
+    // レインボーカラーの初期化（黒背景に最適化、隣り合っても見分けやすい明るい色）
     m_rainbowColors = {
         RGB(255, 100, 100),   // 赤
-        RGB(255, 150, 100),   // オレンジ
-        RGB(255, 255, 100),   // 黄
         RGB(100, 255, 100),   // 緑
-        RGB(100, 100, 255),   // 青
-        RGB(200, 100, 255),   // 紫
-        RGB(255, 100, 200),   // ピンク
+        RGB(255, 255, 100),   // 黄
+        RGB(255, 100, 255),   // マゼンタ
         RGB(100, 255, 255),   // シアン
-        RGB(255, 200, 100),   // 薄いオレンジ
-        RGB(200, 255, 100),   // 薄い緑
-        RGB(100, 200, 255),   // 薄い青
-        RGB(255, 100, 150)    // 薄いピンク
+        RGB(255, 150, 100),   // オレンジ
+        RGB(100, 255, 150),   // ライトグリーン
+        RGB(255, 100, 150),   // ピンク
+        RGB(255, 200, 100),   // ゴールド
+        RGB(150, 255, 100),   // ライム
     };
 }
 
 SyntaxHighlighter::~SyntaxHighlighter() {
+    StopColorizeTimer();
     if (m_hwndEdit && m_originalEditProc) {
         SetWindowLongPtr(m_hwndEdit, GWLP_WNDPROC, (LONG_PTR)m_originalEditProc);
     }
@@ -123,32 +122,79 @@ void SyntaxHighlighter::SetFocus() {
     ::SetFocus(m_hwndEdit);
 }
 
+void SyntaxHighlighter::StartColorizeTimer() {
+    StopColorizeTimer();
+    m_timerId = SetTimer(m_hwndEdit, 1, 300, ColorizeTimerProc); // 300ms遅延
+}
+
+void SyntaxHighlighter::StopColorizeTimer() {
+    if (m_timerId) {
+        KillTimer(m_hwndEdit, m_timerId);
+        m_timerId = 0;
+    }
+}
+
+void CALLBACK SyntaxHighlighter::ColorizeTimerProc(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime) {
+    SyntaxHighlighter* highlighter = (SyntaxHighlighter*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
+    if (highlighter) {
+        highlighter->m_pendingColorize = false;
+        highlighter->ApplySyntaxHighlighting();
+
+        // コールバックを呼び出し
+        if (highlighter->m_textChangeCallback) {
+            highlighter->m_textChangeCallback();
+        }
+
+        KillTimer(hwnd, idEvent);
+    }
+}
+
 std::vector<TagColor> SyntaxHighlighter::ExtractTagsWithColors(const std::wstring& text) {
     std::vector<TagColor> tagColors;
-    std::wstring currentTag;
     int colorIndex = 0;
+    size_t startPos = 0;
+    size_t pos = 0;
 
-    for (size_t i = 0; i < text.length(); ++i) {
-        wchar_t ch = text[i];
-
-        if (ch == L' ' || ch == L',' || ch == L'\n' || ch == L'\r') {
-            // タグの終了
-            if (!currentTag.empty()) {
-                COLORREF color = m_rainbowColors[colorIndex % m_rainbowColors.size()];
-                tagColors.emplace_back(currentTag, color);
-                currentTag.clear();
-                colorIndex++;
+    while (pos < text.length()) {
+        // カンマを探す
+        size_t commaPos = text.find(L',', pos);
+        if (commaPos == std::wstring::npos) {
+            // 最後のタグ（カンマなし）
+            std::wstring tag = text.substr(startPos);
+            // 前後の空白を除去
+            while (!tag.empty() && (tag.front() == L' ' || tag.front() == L'\t' || tag.front() == L'\n' || tag.front() == L'\r')) {
+                tag.erase(0, 1);
             }
-        } else {
-            // タグの文字を追加
-            currentTag += ch;
-        }
-    }
+            while (!tag.empty() && (tag.back() == L' ' || tag.back() == L'\t' || tag.back() == L'\n' || tag.back() == L'\r')) {
+                tag.pop_back();
+            }
 
-    // 最後のタグを処理
-    if (!currentTag.empty()) {
-        COLORREF color = m_rainbowColors[colorIndex % m_rainbowColors.size()];
-        tagColors.emplace_back(currentTag, color);
+            if (!tag.empty()) {
+                COLORREF color = m_rainbowColors[colorIndex % m_rainbowColors.size()];
+                tagColors.emplace_back(tag, color);
+            }
+            break;
+        }
+
+        // カンマまでの範囲をタグとして抽出
+        std::wstring tag = text.substr(startPos, commaPos - startPos);
+        // 前後の空白を除去
+        while (!tag.empty() && (tag.front() == L' ' || tag.front() == L'\t' || tag.front() == L'\n' || tag.front() == L'\r')) {
+            tag.erase(0, 1);
+        }
+        while (!tag.empty() && (tag.back() == L' ' || tag.back() == L'\t' || tag.back() == L'\n' || tag.back() == L'\r')) {
+            tag.pop_back();
+        }
+
+        if (!tag.empty()) {
+            COLORREF color = m_rainbowColors[colorIndex % m_rainbowColors.size()];
+            tagColors.emplace_back(tag, color);
+            colorIndex++;
+        }
+
+        // 次のタグの開始位置を設定（カンマの次の位置）
+        pos = commaPos + 1;
+        startPos = pos;
     }
 
     return tagColors;
@@ -160,6 +206,13 @@ void SyntaxHighlighter::OnPaint(HWND hwnd) {
 }
 
 void SyntaxHighlighter::ColorizeText(const std::vector<TagColor>& tagColors) {
+    // 現在のカーソル位置を保存
+    DWORD startPos, endPos;
+    SendMessage(m_hwndEdit, EM_GETSEL, (WPARAM)&startPos, (LPARAM)&endPos);
+
+    // 再描画を一時的に無効化
+    SendMessage(m_hwndEdit, WM_SETREDRAW, FALSE, 0);
+
     // 既存の書式設定をクリア
     SendMessage(m_hwndEdit, EM_SETSEL, 0, -1);
     CHARFORMAT2W cf = {};
@@ -187,11 +240,19 @@ void SyntaxHighlighter::ColorizeText(const std::vector<TagColor>& tagColors) {
         currentPos = tagPos + tagColor.tag.length();
     }
 
-    // 選択をクリア
-    SendMessage(m_hwndEdit, EM_SETSEL, -1, -1);
+    // 元のカーソル位置を復元
+    SendMessage(m_hwndEdit, EM_SETSEL, startPos, endPos);
+
+    // 再描画を有効化して更新
+    SendMessage(m_hwndEdit, WM_SETREDRAW, TRUE, 0);
+    InvalidateRect(m_hwndEdit, NULL, TRUE);
 }
 
 void SyntaxHighlighter::ColorizeCommas() {
+    // 現在のカーソル位置を保存
+    DWORD startPos, endPos;
+    SendMessage(m_hwndEdit, EM_GETSEL, (WPARAM)&startPos, (LPARAM)&endPos);
+
     std::wstring text = GetText();
     size_t pos = 0;
 
@@ -209,8 +270,8 @@ void SyntaxHighlighter::ColorizeCommas() {
         pos++;
     }
 
-    // 選択をクリア
-    SendMessage(m_hwndEdit, EM_SETSEL, -1, -1);
+    // 元のカーソル位置を復元
+    SendMessage(m_hwndEdit, EM_SETSEL, startPos, endPos);
 }
 
 LRESULT CALLBACK SyntaxHighlighter::EditProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
@@ -224,17 +285,19 @@ LRESULT CALLBACK SyntaxHighlighter::EditProc(HWND hwnd, UINT uMsg, WPARAM wParam
     LRESULT result = CallWindowProc(pThis->m_originalEditProc, hwnd, uMsg, wParam, lParam);
 
     // テキスト変更イベントを処理
-    if (uMsg == WM_CHAR || uMsg == WM_PASTE || uMsg == WM_CUT || uMsg == WM_CLEAR) {
-        // 少し遅延してシンタックスハイライトを適用
-        SetTimer(hwnd, 1, 100, NULL);
-    } else if (uMsg == WM_TIMER && wParam == 1) {
-        KillTimer(hwnd, 1);
-        pThis->ApplySyntaxHighlighting();
-
-        // コールバックを呼び出し
-        if (pThis->m_textChangeCallback) {
-            pThis->m_textChangeCallback();
+    if (uMsg == WM_CHAR || uMsg == WM_PASTE || uMsg == WM_CUT || uMsg == WM_CLEAR || uMsg == WM_KEYDOWN) {
+        // テキストが実際に変更されたかチェック
+        std::wstring currentText = pThis->GetText();
+        if (currentText != pThis->m_lastText) {
+            pThis->m_lastText = currentText;
+            if (!pThis->m_pendingColorize) {
+                pThis->m_pendingColorize = true;
+                pThis->StartColorizeTimer();
+            }
         }
+    } else if (uMsg == WM_TIMER && wParam == 1) {
+        // タイマー処理はColorizeTimerProcで行われる
+        return result;
     }
 
     return result;

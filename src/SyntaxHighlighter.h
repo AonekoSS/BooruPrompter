@@ -58,6 +58,11 @@ private:
     // msftedit.dllのハンドル
     HMODULE m_hMsftedit;
 
+    // タイマー関連
+    UINT_PTR m_timerId;
+    bool m_pendingColorize;
+    std::wstring m_lastText;
+
     // タグの抽出と色付け
     std::vector<TagColor> ExtractTagsWithColors(const std::wstring& text);
 
@@ -71,4 +76,9 @@ private:
     // 色付け用のヘルパー関数
     void ColorizeText(const std::vector<TagColor>& tagColors);
     void ColorizeCommas();
+
+    // タイマー処理
+    void StartColorizeTimer();
+    void StopColorizeTimer();
+    static void CALLBACK ColorizeTimerProc(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime);
 };
