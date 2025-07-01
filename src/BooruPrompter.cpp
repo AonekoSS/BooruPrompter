@@ -63,7 +63,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	return app.Run();
 }
 
-BooruPrompter::BooruPrompter() : m_hwnd(NULL), m_hwndEdit(NULL), m_hwndSuggestions(NULL), m_hwndTagList(NULL), m_hwndToolbar(NULL), m_hwndStatusBar(NULL), m_hwndProgressBar(NULL), m_minLeftWidth(DEFAULT_MIN_LEFT_WIDTH), m_minRightWidth(DEFAULT_MIN_RIGHT_WIDTH), m_minTopHeight(DEFAULT_MIN_TOP_HEIGHT), m_minBottomHeight(DEFAULT_MIN_BOTTOM_HEIGHT), m_windowX(CW_USEDEFAULT), m_windowY(CW_USEDEFAULT), m_windowWidth(DEFAULT_WINDOW_WIDTH), m_windowHeight(DEFAULT_WINDOW_HEIGHT) {}
+BooruPrompter::BooruPrompter() : m_hwnd(NULL), m_hwndEdit(NULL), m_hwndSuggestions(NULL), m_hwndTagList(NULL), m_hwndToolbar(NULL), m_hwndStatusBar(NULL), m_hwndProgressBar(NULL), m_windowX(CW_USEDEFAULT), m_windowY(CW_USEDEFAULT), m_windowWidth(DEFAULT_WINDOW_WIDTH), m_windowHeight(DEFAULT_WINDOW_HEIGHT) {}
 
 BooruPrompter::~BooruPrompter() {}
 
@@ -315,10 +315,10 @@ void BooruPrompter::OnSize(HWND hwnd) {
 	}
 
 	// スプリッター位置の制限
-	const int maxSplitterX = clientWidth - m_minRightWidth;
-	const int minSplitterX = m_minLeftWidth;
-	const int maxSplitterY = clientHeight - statusHeight - m_minBottomHeight;
-	const int minSplitterY = toolbarHeight + m_minTopHeight;
+	const int maxSplitterX = clientWidth - DEFAULT_MIN_RIGHT_WIDTH;
+	const int minSplitterX = DEFAULT_MIN_LEFT_WIDTH;
+	const int maxSplitterY = clientHeight - statusHeight - DEFAULT_MIN_BOTTOM_HEIGHT;
+	const int minSplitterY = toolbarHeight + DEFAULT_MIN_TOP_HEIGHT;
 
 	m_splitter.x = std::clamp(m_splitter.x, minSplitterX, maxSplitterX);
 	m_splitter.y = std::clamp(m_splitter.y, minSplitterY, maxSplitterY);
@@ -685,10 +685,10 @@ void BooruPrompter::HandleSplitterMouse(int x, int y, bool isDown, bool isUp) {
 
 		auto [toolbarHeight, statusHeight] = GetToolbarAndStatusHeight();
 
-		const int maxSplitterX = clientWidth - m_minRightWidth;
-		const int minSplitterX = m_minLeftWidth;
-		const int maxSplitterY = clientHeight - statusHeight - m_minBottomHeight;
-		const int minSplitterY = toolbarHeight + m_minTopHeight;
+		const int maxSplitterX = clientWidth - DEFAULT_MIN_RIGHT_WIDTH;
+		const int minSplitterX = DEFAULT_MIN_LEFT_WIDTH;
+		const int maxSplitterY = clientHeight - statusHeight - DEFAULT_MIN_BOTTOM_HEIGHT;
+		const int minSplitterY = toolbarHeight + DEFAULT_MIN_TOP_HEIGHT;
 
 		bool needsUpdate = false;
 

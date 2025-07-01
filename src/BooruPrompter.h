@@ -90,12 +90,6 @@ private:
 		int draggingType = SPLITTER_TYPE_NONE;
 	} m_splitter;
 
-	// レイアウト制約
-	int m_minLeftWidth;
-	int m_minRightWidth;
-	int m_minTopHeight;
-	int m_minBottomHeight;
-
 	// 設定保存用のメンバー変数
 	int m_windowX;
 	int m_windowY;
