@@ -102,20 +102,20 @@ std::wstring trim(const std::wstring& text) {
 	if (text.empty()) {
 		return std::wstring();
 	}
-	std::wstring ward = text;
-	ward.erase(0, ward.find_first_not_of(L" \t"));
-	ward.erase(ward.find_last_not_of(L" \t") + 1);
-	return ward;
+	size_t first = text.find_first_not_of(L" \t\n\r");
+	if (first == std::wstring::npos) return L"";
+	size_t last = text.find_last_not_of(L" \t\n\r");
+	return text.substr(first, last - first + 1);
 }
 
 std::string trim(const std::string& text) {
 	if (text.empty()) {
 		return std::string();
 	}
-	std::string ward = text;
-	ward.erase(0, ward.find_first_not_of(" \t"));
-	ward.erase(ward.find_last_not_of(" \t") + 1);
-	return ward;
+	size_t first = text.find_first_not_of(" \t\n\r");
+	if (first == std::string::npos) return "";
+	size_t last = text.find_last_not_of(" \t\n\r");
+	return text.substr(first, last - first + 1);
 }
 
 // カンマ区切り文字列からタグを抽出
