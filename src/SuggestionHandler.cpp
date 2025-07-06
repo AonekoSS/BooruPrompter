@@ -37,7 +37,7 @@ void SuggestionHandler::OnSuggestionSelected(BooruPrompter* pThis, int index) {
 	std::wstring currentText = pThis->m_promptEditor->GetText();
 
 	// カーソル位置のワード範囲を取得
-	const auto [start, end] = get_span_at_cursor(currentText, startPos);
+	const auto [start, end] = get_span_at_cursor(currentText, static_cast<int>(startPos));
 
 	// タグを挿入
 	auto insertTag = selectedTag;
@@ -48,7 +48,7 @@ void SuggestionHandler::OnSuggestionSelected(BooruPrompter* pThis, int index) {
 
 	// カーソル位置を更新
 	auto newPos = start + insertTag.length();
-	pThis->m_promptEditor->SetSelection(newPos, newPos);
+	pThis->m_promptEditor->SetSelection(static_cast<DWORD>(newPos), static_cast<DWORD>(newPos));
 	pThis->m_promptEditor->SetFocus();
 
 	// タグリストを更新

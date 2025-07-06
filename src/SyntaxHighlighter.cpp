@@ -1,14 +1,12 @@
 ﻿#include "framework.h"
+#include <richedit.h>
 #include <functional>
 #include <algorithm>
-#include <richedit.h>
-#include <shellapi.h>
-#include <objbase.h>
-#include <windows.h>
+
 #include "SyntaxHighlighter.h"
 #include "TextUtils.h"
 
-SyntaxHighlighter::SyntaxHighlighter() : m_hwndEdit(NULL), m_originalEditProc(NULL), m_hFont(NULL), m_hMsftedit(NULL), m_timerId(0), m_pendingColorize(false) {
+SyntaxHighlighter::SyntaxHighlighter() : m_hwndEdit(NULL), m_originalEditProc(NULL), m_hFont(NULL), m_hMsftedit(NULL), m_timerId(0), m_pendingColorize(false), m_isImeComposing(false) {
     m_rainbowColors = {
         RGB( 25, 200, 245),
         RGB(255, 160, 134),
@@ -124,14 +122,84 @@ std::wstring SyntaxHighlighter::GetText() const {
 }
 
 void SyntaxHighlighter::ApplySyntaxHighlighting() {
+    // IME入力中はシンタックスハイライトをスキップ
+    if (m_isImeComposing) {
+        return;
+    }
+
+    // カーソル・スクロール位置を保存
+    DWORD startPos, endPos;
+    SendMessage(m_hwndEdit, EM_GETSEL, (WPARAM)&startPos, (LPARAM)&endPos);
+    int firstVisibleLine = static_cast<int>(SendMessage(m_hwndEdit, EM_GETFIRSTVISIBLELINE, 0, 0));
+
+    // 再描画・選択表示を一時的に無効化
+    SendMessage(m_hwndEdit, WM_SETREDRAW, FALSE, 0);
+    SendMessage(m_hwndEdit, EM_HIDESELECTION, TRUE, 0);
+
     std::wstring text = GetText();
+
+    // 既存の書式設定をクリア（全選択せずに範囲指定でクリア）
+    CHARFORMAT2W cf = {};
+    cf.cbSize = sizeof(CHARFORMAT2W);
+    cf.dwMask = CFM_COLOR;
+    cf.crTextColor = RGB(255, 255, 255); // デフォルト色（白）
+
+    // 全範囲にデフォルト色を適用
+    SendMessage(m_hwndEdit, EM_SETSEL, 0, -1);
+    SendMessage(m_hwndEdit, EM_SETCHARFORMAT, SCF_SELECTION, (LPARAM)&cf);
 
     // タグの抽出と色付け
     auto tagColors = ExtractTagsWithColors(text);
-    ColorizeText(tagColors);
+    size_t currentPos = 0;
+
+    for (const auto& tagColor : tagColors) {
+        // タグの位置を検索
+        size_t tagPos = text.find(tagColor.tag, currentPos);
+        if (tagPos == std::wstring::npos) continue;
+
+        // タグの範囲を選択
+        SendMessage(m_hwndEdit, EM_SETSEL, tagPos, tagPos + tagColor.tag.length());
+
+        // 色を設定
+        CHARFORMAT2W cf = {};
+        cf.cbSize = sizeof(CHARFORMAT2W);
+        cf.dwMask = CFM_COLOR;
+        cf.crTextColor = tagColor.color;
+        SendMessage(m_hwndEdit, EM_SETCHARFORMAT, SCF_SELECTION, (LPARAM)&cf);
+
+        currentPos = tagPos + tagColor.tag.length();
+    }
 
     // カンマの色付け
-    ColorizeCommas();
+    size_t pos = 0;
+    while ((pos = text.find(L',', pos)) != std::wstring::npos) {
+        // カンマの位置を選択
+        SendMessage(m_hwndEdit, EM_SETSEL, pos, pos + 1);
+
+        // グレー色を設定
+        CHARFORMAT2W cf = {};
+        cf.cbSize = sizeof(CHARFORMAT2W);
+        cf.dwMask = CFM_COLOR;
+        cf.crTextColor = RGB(128, 128, 128);  // グレー
+        SendMessage(m_hwndEdit, EM_SETCHARFORMAT, SCF_SELECTION, (LPARAM)&cf);
+
+        pos++;
+    }
+
+    // カーソル・スクロール位置を復元
+    SendMessage(m_hwndEdit, EM_SETSEL, startPos, endPos);
+
+    // スクロール位置を復元（より安定した方法）
+    int currentFirstVisibleLine = static_cast<int>(SendMessage(m_hwndEdit, EM_GETFIRSTVISIBLELINE, 0, 0));
+    if (currentFirstVisibleLine != firstVisibleLine) {
+        SendMessage(m_hwndEdit, EM_LINESCROLL, 0, firstVisibleLine - currentFirstVisibleLine);
+    }
+
+    // 選択表示・再描画を有効化して即時更新
+    SendMessage(m_hwndEdit, EM_HIDESELECTION, FALSE, 0);
+    SendMessage(m_hwndEdit, WM_SETREDRAW, TRUE, 0);
+    InvalidateRect(m_hwndEdit, NULL, FALSE);
+    UpdateWindow(m_hwndEdit);
 }
 
 DWORD SyntaxHighlighter::GetSelectionStart() const {
@@ -156,7 +224,7 @@ void SyntaxHighlighter::SetFocus() {
 
 void SyntaxHighlighter::StartColorizeTimer() {
     StopColorizeTimer();
-    m_timerId = SetTimer(m_hwndEdit, 1, 300, ColorizeTimerProc); // 300ms遅延
+    m_timerId = SetTimer(m_hwndEdit, 1, 500, ColorizeTimerProc); // 500ms遅延に変更
 }
 
 void SyntaxHighlighter::StopColorizeTimer() {
@@ -172,7 +240,7 @@ void CALLBACK SyntaxHighlighter::ColorizeTimerProc(HWND hwnd, UINT uMsg, UINT_PT
         highlighter->m_pendingColorize = false;
         highlighter->ApplySyntaxHighlighting();
 
-        // コールバックを呼び出し
+        // コールバックを呼び出し（IME入力終了後の処理も含む）
         if (highlighter->m_textChangeCallback) {
             highlighter->m_textChangeCallback();
         }
@@ -200,89 +268,6 @@ void SyntaxHighlighter::OnPaint(HWND hwnd) {
     CallWindowProc(m_originalEditProc, hwnd, WM_PAINT, 0, 0);
 }
 
-void SyntaxHighlighter::ColorizeText(const std::vector<TagColor>& tagColors) {
-    // カーソル・スクロール位置を保存
-    DWORD startPos, endPos;
-    SendMessage(m_hwndEdit, EM_GETSEL, (WPARAM)&startPos, (LPARAM)&endPos);
-    POINT scrollPos = {0, 0};
-    SendMessage(m_hwndEdit, EM_GETSCROLLPOS, 0, (LPARAM)&scrollPos);
-
-    // 再描画・選択表示を一時的に無効化
-    SendMessage(m_hwndEdit, WM_SETREDRAW, FALSE, 0);
-    SendMessage(m_hwndEdit, EM_HIDESELECTION, TRUE, 0);
-
-    // 既存の書式設定をクリア
-    SendMessage(m_hwndEdit, EM_SETSEL, 0, -1);
-    CHARFORMAT2W cf = {};
-    cf.cbSize = sizeof(CHARFORMAT2W);
-    SendMessage(m_hwndEdit, EM_SETCHARFORMAT, SCF_SELECTION, (LPARAM)&cf);
-
-    std::wstring text = GetText();
-    size_t currentPos = 0;
-
-    for (const auto& tagColor : tagColors) {
-        // タグの位置を検索
-        size_t tagPos = text.find(tagColor.tag, currentPos);
-        if (tagPos == std::wstring::npos) continue;
-
-        // タグの範囲を選択
-        SendMessage(m_hwndEdit, EM_SETSEL, tagPos, tagPos + tagColor.tag.length());
-
-        // 色を設定
-        CHARFORMAT2W cf = {};
-        cf.cbSize = sizeof(CHARFORMAT2W);
-        cf.dwMask = CFM_COLOR;
-        cf.crTextColor = tagColor.color;
-        SendMessage(m_hwndEdit, EM_SETCHARFORMAT, SCF_SELECTION, (LPARAM)&cf);
-
-        currentPos = tagPos + tagColor.tag.length();
-    }
-
-    // カーソル・スクロール位置を復元
-    SendMessage(m_hwndEdit, EM_SETSEL, startPos, endPos);
-    SendMessage(m_hwndEdit, EM_SETSCROLLPOS, 0, (LPARAM)&scrollPos);
-
-    // 選択表示・再描画を有効化して即時更新
-    SendMessage(m_hwndEdit, EM_HIDESELECTION, FALSE, 0);
-    SendMessage(m_hwndEdit, WM_SETREDRAW, TRUE, 0);
-    UpdateWindow(m_hwndEdit);
-}
-
-void SyntaxHighlighter::ColorizeCommas() {
-    // カーソル・スクロール位置を保存
-    DWORD startPos, endPos;
-    SendMessage(m_hwndEdit, EM_GETSEL, (WPARAM)&startPos, (LPARAM)&endPos);
-    POINT scrollPos = {0, 0};
-    SendMessage(m_hwndEdit, EM_GETSCROLLPOS, 0, (LPARAM)&scrollPos);
-
-    // 選択表示を一時的に無効化
-    SendMessage(m_hwndEdit, EM_HIDESELECTION, TRUE, 0);
-
-    std::wstring text = GetText();
-    size_t pos = 0;
-
-    while ((pos = text.find(L',', pos)) != std::wstring::npos) {
-        // カンマの位置を選択
-        SendMessage(m_hwndEdit, EM_SETSEL, pos, pos + 1);
-
-        // グレー色を設定
-        CHARFORMAT2W cf = {};
-        cf.cbSize = sizeof(CHARFORMAT2W);
-        cf.dwMask = CFM_COLOR;
-        cf.crTextColor = RGB(128, 128, 128);  // グレー
-        SendMessage(m_hwndEdit, EM_SETCHARFORMAT, SCF_SELECTION, (LPARAM)&cf);
-
-        pos++;
-    }
-
-    // カーソル・スクロール位置を復元
-    SendMessage(m_hwndEdit, EM_SETSEL, startPos, endPos);
-    SendMessage(m_hwndEdit, EM_SETSCROLLPOS, 0, (LPARAM)&scrollPos);
-
-    // 選択表示を有効化
-    SendMessage(m_hwndEdit, EM_HIDESELECTION, FALSE, 0);
-}
-
 LRESULT CALLBACK SyntaxHighlighter::EditProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     SyntaxHighlighter* pThis = (SyntaxHighlighter*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
 
@@ -291,10 +276,21 @@ LRESULT CALLBACK SyntaxHighlighter::EditProc(HWND hwnd, UINT uMsg, WPARAM wParam
         return 0;
     }
 
+    // IMEメッセージの処理
+    if (uMsg == WM_IME_STARTCOMPOSITION) {
+        pThis->m_isImeComposing = true;
+        pThis->StopColorizeTimer(); // IME入力中はタイマーを停止
+    }
+    else if (uMsg == WM_IME_ENDCOMPOSITION) {
+        pThis->m_isImeComposing = false;
+        // IME入力終了後、少し遅延してからシンタックスハイライトを実行
+        pThis->StartColorizeTimer();
+    }
+
     LRESULT result = CallWindowProc(pThis->m_originalEditProc, hwnd, uMsg, wParam, lParam);
 
-    // テキスト変更イベントを処理
-    if (uMsg == WM_CHAR || uMsg == WM_PASTE || uMsg == WM_CUT || uMsg == WM_CLEAR || uMsg == WM_KEYDOWN) {
+    // テキスト変更イベントを処理（IME入力中は除外）
+    if (!pThis->m_isImeComposing && (uMsg == WM_CHAR || uMsg == WM_PASTE || uMsg == WM_CUT || uMsg == WM_CLEAR || uMsg == WM_KEYDOWN)) {
         // テキストが実際に変更されたかチェック
         std::wstring currentText = pThis->GetText();
         if (currentText != pThis->m_lastText) {

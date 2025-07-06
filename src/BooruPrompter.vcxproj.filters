@@ -95,5 +95,6 @@
     <CopyFileToFolders Include="..\external\booru-japanese-tag\danbooru-machine-jp.csv">
       <Filter>リソース ファイル</Filter>
     </CopyFileToFolders>
+    <CopyFileToFolders Include="..\external\onnxruntime\lib\onnxruntime.dll" />
   </ItemGroup>
 </Project>

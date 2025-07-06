@@ -47,6 +47,9 @@ public:
         m_textChangeCallback = callback;
     }
 
+    // IME状態の取得
+    bool IsImeComposing() const { return m_isImeComposing; }
+
 private:
     HWND m_hwndEdit;
     std::function<void()> m_textChangeCallback;
@@ -65,6 +68,9 @@ private:
     bool m_pendingColorize;
     std::wstring m_lastText;
 
+    // IME入力状態管理
+    bool m_isImeComposing;
+
     // タグの抽出と色付け
     std::vector<TagColor> ExtractTagsWithColors(const std::wstring& text);
 
@@ -74,10 +80,6 @@ private:
     // ウィンドウプロシージャ
     static LRESULT CALLBACK EditProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
     WNDPROC m_originalEditProc;
-
-    // 色付け用のヘルパー関数
-    void ColorizeText(const std::vector<TagColor>& tagColors);
-    void ColorizeCommas();
 
     // タイマー処理
     void StartColorizeTimer();
