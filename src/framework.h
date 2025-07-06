@@ -10,7 +10,9 @@
 #include <commctrl.h>
 #include <urlmon.h>
 #include <gdiplus.h>
+#include <imm.h>
 
 #pragma comment(lib, "urlmon.lib")
 #pragma comment(lib, "Comctl32.lib")
 #pragma comment(lib, "gdiplus.lib")
+#pragma comment(lib, "imm32.lib")

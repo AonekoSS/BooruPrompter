@@ -47,6 +47,9 @@ public:
         m_textChangeCallback = callback;
     }
 
+    // IME状態の取得
+    bool IsImeComposing() const { return m_isImeComposing; }
+
 private:
     HWND m_hwndEdit;
     std::function<void()> m_textChangeCallback;
@@ -64,6 +67,9 @@ private:
     UINT_PTR m_timerId;
     bool m_pendingColorize;
     std::wstring m_lastText;
+
+    // IME入力状態管理
+    bool m_isImeComposing;
 
     // タグの抽出と色付け
     std::vector<TagColor> ExtractTagsWithColors(const std::wstring& text);

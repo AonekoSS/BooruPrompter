@@ -596,6 +596,11 @@ void BooruPrompter::OnTextChanged(HWND hwnd) {
 	// 進捗表示をクリア
 	ClearProgress();
 
+	// IME入力中はサジェストを一時停止
+	if (m_promptEditor->IsImeComposing()) {
+		return;
+	}
+
 	// 現在のカーソル位置を取得
 	DWORD startPos = m_promptEditor->GetSelectionStart();
 	DWORD endPos = m_promptEditor->GetSelectionEnd();

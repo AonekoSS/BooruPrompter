@@ -1,14 +1,12 @@
 ﻿#include "framework.h"
+#include <richedit.h>
 #include <functional>
 #include <algorithm>
-#include <richedit.h>
-#include <shellapi.h>
-#include <objbase.h>
-#include <windows.h>
+
 #include "SyntaxHighlighter.h"
 #include "TextUtils.h"
 
-SyntaxHighlighter::SyntaxHighlighter() : m_hwndEdit(NULL), m_originalEditProc(NULL), m_hFont(NULL), m_hMsftedit(NULL), m_timerId(0), m_pendingColorize(false) {
+SyntaxHighlighter::SyntaxHighlighter() : m_hwndEdit(NULL), m_originalEditProc(NULL), m_hFont(NULL), m_hMsftedit(NULL), m_timerId(0), m_pendingColorize(false), m_isImeComposing(false) {
     m_rainbowColors = {
         RGB( 25, 200, 245),
         RGB(255, 160, 134),
@@ -124,6 +122,11 @@ std::wstring SyntaxHighlighter::GetText() const {
 }
 
 void SyntaxHighlighter::ApplySyntaxHighlighting() {
+    // IME入力中はシンタックスハイライトをスキップ
+    if (m_isImeComposing) {
+        return;
+    }
+
     std::wstring text = GetText();
 
     // タグの抽出と色付け
@@ -172,7 +175,7 @@ void CALLBACK SyntaxHighlighter::ColorizeTimerProc(HWND hwnd, UINT uMsg, UINT_PT
         highlighter->m_pendingColorize = false;
         highlighter->ApplySyntaxHighlighting();
 
-        // コールバックを呼び出し
+        // コールバックを呼び出し（IME入力終了後の処理も含む）
         if (highlighter->m_textChangeCallback) {
             highlighter->m_textChangeCallback();
         }
@@ -291,10 +294,21 @@ LRESULT CALLBACK SyntaxHighlighter::EditProc(HWND hwnd, UINT uMsg, WPARAM wParam
         return 0;
     }
 
+    // IMEメッセージの処理
+    if (uMsg == WM_IME_STARTCOMPOSITION) {
+        pThis->m_isImeComposing = true;
+        pThis->StopColorizeTimer(); // IME入力中はタイマーを停止
+    }
+    else if (uMsg == WM_IME_ENDCOMPOSITION) {
+        pThis->m_isImeComposing = false;
+        // IME入力終了後、少し遅延してからシンタックスハイライトを実行
+        pThis->StartColorizeTimer();
+    }
+
     LRESULT result = CallWindowProc(pThis->m_originalEditProc, hwnd, uMsg, wParam, lParam);
 
-    // テキスト変更イベントを処理
-    if (uMsg == WM_CHAR || uMsg == WM_PASTE || uMsg == WM_CUT || uMsg == WM_CLEAR || uMsg == WM_KEYDOWN) {
+    // テキスト変更イベントを処理（IME入力中は除外）
+    if (!pThis->m_isImeComposing && (uMsg == WM_CHAR || uMsg == WM_PASTE || uMsg == WM_CUT || uMsg == WM_CLEAR || uMsg == WM_KEYDOWN)) {
         // テキストが実際に変更されたかチェック
         std::wstring currentText = pThis->GetText();
         if (currentText != pThis->m_lastText) {
