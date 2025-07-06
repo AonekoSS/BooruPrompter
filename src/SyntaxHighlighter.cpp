@@ -130,7 +130,7 @@ void SyntaxHighlighter::ApplySyntaxHighlighting() {
     // カーソル・スクロール位置を保存
     DWORD startPos, endPos;
     SendMessage(m_hwndEdit, EM_GETSEL, (WPARAM)&startPos, (LPARAM)&endPos);
-    int firstVisibleLine = SendMessage(m_hwndEdit, EM_GETFIRSTVISIBLELINE, 0, 0);
+    int firstVisibleLine = static_cast<int>(SendMessage(m_hwndEdit, EM_GETFIRSTVISIBLELINE, 0, 0));
 
     // 再描画・選択表示を一時的に無効化
     SendMessage(m_hwndEdit, WM_SETREDRAW, FALSE, 0);
@@ -190,7 +190,7 @@ void SyntaxHighlighter::ApplySyntaxHighlighting() {
     SendMessage(m_hwndEdit, EM_SETSEL, startPos, endPos);
 
     // スクロール位置を復元（より安定した方法）
-    int currentFirstVisibleLine = SendMessage(m_hwndEdit, EM_GETFIRSTVISIBLELINE, 0, 0);
+    int currentFirstVisibleLine = static_cast<int>(SendMessage(m_hwndEdit, EM_GETFIRSTVISIBLELINE, 0, 0));
     if (currentFirstVisibleLine != firstVisibleLine) {
         SendMessage(m_hwndEdit, EM_LINESCROLL, 0, firstVisibleLine - currentFirstVisibleLine);
     }
