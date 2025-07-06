@@ -81,10 +81,6 @@ private:
     static LRESULT CALLBACK EditProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
     WNDPROC m_originalEditProc;
 
-    // 色付け用のヘルパー関数
-    void ColorizeText(const std::vector<TagColor>& tagColors);
-    void ColorizeCommas();
-
     // タイマー処理
     void StartColorizeTimer();
     void StopColorizeTimer();
