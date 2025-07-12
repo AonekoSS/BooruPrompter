@@ -108,7 +108,7 @@ bool SyntaxHighlighter::Initialize(HWND hwndParent, int x, int y, int width, int
 }
 
 void SyntaxHighlighter::SetText(const std::wstring& text) {
-	SetWindowText(m_hwndEdit, text.c_str());
+	SetWindowText(m_hwndEdit, newlines_for_edit(text).c_str());
 	ApplySyntaxHighlighting();
 }
 
@@ -116,7 +116,7 @@ std::wstring SyntaxHighlighter::GetText() const {
 	const int length = GetWindowTextLength(m_hwndEdit) + 1;
 	std::vector<wchar_t> buffer(length);
 	GetWindowText(m_hwndEdit, buffer.data(), length);
-	return std::wstring(buffer.data());
+	return newlines_for_parse(std::wstring(buffer.data()));
 }
 
 void SyntaxHighlighter::ApplySyntaxHighlighting() {
@@ -146,13 +146,12 @@ void SyntaxHighlighter::ApplySyntaxHighlighting() {
 
 	// テキストを取得してタグを抽出
 	std::wstring text = GetText();
-	text.erase(std::remove(text.begin(), text.end(), L'\r'), text.end());
 	auto tagColors = ExtractTagsWithColors(text);
 
 	// タグの色付け
+	size_t pos = 0;
 	for (const auto& tagColor : tagColors) {
-		size_t pos = 0;
-		while ((pos = text.find(tagColor.tag, pos)) != std::wstring::npos) {
+		if ((pos = text.find(tagColor.tag, pos)) != std::wstring::npos) {
 			// タグの範囲を選択
 			SendMessage(m_hwndEdit, EM_SETSEL, pos, pos + tagColor.tag.length());
 

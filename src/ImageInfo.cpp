@@ -166,7 +166,7 @@ static std::string ReadPNGInfo(const std::wstring& filePath) {
 			std::vector<std::string> captions;
 			captions.insert(captions.end(), base_caption.begin(), base_caption.end());
 			captions.insert(captions.end(), char_caption.begin(), char_caption.end());
-			std::string prompt = join(captions, ",\r\n");
+			std::string prompt = join(captions, ",\n");
 			return prompt;
 		}
 	}
