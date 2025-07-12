@@ -33,3 +33,7 @@ std::string trim(const std::string& text);
 
 // 文字列を結合
 std::string join(const std::vector<std::string>& strings, const std::string& separator);
+
+// 改行コードのエスケープ・アンエスケープ
+std::wstring escape_newlines(const std::wstring& text);
+std::wstring unescape_newlines(const std::wstring& text);

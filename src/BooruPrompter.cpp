@@ -824,7 +824,7 @@ void BooruPrompter::SaveSettings() {
 	WritePrivateProfileString(L"Window", L"Y", std::to_wstring(windowRect.top).c_str(), iniPath.c_str());
 	WritePrivateProfileString(L"Window", L"Width", std::to_wstring(windowRect.right - windowRect.left).c_str(), iniPath.c_str());
 	WritePrivateProfileString(L"Window", L"Height", std::to_wstring(windowRect.bottom - windowRect.top).c_str(), iniPath.c_str());
-	WritePrivateProfileString(L"Prompt", L"Text", currentPrompt.c_str(), iniPath.c_str());
+	WritePrivateProfileString(L"Prompt", L"Text", escape_newlines(currentPrompt).c_str(), iniPath.c_str());
 }
 
 void BooruPrompter::LoadSettings() {
@@ -839,7 +839,7 @@ void BooruPrompter::LoadSettings() {
 	// プロンプトテキストを読み込み
 	wchar_t promptBuffer[4096];
 	GetPrivateProfileString(L"Prompt", L"Text", L"", promptBuffer, 4096, iniPath.c_str());
-	m_savedPrompt = std::wstring(promptBuffer);
+	m_savedPrompt = unescape_newlines(std::wstring(promptBuffer));
 
 	// ウィンドウが画面外にある場合はデフォルト位置に修正
 	RECT workArea;
