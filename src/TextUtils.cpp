@@ -167,3 +167,13 @@ std::vector<std::string> split_string(const std::string& str, char delimiter) {
 
 	return tokens;
 }
+
+// 文字列を結合
+std::string join(const std::vector<std::string>& strings, const std::string& separator){
+	std::string result;
+	for (const auto& str : strings) {
+		result += str;
+		result += separator;
+	}
+	return result.substr(0, result.length() - separator.length());
+}

@@ -30,3 +30,6 @@ std::vector<std::string> split_string(const std::string& str, char delimiter);
 // トリミング
 std::wstring trim(const std::wstring& text);
 std::string trim(const std::string& text);
+
+// 文字列を結合
+std::string join(const std::vector<std::string>& strings, const std::string& separator);

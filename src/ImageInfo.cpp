@@ -71,26 +71,35 @@ static std::vector<std::vector<uint8_t>> ReadPNG_TextChunks(const std::wstring& 
 	return chunks;
 }
 
-// JSON形式のパラメータからプロンプトを抽出
-static std::string ExtractPromptFromJson(const std::string& parameters) {
-	const std::string prompt_key = "\"full_prompt\":";
-	auto prompt_pos = parameters.find(prompt_key);
-	if (prompt_pos == std::string::npos) {
-		return std::string();
+static std::vector<std::string> ExtractJsonParams(const std::string& json, const std::string& key) {
+	std::vector<std::string> results;
+	const std::string& handle = "\"" + key + "\":";
+	size_t pos = 0;
+
+	while (true) {
+		auto param_pos = json.find(handle, pos);
+		if (param_pos == std::string::npos) {
+			break;
+		}
+
+		auto param = json.substr(param_pos + handle.length());
+		auto begin = param.find('"');
+		if (begin == std::string::npos) {
+			pos = param_pos + handle.length();
+			continue;
+		}
+
+		auto end = param.find('"', begin + 1);
+		if (end == std::string::npos) {
+			pos = param_pos + handle.length();
+			continue;
+		}
+
+		results.push_back(param.substr(begin + 1, end - begin - 1));
+		pos = param_pos + handle.length() + end + 1;
 	}
 
-	auto param = parameters.substr(prompt_pos + prompt_key.length());
-	auto begin = param.find('"');
-	if (begin == std::string::npos) {
-		return std::string();
-	}
-
-	auto end = param.find('"', begin + 1);
-	if (end == std::string::npos) {
-		return std::string();
-	}
-
-	return param.substr(begin + 1, end - begin - 1);
+	return results;
 }
 
 // 通常形式のパラメータからプロンプトを抽出
@@ -118,7 +127,8 @@ static std::string ReadPNGInfo(const std::wstring& filePath) {
 
 	// パラメータ情報を取り出す
 	std::string parameters;
-	bool parameters_is_json = false;
+	std::string nai_json;
+	bool fooocus_scheme = false;
 	for (const auto& chunk : chunks) {
 		std::string data(reinterpret_cast<const char*>(chunk.data()), chunk.size());
 
@@ -134,15 +144,41 @@ static std::string ReadPNGInfo(const std::wstring& filePath) {
 			continue;
 		}
 
+		// NovelAIのJSON形式
+		if (keyword == "Comment") {
+			nai_json = text;
+			continue;
+		}
+
 		// Fooocus固有のチャンク（これがfooocusならパラメータはjson形式）
 		if (keyword == "fooocus_scheme") {
-			if (text == "fooocus") parameters_is_json = true;
+			if (text == "fooocus") fooocus_scheme = true;
 			continue;
 		}
 	}
 
-	// パラメータからプロンプトを取り出す
-	return (parameters_is_json) ? ExtractPromptFromJson(parameters) : ExtractPromptFromNormal(parameters);
+	// NovelAI V4のJSON形式からプロンプトを取り出す
+	if (!nai_json.empty()) {
+		nai_json = nai_json.substr(0, nai_json.find("\"v4_negative_prompt\"")); // ネガティブプロンプトは不要
+		auto base_caption = ExtractJsonParams(nai_json, "base_caption");
+		auto char_caption = ExtractJsonParams(nai_json, "char_caption");
+		if (!base_caption.empty() && !char_caption.empty()) {
+			std::vector<std::string> captions;
+			captions.insert(captions.end(), base_caption.begin(), base_caption.end());
+			captions.insert(captions.end(), char_caption.begin(), char_caption.end());
+			std::string prompt = join(captions, ",\r\n");
+			return prompt;
+		}
+	}
+
+	// FooocusのJSON形式からプロンプトを取り出す
+	if (fooocus_scheme) {
+		auto params = ExtractJsonParams(parameters, "full_prompt");
+		if (params.empty()) return std::string();
+		return params[0];
+	}
+
+	return ExtractPromptFromNormal(parameters);
 }
 
 // EXIFチャンクからプロンプトを取り出す
