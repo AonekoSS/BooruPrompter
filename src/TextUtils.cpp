@@ -128,8 +128,8 @@ std::vector<std::string> extract_tags_from_text(const std::string& text) {
 	size_t end = 0;
 
 	while (end < text.length()) {
-		// 次のカンマを探す
-		end = text.find(',', start);
+		// 次のカンマまたは改行を探す
+		end = text.find_first_of(",\n", start);
 		if (end == std::string::npos) {
 			end = text.length();
 		}
@@ -143,7 +143,12 @@ std::vector<std::string> extract_tags_from_text(const std::string& text) {
 			}
 		}
 
-		// 次の開始位置を設定（カンマの次の位置）
+		// 改行コードの場合、改行コード自体もタグとして追加
+		if (end < text.length() && text[end] == '\n') {
+			tags.push_back("\n");
+		}
+
+		// 次の開始位置を設定（区切り文字の次の位置）
 		start = end + 1;
 	}
 

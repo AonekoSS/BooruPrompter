@@ -31,11 +31,13 @@ public:
 	TEST_METHOD(TestGetSpanAtCursorEmpty);
 	TEST_METHOD(TestGetSpanAtCursorBoundary);
 
-	// タグ抽出のテスト
-	TEST_METHOD(TestExtractTagsFromText);
-	TEST_METHOD(TestExtractTagsFromTextEmpty);
-	TEST_METHOD(TestExtractTagsFromTextSingle);
-	TEST_METHOD(TestExtractTagsFromTextMultiple);
+	        // タグ抽出のテスト
+        TEST_METHOD(TestExtractTagsFromText);
+        TEST_METHOD(TestExtractTagsFromTextEmpty);
+        TEST_METHOD(TestExtractTagsFromTextSingle);
+        TEST_METHOD(TestExtractTagsFromTextMultiple);
+        TEST_METHOD(TestExtractTagsFromTextWithNewlines);
+        TEST_METHOD(TestExtractTagsFromTextMixedDelimiters);
 
 	// 文字列分割のテスト
 	TEST_METHOD(TestSplitString);

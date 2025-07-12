@@ -175,6 +175,30 @@ namespace TextUtilsTest {
 		Assert::AreEqual("tag 3 tag", tags[2].c_str());
 	}
 
+	void TextUtilsTest::TestExtractTagsFromTextWithNewlines() {
+		// 改行区切りのタグ抽出テスト
+		std::string text = "tag1\ntag2\ntag3";
+		std::vector<std::string> tags = extract_tags_from_text(text);
+		Assert::AreEqual(5, (int)tags.size());
+		Assert::AreEqual("tag1", tags[0].c_str());
+		Assert::AreEqual("\n", tags[1].c_str());
+		Assert::AreEqual("tag2", tags[2].c_str());
+		Assert::AreEqual("\n", tags[3].c_str());
+		Assert::AreEqual("tag3", tags[4].c_str());
+	}
+
+	void TextUtilsTest::TestExtractTagsFromTextMixedDelimiters() {
+		// カンマと改行が混在するタグ抽出テスト
+		std::string text = "tag1,tag2\ntag3,tag4";
+		std::vector<std::string> tags = extract_tags_from_text(text);
+		Assert::AreEqual(5, (int)tags.size());
+		Assert::AreEqual("tag1", tags[0].c_str());
+		Assert::AreEqual("tag2", tags[1].c_str());
+		Assert::AreEqual("\n", tags[2].c_str());
+		Assert::AreEqual("tag3", tags[3].c_str());
+		Assert::AreEqual("tag4", tags[4].c_str());
+	}
+
 	void TextUtilsTest::TestSplitString() {
 		// 基本的な文字列分割のテスト
 		std::string str = "a,b,c";
