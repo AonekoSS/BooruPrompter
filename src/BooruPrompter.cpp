@@ -614,6 +614,7 @@ void BooruPrompter::OnTextChanged(HWND hwnd) {
 
 	// サジェスト開始
 	m_suggestionManager.Request(unicode_to_utf8(currentWord.c_str()));
+	if (!currentWord.empty()) UpdateStatusText(L"サジェスト中： " + currentWord);
 
 	// プロンプトが変更されたのでタグリストを更新
 	TagListHandler::SyncTagListFromPrompt(this, unicode_to_utf8(currentText.c_str()));
@@ -824,7 +825,7 @@ void BooruPrompter::SaveSettings() {
 	WritePrivateProfileString(L"Window", L"Y", std::to_wstring(windowRect.top).c_str(), iniPath.c_str());
 	WritePrivateProfileString(L"Window", L"Width", std::to_wstring(windowRect.right - windowRect.left).c_str(), iniPath.c_str());
 	WritePrivateProfileString(L"Window", L"Height", std::to_wstring(windowRect.bottom - windowRect.top).c_str(), iniPath.c_str());
-	WritePrivateProfileString(L"Prompt", L"Text", currentPrompt.c_str(), iniPath.c_str());
+	WritePrivateProfileString(L"Prompt", L"Text", escape_newlines(currentPrompt).c_str(), iniPath.c_str());
 }
 
 void BooruPrompter::LoadSettings() {
@@ -839,7 +840,7 @@ void BooruPrompter::LoadSettings() {
 	// プロンプトテキストを読み込み
 	wchar_t promptBuffer[4096];
 	GetPrivateProfileString(L"Prompt", L"Text", L"", promptBuffer, 4096, iniPath.c_str());
-	m_savedPrompt = std::wstring(promptBuffer);
+	m_savedPrompt = unescape_newlines(std::wstring(promptBuffer));
 
 	// ウィンドウが画面外にある場合はデフォルト位置に修正
 	RECT workArea;

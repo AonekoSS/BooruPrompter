@@ -63,13 +63,13 @@ void TagListHandler::AddTagToList(BooruPrompter* pThis, const Suggestion& sugges
 
 void TagListHandler::UpdatePromptFromTagList(BooruPrompter* pThis) {
 	std::wstring newPrompt;
+	bool isFirst = true;
 	for (size_t i = 0; i < s_tagItems.size(); ++i) {
-		if (i > 0) {
-			newPrompt += L", ";
-		}
-		newPrompt += utf8_to_unicode(s_tagItems[i].tag);
+		auto tag = utf8_to_unicode(s_tagItems[i].tag);
+		if (!isFirst) newPrompt += L", ";
+		isFirst = tag == L"\n";
+		newPrompt += tag;
 	}
-
 	pThis->m_promptEditor->SetText(newPrompt);
 }
 

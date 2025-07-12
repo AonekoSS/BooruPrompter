@@ -73,17 +73,16 @@ bool utf8_has_multibyte(const std::string& str) {
 }
 
 // カーソル位置のワード範囲取得
-std::tuple<size_t,size_t> get_span_at_cursor(const std::wstring& text, int pos) {
-
-	// カーソル位置の前後のカンマを探す
-	size_t start = text.rfind(L',', (pos > 0)? pos-1 : 0);
-	size_t end = text.find(L',', pos);
+std::tuple<size_t, size_t> get_span_at_cursor(const std::wstring& text, int pos) {
+	// カーソル位置の前後のカンマまたは改行を探す
+	size_t start = text.find_last_of(L",\n", (pos > 0) ? pos - 1 : 0);
+	size_t end = text.find_first_of(L",\n", pos);
 
 	// 開始位置の調整
 	if (start == std::wstring::npos) {
 		start = 0;
 	} else {
-		start++; // カンマの次の位置から
+		start++; // 区切り文字の次の位置から
 	}
 
 	// 終了位置の調整
@@ -94,7 +93,7 @@ std::tuple<size_t,size_t> get_span_at_cursor(const std::wstring& text, int pos) 
 		end = start;
 	}
 
-	return {start, end};
+	return { start, end };
 }
 
 // トリミング
@@ -129,8 +128,8 @@ std::vector<std::string> extract_tags_from_text(const std::string& text) {
 	size_t end = 0;
 
 	while (end < text.length()) {
-		// 次のカンマを探す
-		end = text.find(',', start);
+		// 次のカンマまたは改行を探す
+		end = text.find_first_of(",\n", start);
 		if (end == std::string::npos) {
 			end = text.length();
 		}
@@ -144,7 +143,12 @@ std::vector<std::string> extract_tags_from_text(const std::string& text) {
 			}
 		}
 
-		// 次の開始位置を設定（カンマの次の位置）
+		// 改行コードの場合、改行コード自体もタグとして追加
+		if (end < text.length() && text[end] == '\n') {
+			tags.push_back("\n");
+		}
+
+		// 次の開始位置を設定（区切り文字の次の位置）
 		start = end + 1;
 	}
 
@@ -166,4 +170,91 @@ std::vector<std::string> split_string(const std::string& str, char delimiter) {
 	}
 
 	return tokens;
+}
+
+// 文字列を結合
+std::string join(const std::vector<std::string>& strings, const std::string& separator) {
+	std::string result;
+	for (const auto& str : strings) {
+		result += str;
+		result += separator;
+	}
+	return result.substr(0, result.length() - separator.length());
+}
+
+// 改行コードの正規化
+
+std::wstring newlines_for_edit(const std::wstring& text) {
+	std::wstring result;
+	result.reserve(text.length() * 2);
+	for (wchar_t c : text) {
+		if (c == L'\n') {
+			result += L"\r\n";
+		} else {
+			result += c;
+		}
+	}
+	return result;
+}
+
+std::wstring newlines_for_parse(const std::wstring& text) {
+	std::wstring result;
+	result.reserve(text.length());
+	for (size_t i = 0; i < text.length(); ++i) {
+		if (text[i] == L'\r' && i + 1 < text.length() && text[i + 1] == L'\n') {
+			// \r\nの組み合わせの場合は\nを追加して\rをスキップ
+			result += L'\n';
+			++i; // \rをスキップ
+		} else if (text[i] == L'\r') {
+			// 単独の\rは\nに置換
+			result += L'\n';
+		} else {
+			// その他の文字はそのまま追加
+			result += text[i];
+		}
+	}
+	return result;
+}
+
+// 改行コードのエスケープ
+std::wstring escape_newlines(const std::wstring& text) {
+	std::wstring result;
+	result.reserve(text.length() * 2);
+	for (wchar_t c : text) {
+		switch (c) {
+		case L'\\':
+			result += L"\\\\";
+			break;
+		case L'\n':
+			result += L"\\n";
+			break;
+		default:
+			result += c;
+		}
+	}
+	return result;
+}
+
+// 改行コードのアンエスケープ
+std::wstring unescape_newlines(const std::wstring& text) {
+	std::wstring result;
+	for (size_t i = 0; i < text.length(); ++i) {
+		if (text[i] == L'\\' && i + 1 < text.length()) {
+			switch (text[i + 1]) {
+			case L'\\':
+				result += L'\\';
+				++i;
+				break;
+			case L'n':
+				result += L"\n";
+				++i;
+				break;
+			default:
+				result += text[i + 1];
+			}
+		} else {
+			result += text[i];
+		}
+	}
+	return result;
 }
