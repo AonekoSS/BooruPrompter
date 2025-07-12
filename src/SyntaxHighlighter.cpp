@@ -134,60 +134,43 @@ void SyntaxHighlighter::ApplySyntaxHighlighting() {
 	SendMessage(m_hwndEdit, WM_SETREDRAW, FALSE, 0);
 	SendMessage(m_hwndEdit, EM_HIDESELECTION, TRUE, 0);
 
-	std::wstring text = GetText();
-
-	// 既存の書式設定をクリア（全選択せずに範囲指定でクリア）
+	// まずテキスト全体をグレーに設定
 	CHARFORMAT2W cf = {};
 	cf.cbSize = sizeof(CHARFORMAT2W);
 	cf.dwMask = CFM_COLOR;
-	cf.crTextColor = RGB(255, 255, 255); // デフォルト色（白）
+	cf.crTextColor = RGB(128, 128, 128); // グレー
 
-	// 全範囲にデフォルト色を適用
+	// 全範囲にグレー色を適用
 	SendMessage(m_hwndEdit, EM_SETSEL, 0, -1);
 	SendMessage(m_hwndEdit, EM_SETCHARFORMAT, SCF_SELECTION, (LPARAM)&cf);
 
-	// タグの抽出と色付け
+	// テキストを取得してタグを抽出
+	std::wstring text = GetText();
+	text.erase(std::remove(text.begin(), text.end(), L'\r'), text.end());
 	auto tagColors = ExtractTagsWithColors(text);
-	size_t currentPos = 0;
 
+	// タグの色付け
 	for (const auto& tagColor : tagColors) {
-		// タグの位置を検索
-		size_t tagPos = text.find(tagColor.tag, currentPos);
-		if (tagPos == std::wstring::npos) continue;
+		size_t pos = 0;
+		while ((pos = text.find(tagColor.tag, pos)) != std::wstring::npos) {
+			// タグの範囲を選択
+			SendMessage(m_hwndEdit, EM_SETSEL, pos, pos + tagColor.tag.length());
 
-		// タグの範囲を選択
-		SendMessage(m_hwndEdit, EM_SETSEL, tagPos, tagPos + tagColor.tag.length());
+			// 色を設定
+			CHARFORMAT2W cf = {};
+			cf.cbSize = sizeof(CHARFORMAT2W);
+			cf.dwMask = CFM_COLOR;
+			cf.crTextColor = tagColor.color;
+			SendMessage(m_hwndEdit, EM_SETCHARFORMAT, SCF_SELECTION, (LPARAM)&cf);
 
-		// 色を設定
-		CHARFORMAT2W cf = {};
-		cf.cbSize = sizeof(CHARFORMAT2W);
-		cf.dwMask = CFM_COLOR;
-		cf.crTextColor = tagColor.color;
-		SendMessage(m_hwndEdit, EM_SETCHARFORMAT, SCF_SELECTION, (LPARAM)&cf);
-
-		currentPos = tagPos + tagColor.tag.length();
-	}
-
-	// カンマの色付け
-	size_t pos = 0;
-	while ((pos = text.find(L',', pos)) != std::wstring::npos) {
-		// カンマの位置を選択
-		SendMessage(m_hwndEdit, EM_SETSEL, pos, pos + 1);
-
-		// グレー色を設定
-		CHARFORMAT2W cf = {};
-		cf.cbSize = sizeof(CHARFORMAT2W);
-		cf.dwMask = CFM_COLOR;
-		cf.crTextColor = RGB(128, 128, 128);  // グレー
-		SendMessage(m_hwndEdit, EM_SETCHARFORMAT, SCF_SELECTION, (LPARAM)&cf);
-
-		pos++;
+			pos += tagColor.tag.length();
+		}
 	}
 
 	// カーソル・スクロール位置を復元
 	SendMessage(m_hwndEdit, EM_SETSEL, startPos, endPos);
 
-	// スクロール位置を復元（より安定した方法）
+	// スクロール位置を復元
 	int currentFirstVisibleLine = static_cast<int>(SendMessage(m_hwndEdit, EM_GETFIRSTVISIBLELINE, 0, 0));
 	if (currentFirstVisibleLine != firstVisibleLine) {
 		SendMessage(m_hwndEdit, EM_LINESCROLL, 0, firstVisibleLine - currentFirstVisibleLine);
@@ -303,3 +286,5 @@ LRESULT CALLBACK SyntaxHighlighter::EditProc(HWND hwnd, UINT uMsg, WPARAM wParam
 
 	return result;
 }
+
+
