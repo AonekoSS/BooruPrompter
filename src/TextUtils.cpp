@@ -74,7 +74,6 @@ bool utf8_has_multibyte(const std::string& str) {
 
 // カーソル位置のワード範囲取得
 std::tuple<size_t, size_t> get_span_at_cursor(const std::wstring& text, int pos) {
-
 	// カーソル位置の前後のカンマを探す
 	size_t start = text.rfind(L',', (pos > 0) ? pos - 1 : 0);
 	size_t end = text.find(L',', pos);
@@ -178,6 +177,40 @@ std::string join(const std::vector<std::string>& strings, const std::string& sep
 	return result.substr(0, result.length() - separator.length());
 }
 
+// 改行コードの正規化
+
+std::wstring newlines_for_edit(const std::wstring& text) {
+	std::wstring result;
+	result.reserve(text.length() * 2);
+	for (wchar_t c : text) {
+		if (c == L'\n') {
+			result += L"\r\n";
+		} else {
+			result += c;
+		}
+	}
+	return result;
+}
+
+std::wstring newlines_for_parse(const std::wstring& text) {
+	std::wstring result;
+	result.reserve(text.length());
+	for (size_t i = 0; i < text.length(); ++i) {
+		if (text[i] == L'\r' && i + 1 < text.length() && text[i + 1] == L'\n') {
+			// \r\nの組み合わせの場合は\nを追加して\rをスキップ
+			result += L'\n';
+			++i; // \rをスキップ
+		} else if (text[i] == L'\r') {
+			// 単独の\rは\nに置換
+			result += L'\n';
+		} else {
+			// その他の文字はそのまま追加
+			result += text[i];
+		}
+	}
+	return result;
+}
+
 // 改行コードのエスケープ
 std::wstring escape_newlines(const std::wstring& text) {
 	std::wstring result;
@@ -185,15 +218,15 @@ std::wstring escape_newlines(const std::wstring& text) {
 	for (wchar_t c : text) {
 		switch (c) {
 		case L'\\':
-			result += L"\\\\";
-			break;
+		result += L"\\\\";
+		break;
 		case L'\n':
-			result += L"\\n";
-			break;
+		result += L"\\n";
+		break;
 		case L'\r':
-			break;
+		break;
 		default:
-			result += c;
+		result += c;
 		}
 	}
 	return result;
@@ -206,15 +239,15 @@ std::wstring unescape_newlines(const std::wstring& text) {
 		if (text[i] == L'\\' && i + 1 < text.length()) {
 			switch (text[i + 1]) {
 			case L'\\':
-				result += L'\\';
-				++i;
-				break;
+			result += L'\\';
+			++i;
+			break;
 			case L'n':
-				result += L"\r\n";
-				++i;
-				break;
+			result += L"\r\n";
+			++i;
+			break;
 			default:
-				result += text[i + 1];
+			result += text[i + 1];
 			}
 		} else {
 			result += text[i];
