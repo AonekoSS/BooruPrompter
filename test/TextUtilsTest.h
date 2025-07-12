@@ -26,10 +26,12 @@ public:
 	TEST_METHOD(TestUtf8HasMultibyteAsciiOnly);
 	TEST_METHOD(TestUtf8HasMultibyteJapanese);
 
-	// カーソル位置のワード範囲取得のテスト
-	TEST_METHOD(TestGetSpanAtCursor);
-	TEST_METHOD(TestGetSpanAtCursorEmpty);
-	TEST_METHOD(TestGetSpanAtCursorBoundary);
+	        // カーソル位置のワード範囲取得のテスト
+        TEST_METHOD(TestGetSpanAtCursor);
+        TEST_METHOD(TestGetSpanAtCursorEmpty);
+        TEST_METHOD(TestGetSpanAtCursorBoundary);
+        TEST_METHOD(TestGetSpanAtCursorWithNewlines);
+        TEST_METHOD(TestGetSpanAtCursorMixedDelimiters);
 
 	        // タグ抽出のテスト
         TEST_METHOD(TestExtractTagsFromText);

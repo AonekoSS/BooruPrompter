@@ -614,6 +614,7 @@ void BooruPrompter::OnTextChanged(HWND hwnd) {
 
 	// サジェスト開始
 	m_suggestionManager.Request(unicode_to_utf8(currentWord.c_str()));
+	if (!currentWord.empty()) UpdateStatusText(L"サジェスト中： " + currentWord);
 
 	// プロンプトが変更されたのでタグリストを更新
 	TagListHandler::SyncTagListFromPrompt(this, unicode_to_utf8(currentText.c_str()));

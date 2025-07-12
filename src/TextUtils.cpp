@@ -74,15 +74,15 @@ bool utf8_has_multibyte(const std::string& str) {
 
 // カーソル位置のワード範囲取得
 std::tuple<size_t, size_t> get_span_at_cursor(const std::wstring& text, int pos) {
-	// カーソル位置の前後のカンマを探す
-	size_t start = text.rfind(L',', (pos > 0) ? pos - 1 : 0);
-	size_t end = text.find(L',', pos);
+	// カーソル位置の前後のカンマまたは改行を探す
+	size_t start = text.find_last_of(L",\n", (pos > 0) ? pos - 1 : 0);
+	size_t end = text.find_first_of(L",\n", pos);
 
 	// 開始位置の調整
 	if (start == std::wstring::npos) {
 		start = 0;
 	} else {
-		start++; // カンマの次の位置から
+		start++; // 区切り文字の次の位置から
 	}
 
 	// 終了位置の調整
@@ -223,15 +223,13 @@ std::wstring escape_newlines(const std::wstring& text) {
 	for (wchar_t c : text) {
 		switch (c) {
 		case L'\\':
-		result += L"\\\\";
-		break;
+			result += L"\\\\";
+			break;
 		case L'\n':
-		result += L"\\n";
-		break;
-		case L'\r':
-		break;
+			result += L"\\n";
+			break;
 		default:
-		result += c;
+			result += c;
 		}
 	}
 	return result;
@@ -244,15 +242,15 @@ std::wstring unescape_newlines(const std::wstring& text) {
 		if (text[i] == L'\\' && i + 1 < text.length()) {
 			switch (text[i + 1]) {
 			case L'\\':
-			result += L'\\';
-			++i;
-			break;
+				result += L'\\';
+				++i;
+				break;
 			case L'n':
-			result += L"\r\n";
-			++i;
-			break;
+				result += L"\n";
+				++i;
+				break;
 			default:
-			result += text[i + 1];
+				result += text[i + 1];
 			}
 		} else {
 			result += text[i];

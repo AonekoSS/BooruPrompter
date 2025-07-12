@@ -140,6 +140,26 @@ namespace TextUtilsTest {
 		Assert::AreEqual(5, (int)end);
 	}
 
+	void TextUtilsTest::TestGetSpanAtCursorWithNewlines() {
+		// 改行区切りのワード範囲取得テスト
+		std::wstring text = L"tag1\ntag2\ntag3";
+		auto result = get_span_at_cursor(text, 7); // "tag2"の"g"の位置
+		size_t start = std::get<0>(result);
+		size_t end = std::get<1>(result);
+		Assert::AreEqual(5, (int)start); // "tag2"の開始位置
+		Assert::AreEqual(9, (int)end);   // "tag2"の終了位置
+	}
+
+	void TextUtilsTest::TestGetSpanAtCursorMixedDelimiters() {
+		// カンマと改行が混在するワード範囲取得テスト
+		std::wstring text = L"tag1,tag2\ntag3,tag4";
+		auto result = get_span_at_cursor(text, 7); // "tag2"の"g"の位置
+		size_t start = std::get<0>(result);
+		size_t end = std::get<1>(result);
+		Assert::AreEqual(5, (int)start); // "tag2"の開始位置
+		Assert::AreEqual(9, (int)end);  // "tag2"の終了位置
+	}
+
 	void TextUtilsTest::TestExtractTagsFromText() {
 		// 基本的なタグ抽出のテスト
 		std::string text = "tag1, tag2, tag3";
