@@ -50,9 +50,7 @@ public:
     STDMETHODIMP ShowContainerUI(BOOL) override { return S_OK; }
     STDMETHODIMP QueryInsertObject(LPCLSID, LPSTORAGE, LONG) override { return S_FALSE; }
     STDMETHODIMP DeleteObject(LPOLEOBJECT) override { return S_OK; }
-    STDMETHODIMP QueryAcceptData(LPDATAOBJECT, CLIPFORMAT* lpcfFormat, DWORD, BOOL, HGLOBAL) override {
-        return (lpcfFormat && (*lpcfFormat == CF_UNICODETEXT || *lpcfFormat == CF_TEXT)) ? S_OK : S_FALSE;
-    }
+    STDMETHODIMP QueryAcceptData(LPDATAOBJECT, CLIPFORMAT* lpcfFormat, DWORD, BOOL, HGLOBAL) override { return S_OK; }
     STDMETHODIMP ContextSensitiveHelp(BOOL) override { return E_NOTIMPL; }
     STDMETHODIMP GetClipboardData(CHARRANGE*, DWORD, LPDATAOBJECT*) override { return E_NOTIMPL; }
     STDMETHODIMP GetDragDropEffect(BOOL, DWORD, LPDWORD pdwEffect) override { *pdwEffect = DROPEFFECT_NONE; return S_OK; }
@@ -292,16 +290,15 @@ LRESULT CALLBACK SyntaxHighlighter::EditProc(HWND hwnd, UINT uMsg, WPARAM wParam
     // テキスト変更イベントを処理（IME入力中は除外）
     if (!pThis->m_isImeComposing && (uMsg == WM_CHAR || uMsg == WM_PASTE || uMsg == WM_CUT || uMsg == WM_CLEAR || uMsg == WM_KEYDOWN)) {
         // テキストが実際に変更されたかチェック
-        std::wstring currentText = pThis->GetText();
-        if (currentText != pThis->m_lastText) {
-            pThis->m_lastText = currentText;
-            if (!pThis->m_pendingColorize) {
-                pThis->m_pendingColorize = true;
-                pThis->StartColorizeTimer();
+            std::wstring currentText = pThis->GetText();
+            if (currentText != pThis->m_lastText) {
+                pThis->m_lastText = currentText;
+                if (!pThis->m_pendingColorize) {
+                    pThis->m_pendingColorize = true;
+                    pThis->StartColorizeTimer();
+                }
             }
-        }
     } else if (uMsg == WM_TIMER && wParam == 1) {
-        // タイマー処理はColorizeTimerProcで行われる
         return result;
     }
 
