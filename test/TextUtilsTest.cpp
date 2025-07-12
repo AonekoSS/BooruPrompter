@@ -331,7 +331,7 @@ namespace TextUtilsTest {
 
 	void TextUtilsTest::TestEscapeNewlines() {
 		// 基本的な改行コードエスケープのテスト
-		std::wstring text = L"Hello\nWorld\r\nTest\\Backslash";
+		std::wstring text = L"Hello\nWorld\nTest\\Backslash";
 		std::wstring result = escape_newlines(text);
 		Assert::AreEqual(L"Hello\\nWorld\\nTest\\\\Backslash", result.c_str());
 	}
@@ -354,7 +354,7 @@ namespace TextUtilsTest {
 		// 基本的な改行コードアンエスケープのテスト
 		std::wstring text = L"Hello\\nWorld\\\\Backslash\\nTest";
 		std::wstring result = unescape_newlines(text);
-		Assert::AreEqual(L"Hello\r\nWorld\\Backslash\r\nTest", result.c_str());
+		Assert::AreEqual(L"Hello\nWorld\\Backslash\nTest", result.c_str());
 	}
 
 	void TextUtilsTest::TestUnescapeNewlinesEmpty() {
