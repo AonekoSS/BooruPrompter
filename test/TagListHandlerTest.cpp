@@ -51,28 +51,7 @@ namespace TagListHandlerTest {
         }
     }
 
-
-	void TagListHandlerTest::TestAddTagToList() {
-		// タグリストにタグを追加するテスト
-		Suggestion suggestion;
-		suggestion.tag = "test_tag";
-		suggestion.description = L"テストタグ";
-
-		size_t initialCount = TagListHandler::GetTagCount();
-		TagListHandler::AddTagToList(reinterpret_cast<BooruPrompter*>(m_mockPrompter), suggestion);
-
-		Assert::AreEqual(initialCount + 1, TagListHandler::GetTagCount());
-		AssertTagList({ "test_tag" });
-	}
-
 	void TagListHandlerTest::TestRefreshTagList() {
-		// タグリストの更新テスト
-		Suggestion suggestion;
-		suggestion.tag = "refresh_test";
-		suggestion.description = L"リフレッシュテスト";
-
-		TagListHandler::AddTagToList(reinterpret_cast<BooruPrompter*>(m_mockPrompter), suggestion);
-
 		// RefreshTagListがクラッシュしないことを確認
 		TagListHandler::RefreshTagList(reinterpret_cast<BooruPrompter*>(m_mockPrompter));
 

@@ -22,7 +22,6 @@ public:
 	static void OnTagListDragDrop(BooruPrompter* pThis, int fromIndex, int toIndex);
 	static void OnTagListDragStart(BooruPrompter* pThis, int index);
 	static void OnTagListDragEnd(BooruPrompter* pThis);
-	static void AddTagToList(BooruPrompter* pThis, const Suggestion& suggestion);
 
 	// プロンプト・タグ同期
 	static void UpdatePromptFromTagList(BooruPrompter* pThis);

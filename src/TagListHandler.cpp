@@ -50,11 +50,6 @@ void TagListHandler::OnTagListDragEnd(BooruPrompter* pThis) {
 	s_isDragging = false;
 }
 
-void TagListHandler::AddTagToList(BooruPrompter* pThis, const Suggestion& suggestion) {
-	s_tagItems.push_back(suggestion);
-	RefreshTagList(pThis);
-}
-
 void TagListHandler::UpdatePromptFromTagList(BooruPrompter* pThis) {
 	std::wstring newPrompt;
 	bool isFirst = true;

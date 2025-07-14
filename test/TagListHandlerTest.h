@@ -30,7 +30,6 @@ public:
 	TEST_METHOD_CLEANUP(TearDown);
 
 	// タグリスト操作のテスト
-	TEST_METHOD(TestAddTagToList);
 	TEST_METHOD(TestRefreshTagList);
 	TEST_METHOD(TestSyncTagList);
 	TEST_METHOD(TestSyncTagListFromPrompt);
