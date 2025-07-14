@@ -22,6 +22,15 @@ namespace TextUtilsTest {
 		return oss.str();
 	}
 
+	// Tag構造体の中身を検証するヘルパー関数
+	void AssertTagEquals(const Tag& tag, const std::string& expected_tag, size_t expected_start, size_t expected_end) {
+		Assert::AreEqual(expected_tag.c_str(), tag.tag.c_str());
+		Assert::AreEqual(expected_start, tag.start);
+		Assert::AreEqual(expected_end, tag.end);
+		Assert::AreEqual(0, (int)tag.color); // colorは0で初期化される
+		Assert::IsTrue(tag.description.empty()); // descriptionは空文字列で初期化される
+	}
+
 	void TextUtilsTest::TestUtf8ToUnicode() {
 		// 基本的なASCII文字列のテスト
 		std::string utf8_str = reinterpret_cast<const char*>(u8"Hello, World!");
@@ -163,60 +172,110 @@ namespace TextUtilsTest {
 	void TextUtilsTest::TestExtractTagsFromText() {
 		// 基本的なタグ抽出のテスト
 		std::string text = "tag1, tag2, tag3";
-		std::vector<std::string> tags = extract_tags_from_text(text);
+		TagList tags = extract_tags_from_text(text);
 		Assert::AreEqual(3, (int)tags.size());
-		Assert::AreEqual("tag1", tags[0].c_str());
-		Assert::AreEqual("tag2", tags[1].c_str());
-		Assert::AreEqual("tag3", tags[2].c_str());
+		AssertTagEquals(tags[0], "tag1", 0, 4);
+		AssertTagEquals(tags[1], "tag2", 6, 10);
+		AssertTagEquals(tags[2], "tag3", 12, 16);
 	}
 
 	void TextUtilsTest::TestExtractTagsFromTextEmpty() {
 		// 空文字列のテスト
 		std::string text = "";
-		std::vector<std::string> tags = extract_tags_from_text(text);
+		TagList tags = extract_tags_from_text(text);
 		Assert::AreEqual(0, (int)tags.size());
 	}
 
 	void TextUtilsTest::TestExtractTagsFromTextSingle() {
 		// 単一タグのテスト
 		std::string text = "single tag";
-		std::vector<std::string> tags = extract_tags_from_text(text);
+		TagList tags = extract_tags_from_text(text);
 		Assert::AreEqual(1, (int)tags.size());
-		Assert::AreEqual("single tag", tags[0].c_str());
+		AssertTagEquals(tags[0], "single tag", 0, 10);
 	}
 
 	void TextUtilsTest::TestExtractTagsFromTextMultiple() {
 		// 複数タグ（スペース区切り）のテスト
 		std::string text = "tag1, tag 2, tag 3 tag";
-		std::vector<std::string> tags = extract_tags_from_text(text);
+		TagList tags = extract_tags_from_text(text);
 		Assert::AreEqual(3, (int)tags.size());
-		Assert::AreEqual("tag1", tags[0].c_str());
-		Assert::AreEqual("tag 2", tags[1].c_str());
-		Assert::AreEqual("tag 3 tag", tags[2].c_str());
+		AssertTagEquals(tags[0], "tag1", 0, 4);
+		AssertTagEquals(tags[1], "tag 2", 6, 11);
+		AssertTagEquals(tags[2], "tag 3 tag", 13, 22);
 	}
 
 	void TextUtilsTest::TestExtractTagsFromTextWithNewlines() {
 		// 改行区切りのタグ抽出テスト
 		std::string text = "tag1\ntag2\ntag3";
-		std::vector<std::string> tags = extract_tags_from_text(text);
+		TagList tags = extract_tags_from_text(text);
 		Assert::AreEqual(5, (int)tags.size());
-		Assert::AreEqual("tag1", tags[0].c_str());
-		Assert::AreEqual("\n", tags[1].c_str());
-		Assert::AreEqual("tag2", tags[2].c_str());
-		Assert::AreEqual("\n", tags[3].c_str());
-		Assert::AreEqual("tag3", tags[4].c_str());
+		AssertTagEquals(tags[0], "tag1", 0, 4);
+		AssertTagEquals(tags[1], "\n", 4, 5);
+		AssertTagEquals(tags[2], "tag2", 5, 9);
+		AssertTagEquals(tags[3], "\n", 9, 10);
+		AssertTagEquals(tags[4], "tag3", 10, 14);
 	}
 
 	void TextUtilsTest::TestExtractTagsFromTextMixedDelimiters() {
 		// カンマと改行が混在するタグ抽出テスト
 		std::string text = "tag1,tag2\ntag3,tag4";
-		std::vector<std::string> tags = extract_tags_from_text(text);
+		TagList tags = extract_tags_from_text(text);
 		Assert::AreEqual(5, (int)tags.size());
-		Assert::AreEqual("tag1", tags[0].c_str());
-		Assert::AreEqual("tag2", tags[1].c_str());
-		Assert::AreEqual("\n", tags[2].c_str());
-		Assert::AreEqual("tag3", tags[3].c_str());
-		Assert::AreEqual("tag4", tags[4].c_str());
+		AssertTagEquals(tags[0], "tag1", 0, 4);
+		AssertTagEquals(tags[1], "tag2", 5, 9);
+		AssertTagEquals(tags[2], "\n", 9, 10);
+		AssertTagEquals(tags[3], "tag3", 10, 14);
+		AssertTagEquals(tags[4], "tag4", 15, 19);
+	}
+
+	void TextUtilsTest::TestExtractTagsFromTextWithWhitespace() {
+		// 空白文字を含むタグ抽出テスト
+		std::string text = "  tag1  ,  tag2  ,  tag3  ";
+		TagList tags = extract_tags_from_text(text);
+		Assert::AreEqual(3, (int)tags.size());
+		AssertTagEquals(tags[0], "tag1", 2, 6);
+		AssertTagEquals(tags[1], "tag2", 11, 15);
+		AssertTagEquals(tags[2], "tag3", 20, 24);
+	}
+
+	void TextUtilsTest::TestExtractTagsFromTextWithEmptyTags() {
+		// 空のタグを含むテスト
+		std::string text = "tag1,,tag2, ,tag3";
+		TagList tags = extract_tags_from_text(text);
+		Assert::AreEqual(3, (int)tags.size());
+		AssertTagEquals(tags[0], "tag1", 0, 4);
+		AssertTagEquals(tags[1], "tag2", 6, 10);
+		AssertTagEquals(tags[2], "tag3", 13, 17);
+	}
+
+	void TextUtilsTest::TestExtractTagsFromTextWithTrailingDelimiter() {
+		// 末尾に区切り文字がある場合のテスト
+		std::string text = "tag1,tag2,";
+		TagList tags = extract_tags_from_text(text);
+		Assert::AreEqual(2, (int)tags.size());
+		AssertTagEquals(tags[0], "tag1", 0, 4);
+		AssertTagEquals(tags[1], "tag2", 5, 9);
+	}
+
+	void TextUtilsTest::TestExtractTagsFromTextWithLeadingDelimiter() {
+		// 先頭に区切り文字がある場合のテスト
+		std::string text = ",tag1,tag2";
+		TagList tags = extract_tags_from_text(text);
+		Assert::AreEqual(2, (int)tags.size());
+		AssertTagEquals(tags[0], "tag1", 1, 5);
+		AssertTagEquals(tags[1], "tag2", 6, 10);
+	}
+
+	void TextUtilsTest::TestExtractTagsFromTextComplexWhitespace() {
+		// 複雑な空白文字パターンのテスト
+		std::string text = "  \t  tag1\t  ,\n  tag2  \n  ,  \t tag3 \t  ";
+		TagList tags = extract_tags_from_text(text);
+		Assert::AreEqual(5, (int)tags.size());
+		AssertTagEquals(tags[0], "tag1", 5, 9);
+		AssertTagEquals(tags[1], "\n", 13, 14);
+		AssertTagEquals(tags[2], "tag2", 16, 20);
+		AssertTagEquals(tags[3], "\n", 22, 23);
+		AssertTagEquals(tags[4], "tag3", 30, 34);
 	}
 
 	void TextUtilsTest::TestSplitString() {

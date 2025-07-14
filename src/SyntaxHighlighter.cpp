@@ -147,24 +147,19 @@ void SyntaxHighlighter::ApplySyntaxHighlighting() {
 
 	// テキストを取得してタグを抽出
 	std::wstring text = GetText();
-	auto tagColors = ExtractTagsWithColors(text);
+	auto tags = ExtractTags(text);
 
 	// タグの色付け
-	size_t pos = 0;
-	for (const auto& tagColor : tagColors) {
-		if ((pos = text.find(tagColor.tag, pos)) != std::wstring::npos) {
-			// タグの範囲を選択
-			SendMessage(m_hwndEdit, EM_SETSEL, pos, pos + tagColor.tag.length());
+	for (const auto& tag : tags) {
+		// タグの範囲を選択
+		SendMessage(m_hwndEdit, EM_SETSEL, tag.start, tag.end);
 
-			// 色を設定
-			CHARFORMAT2W cf = {};
-			cf.cbSize = sizeof(CHARFORMAT2W);
-			cf.dwMask = CFM_COLOR;
-			cf.crTextColor = tagColor.color;
-			SendMessage(m_hwndEdit, EM_SETCHARFORMAT, SCF_SELECTION, (LPARAM)&cf);
-
-			pos += tagColor.tag.length();
-		}
+		// 色を設定
+		CHARFORMAT2W cf = {};
+		cf.cbSize = sizeof(CHARFORMAT2W);
+		cf.dwMask = CFM_COLOR;
+		cf.crTextColor = tag.color;
+		SendMessage(m_hwndEdit, EM_SETCHARFORMAT, SCF_SELECTION, (LPARAM)&cf);
 	}
 
 	// カーソル・スクロール位置を復元
@@ -230,18 +225,17 @@ void CALLBACK SyntaxHighlighter::ColorizeTimerProc(HWND hwnd, UINT uMsg, UINT_PT
 	}
 }
 
-std::vector<TagColor> SyntaxHighlighter::ExtractTagsWithColors(const std::wstring& text) {
-	std::vector<TagColor> tagColors;
+std::vector<Tag> SyntaxHighlighter::ExtractTags(const std::wstring& text) {
 	std::string utf8 = unicode_to_utf8(text);
 	auto tags = extract_tags_from_text(utf8);
 	int colorIndex = 0;
-	for (const auto& tag : tags) {
-		if (!tag.empty()) {
-			tagColors.emplace_back(utf8_to_unicode(tag), m_rainbowColors[colorIndex % m_rainbowColors.size()]);
+	for (auto& tag : tags) {
+		if (!tag.tag.empty()) {
+			tag.color = m_rainbowColors[colorIndex % m_rainbowColors.size()];
 			colorIndex++;
 		}
 	}
-	return tagColors;
+	return tags;
 }
 
 void SyntaxHighlighter::OnPaint(HWND hwnd) {

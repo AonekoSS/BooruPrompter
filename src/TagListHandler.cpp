@@ -64,7 +64,11 @@ void TagListHandler::UpdatePromptFromTagList(BooruPrompter* pThis) {
 
 void TagListHandler::SyncTagListFromPrompt(BooruPrompter* pThis, const std::string& prompt) {
 	auto extractedTags = extract_tags_from_text(prompt);
-	SyncTagList(pThis, extractedTags);
+	std::vector<std::string> tags;
+	for (const auto& tag : extractedTags) {
+		tags.push_back(tag.tag);
+	}
+	SyncTagList(pThis, tags);
 }
 
 void TagListHandler::SyncTagList(BooruPrompter* pThis, const std::vector<std::string>& tags) {
