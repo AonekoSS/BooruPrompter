@@ -9,72 +9,74 @@ using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 // MockSyntaxHighlighterの定義
 class MockSyntaxHighlighter {
 public:
-    void SetText(const std::wstring& text) {
-        lastText = text;
-    }
-    std::wstring lastText;
+	void SetText(const std::wstring& text) {
+		lastText = text;
+	}
+	std::wstring lastText;
 };
 
 // MockBooruPrompterの定義
 class MockBooruPrompter {
 public:
-    HWND m_hwndTagList = nullptr;
-    std::unique_ptr<MockSyntaxHighlighter> m_promptEditor;
+	HWND m_hwndTagList = nullptr;
+	std::unique_ptr<MockSyntaxHighlighter> m_promptEditor;
 
-    void AddListViewItem(HWND hwndListView, int index, const std::vector<std::wstring>& texts) {
-        // モック実装
-    }
+	void AddListViewItem(HWND hwndListView, int index, const std::vector<std::wstring>& texts) {
+		// モック実装
+	}
 };
 
-namespace TagListHandlerTest
-{
-    TEST_CLASS(TagListHandlerTest)
-    {
-    public:
-        // 初期化とクリーンアップ
-        TEST_METHOD_INITIALIZE(SetUp);
-        TEST_METHOD_CLEANUP(TearDown);
+namespace TagListHandlerTest {
+	TEST_CLASS(TagListHandlerTest) {
+public:
+	// 初期化とクリーンアップ
+	TEST_METHOD_INITIALIZE(SetUp);
+	TEST_METHOD_CLEANUP(TearDown);
 
-        // タグリスト操作のテスト
-        TEST_METHOD(TestAddTagToList);
-        TEST_METHOD(TestRefreshTagList);
-        TEST_METHOD(TestSyncTagList);
-        TEST_METHOD(TestSyncTagListFromPrompt);
+	// タグリスト操作のテスト
+	TEST_METHOD(TestAddTagToList);
+	TEST_METHOD(TestRefreshTagList);
+	TEST_METHOD(TestSyncTagList);
+	TEST_METHOD(TestSyncTagListFromPrompt);
 
-        // ドラッグ&ドロップのテスト
-        TEST_METHOD(TestOnTagListDragStart);
-        TEST_METHOD(TestOnTagListDragEnd);
-        TEST_METHOD(TestOnTagListDragDrop);
-        TEST_METHOD(TestOnTagListDragDropInvalidIndices);
-        TEST_METHOD(TestOnTagListDragDropSameIndex);
+	// ドラッグ&ドロップのテスト
+	TEST_METHOD(TestOnTagListDragStart);
+	TEST_METHOD(TestOnTagListDragEnd);
+	TEST_METHOD(TestOnTagListDragDrop);
+	TEST_METHOD(TestOnTagListDragDropInvalidIndices);
+	TEST_METHOD(TestOnTagListDragDropSameIndex);
 
-        // プロンプト同期のテスト
-        TEST_METHOD(TestUpdatePromptFromTagList);
-        TEST_METHOD(TestUpdatePromptFromTagListEmpty);
+	// 追加: ドラッグ&ドロップの多様なケース
+	TEST_METHOD(TestOnTagListDragDropVariousCases);
+	TEST_METHOD(TestOnTagListDragDropWithVariousSizes);
 
-        // タグ移動のテスト
-        TEST_METHOD(TestMoveTagToTop);
-        TEST_METHOD(TestMoveTagToTopInvalidIndex);
-        TEST_METHOD(TestMoveTagToBottom);
-        TEST_METHOD(TestMoveTagToBottomInvalidIndex);
+	// プロンプト同期のテスト
+	TEST_METHOD(TestUpdatePromptFromTagList);
+	TEST_METHOD(TestUpdatePromptFromTagListEmpty);
 
-        // タグ削除のテスト
-        TEST_METHOD(TestDeleteTag);
-        TEST_METHOD(TestDeleteTagInvalidIndex);
-        TEST_METHOD(TestDeleteTagLastItem);
+	// タグ移動のテスト
+	TEST_METHOD(TestMoveTagToTop);
+	TEST_METHOD(TestMoveTagToTopInvalidIndex);
+	TEST_METHOD(TestMoveTagToBottom);
+	TEST_METHOD(TestMoveTagToBottomInvalidIndex);
 
-        // ドラッグ状態のテスト
-        TEST_METHOD(TestIsDragging);
-        TEST_METHOD(TestGetDragIndex);
-        TEST_METHOD(TestGetDragTargetIndex);
-        TEST_METHOD(TestGetTagItemsCount);
-        TEST_METHOD(TestUpdateDragTargetIndex);
+	// タグ削除のテスト
+	TEST_METHOD(TestDeleteTag);
+	TEST_METHOD(TestDeleteTagInvalidIndex);
+	TEST_METHOD(TestDeleteTagLastItem);
 
-        // コンテキストメニューのテスト
-        TEST_METHOD(TestOnTagListContextCommand);
-        TEST_METHOD(TestOnTagListContextCommandInvalidIndex);
+	// ドラッグ状態のテスト
+	TEST_METHOD(TestIsDragging);
+	TEST_METHOD(TestGetDragIndex);
+	TEST_METHOD(TestGetDragTargetIndex);
+	TEST_METHOD(TestGetTagCount);
+	TEST_METHOD(TestUpdateDragTargetIndex);
 
-    private:
-        MockBooruPrompter* m_mockPrompter;
-    };
+	// コンテキストメニューのテスト
+	TEST_METHOD(TestOnTagListContextCommand);
+	TEST_METHOD(TestOnTagListContextCommandInvalidIndex);
+
+private:
+	MockBooruPrompter* m_mockPrompter;
+	};
 }

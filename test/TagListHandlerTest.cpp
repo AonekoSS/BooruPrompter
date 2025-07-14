@@ -1,5 +1,8 @@
 ﻿#include "pch.h"
+#include <sstream>
+
 #include "TagListHandlerTest.h"
+#include "../src/TextUtils.h"
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
@@ -23,7 +26,7 @@ namespace TagListHandlerTest {
 		m_mockPrompter->m_promptEditor = std::make_unique<MockSyntaxHighlighter>();
 		// 静的メンバー変数をリセット
 		TagListHandler::UpdateDragTargetIndex(-1);
-		while (TagListHandler::GetTagItemsCount() > 0) {
+		while (TagListHandler::GetTagCount() > 0) {
 			// タグリストをクリア
 			std::vector<std::string> emptyTags;
 			TagListHandler::SyncTagList(reinterpret_cast<BooruPrompter*>(m_mockPrompter), emptyTags);
@@ -36,14 +39,17 @@ namespace TagListHandlerTest {
 		m_mockPrompter = nullptr;
 	}
 
-	// タグリストの内容を検証するヘルパー
-	void AssertTagList(const std::vector<std::string>& expectedTags) {
-		auto items = TagListHandler::GetTagItems();
-		Assert::AreEqual(expectedTags.size(), items.size());
-		for (size_t i = 0; i < expectedTags.size(); ++i) {
-			Assert::AreEqual(expectedTags[i], items[i].tag);
-		}
-	}
+    void AssertTagList(const std::vector<std::string>& expectedTags) {
+        auto actualTags = TagListHandler::GetTags();
+        Logger::WriteMessage((std::string("expectedTags: ") + join(expectedTags, ",") + std::string("\n")).c_str());
+        Logger::WriteMessage((std::string("actualTags: ") + join(actualTags, ",") + std::string("\n")).c_str());
+
+        // 検証
+        Assert::AreEqual(expectedTags.size(), actualTags.size());
+        for (size_t i = 0; i < expectedTags.size(); ++i) {
+            Assert::AreEqual(expectedTags[i], actualTags[i]);
+        }
+    }
 
 
 	void TagListHandlerTest::TestAddTagToList() {
@@ -52,10 +58,10 @@ namespace TagListHandlerTest {
 		suggestion.tag = "test_tag";
 		suggestion.description = L"テストタグ";
 
-		size_t initialCount = TagListHandler::GetTagItemsCount();
+		size_t initialCount = TagListHandler::GetTagCount();
 		TagListHandler::AddTagToList(reinterpret_cast<BooruPrompter*>(m_mockPrompter), suggestion);
 
-		Assert::AreEqual(initialCount + 1, TagListHandler::GetTagItemsCount());
+		Assert::AreEqual(initialCount + 1, TagListHandler::GetTagCount());
 		AssertTagList({ "test_tag" });
 	}
 
@@ -84,7 +90,7 @@ namespace TagListHandlerTest {
 		// プロンプトからのタグリスト同期テスト
 		std::string prompt = "tag1, tag2, tag3";
 		TagListHandler::SyncTagListFromPrompt(reinterpret_cast<BooruPrompter*>(m_mockPrompter), prompt);
-		Assert::IsTrue(TagListHandler::GetTagItemsCount() > 0);
+		Assert::IsTrue(TagListHandler::GetTagCount() > 0);
 		AssertTagList({ "tag1", "tag2", "tag3" });
 	}
 
@@ -120,7 +126,7 @@ namespace TagListHandlerTest {
 		TagListHandler::OnTagListDragDrop(reinterpret_cast<BooruPrompter*>(m_mockPrompter), fromIndex, toIndex);
 
 		// 順序を検証
-		AssertTagList({ "tag3", "tag2", "tag1" });
+		AssertTagList({ "tag2", "tag3", "tag1" });
 	}
 
 	void TagListHandlerTest::TestOnTagListDragDropInvalidIndices() {
@@ -145,6 +151,64 @@ namespace TagListHandlerTest {
 
 		AssertTagList(tags);
 	}
+
+
+
+	// 追加: ドラッグ&ドロップの多様なケース
+	void TagListHandlerTest::TestOnTagListDragDropVariousCases() {
+		// 3要素で様々なパターン
+		std::vector<std::string> tags = { "A", "B", "C" };
+		TagListHandler::SyncTagList(reinterpret_cast<BooruPrompter*>(m_mockPrompter), tags);
+		// A(0)をC(2)にドロップ → C A B
+		TagListHandler::OnTagListDragDrop(reinterpret_cast<BooruPrompter*>(m_mockPrompter), 2, 0);
+		AssertTagList({ "C", "A", "B" });
+		// C(0)をB(2)にドロップ → A B C
+		TagListHandler::OnTagListDragDrop(reinterpret_cast<BooruPrompter*>(m_mockPrompter), 0, 2);
+		AssertTagList({ "A", "B", "C" });
+		// A(0)をB(1)にドロップ → B A C
+		TagListHandler::OnTagListDragDrop(reinterpret_cast<BooruPrompter*>(m_mockPrompter), 0, 1);
+		AssertTagList({ "B", "A", "C" });
+		// A(1)をC(2)にドロップ → B C A
+		TagListHandler::OnTagListDragDrop(reinterpret_cast<BooruPrompter*>(m_mockPrompter), 1, 2);
+		AssertTagList({ "B", "C", "A" });
+		// C(1)をB(0)にドロップ → C B A
+		TagListHandler::OnTagListDragDrop(reinterpret_cast<BooruPrompter*>(m_mockPrompter), 1, 0);
+		AssertTagList({ "C", "B", "A" });
+		// A(2)をB(1)にドロップ → C A B
+		TagListHandler::OnTagListDragDrop(reinterpret_cast<BooruPrompter*>(m_mockPrompter), 2, 1);
+		AssertTagList({ "C", "A", "B" });
+	}
+
+	void TagListHandlerTest::TestOnTagListDragDropWithVariousSizes() {
+		// 2要素
+		std::vector<std::string> tags2 = { "X", "Y" };
+		TagListHandler::SyncTagList(reinterpret_cast<BooruPrompter*>(m_mockPrompter), tags2);
+		// Y(1)をX(0)にドロップ → Y X
+		TagListHandler::OnTagListDragDrop(reinterpret_cast<BooruPrompter*>(m_mockPrompter), 1, 0);
+		AssertTagList({ "Y", "X" });
+		// X(1)をY(1)にドロップ（同じ位置）→ Y X
+		TagListHandler::OnTagListDragDrop(reinterpret_cast<BooruPrompter*>(m_mockPrompter), 1, 1);
+		AssertTagList({ "Y", "X" });
+
+		// 3要素
+		std::vector<std::string> tags3 = { "A", "B", "C" };
+		TagListHandler::SyncTagList(reinterpret_cast<BooruPrompter*>(m_mockPrompter), tags3);
+		// C(2)をA(0)にドロップ → C A B
+		TagListHandler::OnTagListDragDrop(reinterpret_cast<BooruPrompter*>(m_mockPrompter), 2, 0);
+		AssertTagList({ "C", "A", "B" });
+
+		// 5要素
+		std::vector<std::string> tags5 = { "a", "b", "c", "d", "e" };
+		TagListHandler::SyncTagList(reinterpret_cast<BooruPrompter*>(m_mockPrompter), tags5);
+		// b(1)をd(3)にドロップ → a c d b e
+		TagListHandler::OnTagListDragDrop(reinterpret_cast<BooruPrompter*>(m_mockPrompter), 1, 3);
+		AssertTagList({ "a", "c", "d", "b", "e" });
+		// b(3)をa(0)にドロップ → b a c d e
+		TagListHandler::OnTagListDragDrop(reinterpret_cast<BooruPrompter*>(m_mockPrompter), 3, 0);
+		AssertTagList({ "b", "a", "c", "d", "e" });
+	}
+
+
 
 	void TagListHandlerTest::TestUpdatePromptFromTagList() {
 		std::vector<std::string> tags = { "tag1", "tag2", "tag3" };
@@ -217,7 +281,7 @@ namespace TagListHandlerTest {
 		std::vector<std::string> tags = { "tag1", "tag2", "tag3" };
 		TagListHandler::SyncTagList(reinterpret_cast<BooruPrompter*>(m_mockPrompter), tags);
 
-		size_t initialCount = TagListHandler::GetTagItemsCount();
+		size_t initialCount = TagListHandler::GetTagCount();
 		TagListHandler::DeleteTag(reinterpret_cast<BooruPrompter*>(m_mockPrompter), 1);
 
 		AssertTagList({ "tag1", "tag3" });
@@ -272,14 +336,14 @@ namespace TagListHandlerTest {
 		Assert::AreEqual(dragIndex, TagListHandler::GetDragTargetIndex());
 	}
 
-	void TagListHandlerTest::TestGetTagItemsCount() {
+	void TagListHandlerTest::TestGetTagCount() {
 		// タグアイテム数の取得テスト
-		Assert::AreEqual(static_cast<size_t>(0), TagListHandler::GetTagItemsCount());
+		Assert::AreEqual(static_cast<size_t>(0), TagListHandler::GetTagCount());
 
 		std::vector<std::string> tags = { "tag1", "tag2", "tag3" };
 		TagListHandler::SyncTagList(reinterpret_cast<BooruPrompter*>(m_mockPrompter), tags);
 
-		Assert::AreEqual(tags.size(), TagListHandler::GetTagItemsCount());
+		Assert::AreEqual(tags.size(), TagListHandler::GetTagCount());
 	}
 
 	void TagListHandlerTest::TestUpdateDragTargetIndex() {
@@ -312,4 +376,7 @@ namespace TagListHandlerTest {
 
 		Assert::IsTrue(true);
 	}
+
+
+
 }

@@ -45,8 +45,8 @@ public:
 	static void UpdateDragTargetIndex(int targetIndex) { s_dragTargetIndex = targetIndex; }
 
 	// タグリストの取得
-	static SuggestionList GetTagItems() { return s_tagItems; }
-	static size_t GetTagItemsCount() { return s_tagItems.size(); }
+	static std::vector<std::string> GetTags();
+	static size_t GetTagCount() { return s_tagItems.size(); }
 
 private:
 	// タグリスト関連のメンバー変数

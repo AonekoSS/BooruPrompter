@@ -556,12 +556,12 @@ void BooruPrompter::HandleTagListDrag(int x, int y) {
 	int targetIndex = ListView_HitTest(m_hwndTagList, &ht);
 
 	// すべてのアイテムのハイライトをクリア
-	for (int i = 0; i < static_cast<int>(TagListHandler::GetTagItemsCount()); ++i) {
+	for (int i = 0; i < static_cast<int>(TagListHandler::GetTagCount()); ++i) {
 		ListView_SetItemState(m_hwndTagList, i, 0, LVIS_DROPHILITED);
 	}
 
 	// ターゲットアイテムをハイライト
-	if (targetIndex >= 0 && targetIndex < static_cast<int>(TagListHandler::GetTagItemsCount())) {
+	if (targetIndex >= 0 && targetIndex < static_cast<int>(TagListHandler::GetTagCount())) {
 		ListView_SetItemState(m_hwndTagList, targetIndex, LVIS_DROPHILITED, LVIS_DROPHILITED);
 		TagListHandler::UpdateDragTargetIndex(targetIndex);
 	} else {

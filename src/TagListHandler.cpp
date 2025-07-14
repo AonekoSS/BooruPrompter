@@ -18,7 +18,7 @@ void TagListHandler::RefreshTagList(BooruPrompter* pThis) {
 		const auto& item = s_tagItems[i];
 		const auto tag = utf8_to_unicode(item.tag);
 
-		std::vector<std::wstring> texts = {tag, item.description};
+		std::vector<std::wstring> texts = { tag, item.description };
 		pThis->AddListViewItem(pThis->m_hwndTagList, static_cast<int>(i), texts);
 	}
 }
@@ -30,7 +30,9 @@ void TagListHandler::OnTagListDragDrop(BooruPrompter* pThis, int fromIndex, int 
 		return;
 	}
 
-	std::swap(s_tagItems[fromIndex], s_tagItems[toIndex]);
+	Suggestion item = s_tagItems[fromIndex];
+	s_tagItems.erase(s_tagItems.begin() + fromIndex);
+	s_tagItems.insert(s_tagItems.begin() + toIndex, item);
 
 	RefreshTagList(pThis);
 	UpdatePromptFromTagList(pThis);
@@ -184,4 +186,13 @@ void TagListHandler::DeleteTag(BooruPrompter* pThis, int index) {
 		ListView_SetItemState(pThis->m_hwndTagList, newIndex, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
 		ListView_EnsureVisible(pThis->m_hwndTagList, newIndex, FALSE);
 	}
+}
+
+std::vector<std::string> TagListHandler::GetTags() {
+	std::vector<std::string> tags;
+	tags.reserve(s_tagItems.size());
+	for (const auto& item : s_tagItems) {
+		tags.push_back(item.tag);
+	}
+	return tags;
 }
