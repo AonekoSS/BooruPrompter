@@ -47,6 +47,9 @@ public:
 	static std::vector<std::string> GetTags();
 	static size_t GetTagCount() { return s_tagItems.size(); }
 
+	// タグリストのインデックスからプロンプト内の範囲を取得
+	static bool GetTagPromptRange(int index, size_t& start, size_t& end);
+
 private:
 	// タグリスト関連のメンバー変数
 	static TagList s_tagItems;

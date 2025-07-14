@@ -474,11 +474,25 @@ void BooruPrompter::OnNotifyMessage(HWND hwnd, WPARAM wParam, LPARAM lParam) {
 		LPNMITEMACTIVATE pnmia = reinterpret_cast<LPNMITEMACTIVATE>(lParam);
 		SuggestionHandler::OnSuggestionSelected(this, pnmia->iItem);
 	}
-	else if (pnmh->idFrom == ID_TAG_LIST && pnmh->code == LVN_BEGINDRAG) {
-		// ドラッグ開始
-		LPNMLISTVIEW pnmlv = reinterpret_cast<LPNMLISTVIEW>(lParam);
-		TagListHandler::OnTagListDragStart(this, pnmlv->iItem);
-		SetCapture(hwnd);
+	else if (pnmh->idFrom == ID_TAG_LIST) {
+		if (pnmh->code == LVN_BEGINDRAG) {
+			// ドラッグ開始
+			LPNMLISTVIEW pnmlv = reinterpret_cast<LPNMLISTVIEW>(lParam);
+			TagListHandler::OnTagListDragStart(this, pnmlv->iItem);
+			SetCapture(hwnd);
+		} else if (pnmh->code == LVN_ITEMCHANGED) {
+			LPNMLISTVIEW pnmlv = reinterpret_cast<LPNMLISTVIEW>(lParam);
+			if ((pnmlv->uChanged & LVIF_STATE) && (pnmlv->uNewState & LVIS_SELECTED)) {
+				int sel = pnmlv->iItem;
+				if (sel >= 0) {
+					size_t start = 0, end = 0;
+					if (TagListHandler::GetTagPromptRange(sel, start, end)) {
+						m_promptEditor->SetSelection((DWORD)start, (DWORD)end);
+						m_promptEditor->SetFocus();
+					}
+				}
+			}
+		}
 	}
 }
 

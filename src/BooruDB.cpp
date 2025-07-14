@@ -120,15 +120,20 @@ bool BooruDB::ReverseSuggestion(TagList& suggestions, const std::string& input, 
 
 
 
+// メタ情報の取得
+std::wstring BooruDB::GetMetadata(const std::string& tag) {
+	auto it = metadata_.find(tag);
+	if (it != metadata_.end()) {
+		return it->second;
+	}
+	return L"";
+}
 
 // メタ情報付きのサジェストに変換
 Tag BooruDB::MakeSuggestion(const std::string& tag) {
 	Tag suggestion;
 	suggestion.tag = tag;
-	auto it = metadata_.find(tag);
-	if (it != metadata_.end()) {
-		suggestion.description = it->second;
-	}
+	suggestion.description = GetMetadata(tag);
 	return suggestion;
 }
 

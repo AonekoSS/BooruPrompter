@@ -23,6 +23,9 @@ public:
 	// 処理の中断
 	void Cancel() { ++active_query_; }
 
+	// メタ情報の取得
+	std::wstring GetMetadata(const std::string& tag);
+
 	// メタ情報付きのサジェストに変換
 	Tag MakeSuggestion(const std::string& suggestion);
 

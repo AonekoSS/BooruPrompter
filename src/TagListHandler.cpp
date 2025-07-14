@@ -1,4 +1,5 @@
 ﻿#include "framework.h"
+#include <sstream>
 #include "TagListHandler.h"
 #include "BooruPrompter.h"
 #include "TextUtils.h"
@@ -51,24 +52,24 @@ void TagListHandler::OnTagListDragEnd(BooruPrompter* pThis) {
 }
 
 void TagListHandler::UpdatePromptFromTagList(BooruPrompter* pThis) {
-	std::wstring newPrompt;
+	std::ostringstream oss;
 	bool isFirst = true;
-	for (size_t i = 0; i < s_tagItems.size(); ++i) {
-		auto tag = utf8_to_unicode(s_tagItems[i].tag);
-		if (!isFirst) newPrompt += L", ";
-		isFirst = tag == L"\n";
-		newPrompt += tag;
+	for (auto& tag : s_tagItems) {
+		if (!isFirst) oss << ", ";
+		isFirst = tag.tag == "\n";
+		oss << tag.tag;
 	}
-	pThis->m_promptEditor->SetText(newPrompt);
+	auto prompt = oss.str();
+	pThis->m_promptEditor->SetText(utf8_to_unicode(prompt));
+	SyncTagListFromPrompt(pThis, prompt);
 }
 
 void TagListHandler::SyncTagListFromPrompt(BooruPrompter* pThis, const std::string& prompt) {
-	auto extractedTags = extract_tags_from_text(prompt);
-	std::vector<std::string> tags;
-	for (const auto& tag : extractedTags) {
-		tags.push_back(tag.tag);
+	s_tagItems = extract_tags_from_text(prompt);
+	for (auto& tag : s_tagItems) {
+		tag.description = BooruDB::GetInstance().GetMetadata(tag.tag);
 	}
-	SyncTagList(pThis, tags);
+	RefreshTagList(pThis);
 }
 
 void TagListHandler::SyncTagList(BooruPrompter* pThis, const std::vector<std::string>& tags) {
@@ -186,4 +187,23 @@ std::vector<std::string> TagListHandler::GetTags() {
 		tags.push_back(item.tag);
 	}
 	return tags;
+}
+
+// タグリストのインデックスからプロンプト内の範囲を取得
+bool TagListHandler::GetTagPromptRange(int index, size_t& start, size_t& end) {
+	if (index < 0 || index >= static_cast<int>(s_tagItems.size())) {
+		return false;
+	}
+	start = s_tagItems[index].start;
+	end = s_tagItems[index].end;
+
+	OutputDebugString(L"start: ");
+	OutputDebugString(std::to_wstring(start).c_str());
+	OutputDebugString(L"\n");
+	OutputDebugString(L"end: ");
+	OutputDebugString(std::to_wstring(end).c_str());
+	OutputDebugString(L"\n");
+
+
+	return true;
 }
