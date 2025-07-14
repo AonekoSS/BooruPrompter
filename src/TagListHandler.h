@@ -3,7 +3,7 @@
 #include <vector>
 #include <windows.h>
 
-#include "Suggestion.h"
+#include "Tag.h"
 
 class BooruPrompter;
 
@@ -49,7 +49,7 @@ public:
 
 private:
 	// タグリスト関連のメンバー変数
-	static SuggestionList s_tagItems;
+	static TagList s_tagItems;
 	static int s_dragIndex;        // ドラッグ中のアイテムインデックス
 	static int s_dragTargetIndex;  // ドラッグ先のアイテムインデックス
 	static bool s_isDragging;      // ドラッグ中かどうか

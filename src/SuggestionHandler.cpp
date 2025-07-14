@@ -4,7 +4,7 @@
 #include "TextUtils.h"
 #include "TagListHandler.h"
 
-void SuggestionHandler::UpdateSuggestionList(BooruPrompter* pThis, const SuggestionList& suggestions) {
+void SuggestionHandler::UpdateSuggestionList(BooruPrompter* pThis, const TagList& suggestions) {
 	pThis->m_currentSuggestions = suggestions;
 	pThis->RefreshTagList(pThis->m_hwndSuggestions, suggestions);
 }

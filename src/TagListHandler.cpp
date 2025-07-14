@@ -6,7 +6,7 @@
 
 
 // 静的メンバー変数の定義
-SuggestionList TagListHandler::s_tagItems;
+TagList TagListHandler::s_tagItems;
 int TagListHandler::s_dragIndex = -1;
 int TagListHandler::s_dragTargetIndex = -1;
 bool TagListHandler::s_isDragging = false;
@@ -22,7 +22,7 @@ void TagListHandler::OnTagListDragDrop(BooruPrompter* pThis, int fromIndex, int 
 		return;
 	}
 
-	Suggestion item = s_tagItems[fromIndex];
+	Tag item = s_tagItems[fromIndex];
 	s_tagItems.erase(s_tagItems.begin() + fromIndex);
 	s_tagItems.insert(s_tagItems.begin() + toIndex, item);
 
@@ -71,7 +71,7 @@ void TagListHandler::SyncTagList(BooruPrompter* pThis, const std::vector<std::st
 	s_tagItems.clear();
 	s_tagItems.reserve(tags.size());
 	for (const auto& tag : tags) {
-		Suggestion sug = BooruDB::GetInstance().MakeSuggestion(tag);
+		Tag sug = BooruDB::GetInstance().MakeSuggestion(tag);
 		s_tagItems.push_back(sug);
 	}
 	RefreshTagList(pThis);
@@ -130,7 +130,7 @@ void TagListHandler::MoveTagToTop(BooruPrompter* pThis, int index) {
 		return;
 	}
 
-	Suggestion item = s_tagItems[index];
+	Tag item = s_tagItems[index];
 	s_tagItems.erase(s_tagItems.begin() + index);
 	s_tagItems.insert(s_tagItems.begin(), item);
 
@@ -146,7 +146,7 @@ void TagListHandler::MoveTagToBottom(BooruPrompter* pThis, int index) {
 		return;
 	}
 
-	Suggestion item = s_tagItems[index];
+	Tag item = s_tagItems[index];
 	s_tagItems.erase(s_tagItems.begin() + index);
 	s_tagItems.push_back(item);
 

@@ -212,7 +212,7 @@ void BooruPrompter::OnCreate(HWND hwnd) {
 	m_hwndSuggestions = CreateListView(hwnd, ID_SUGGESTIONS, L"", suggestionColumns);
 
 	// サジェスト開始
-	m_suggestionManager.StartSuggestion([this](const SuggestionList& suggestions) {
+	m_suggestionManager.StartSuggestion([this](const TagList& suggestions) {
 		SuggestionHandler::UpdateSuggestionList(this, suggestions);
 	});
 
@@ -301,7 +301,7 @@ void BooruPrompter::AddListViewItem(HWND hwndListView, int index, const std::vec
 	}
 }
 
-void BooruPrompter::RefreshTagList(HWND hwndListView, const SuggestionList& tagItems){
+void BooruPrompter::RefreshTagList(HWND hwndListView, const TagList& tagItems){
     SendMessage(hwndListView, WM_SETREDRAW, FALSE, 0);
     int oldCount = ListView_GetItemCount(hwndListView);
     int newCount = (int)tagItems.size();

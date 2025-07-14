@@ -30,7 +30,7 @@
     <ClInclude Include="ImageInfo.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="Suggestion.h">
+    <ClInclude Include="Tag.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="SuggestionHandler.h">

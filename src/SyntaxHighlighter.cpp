@@ -104,6 +104,7 @@ bool SyntaxHighlighter::Initialize(HWND hwndParent, int x, int y, int width, int
 	TextOnlyOleCallback* pCallback = new TextOnlyOleCallback();
 	SendMessage(m_hwndEdit, EM_SETOLECALLBACK, 0, (LPARAM)pCallback);
 
+	SendMessage(m_hwndEdit, EM_HIDESELECTION, FALSE, 0);
 	return true;
 }
 

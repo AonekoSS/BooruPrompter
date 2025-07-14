@@ -49,7 +49,7 @@ bool BooruDB::LoadDictionary() {
 }
 
 // 即時サジェスト
-bool BooruDB::QuickSuggestion(SuggestionList& suggestions, const std::string& input, int maxSuggestions) {
+bool BooruDB::QuickSuggestion(TagList& suggestions, const std::string& input, int maxSuggestions) {
 	if (input.empty() || dictionary_.empty()) return false;
 	int query_id = ++active_query_;
 	auto length = input.size();
@@ -65,7 +65,7 @@ bool BooruDB::QuickSuggestion(SuggestionList& suggestions, const std::string& in
 }
 
 // 曖昧検索でサジェスト
-bool BooruDB::FuzzySuggestion(SuggestionList& suggestions, const std::string& input, int maxSuggestions) {
+bool BooruDB::FuzzySuggestion(TagList& suggestions, const std::string& input, int maxSuggestions) {
 	if (input.empty() || dictionary_.empty()) return false;
 	int query_id = ++active_query_;
 
@@ -99,7 +99,7 @@ bool BooruDB::FuzzySuggestion(SuggestionList& suggestions, const std::string& in
 
 
 // 逆引きサジェスト
-bool BooruDB::ReverseSuggestion(SuggestionList& suggestions, const std::string& input, int maxSuggestions) {
+bool BooruDB::ReverseSuggestion(TagList& suggestions, const std::string& input, int maxSuggestions) {
 	if (input.empty() || metadata_.empty()) return false;
 	int query_id = ++active_query_;
 
@@ -122,8 +122,8 @@ bool BooruDB::ReverseSuggestion(SuggestionList& suggestions, const std::string& 
 
 
 // メタ情報付きのサジェストに変換
-Suggestion BooruDB::MakeSuggestion(const std::string& tag) {
-	Suggestion suggestion;
+Tag BooruDB::MakeSuggestion(const std::string& tag) {
+	Tag suggestion;
 	suggestion.tag = tag;
 	auto it = metadata_.find(tag);
 	if (it != metadata_.end()) {

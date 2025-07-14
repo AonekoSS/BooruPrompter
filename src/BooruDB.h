@@ -4,7 +4,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "Suggestion.h"
+#include "Tag.h"
 
 class BooruDB {
 public:
@@ -24,16 +24,16 @@ public:
 	void Cancel() { ++active_query_; }
 
 	// メタ情報付きのサジェストに変換
-	Suggestion MakeSuggestion(const std::string& suggestion);
+	Tag MakeSuggestion(const std::string& suggestion);
 
 	// 即時サジェスト
-	bool QuickSuggestion(SuggestionList& suggestions, const std::string& input, int maxSuggestions = 5);
+	bool QuickSuggestion(TagList& suggestions, const std::string& input, int maxSuggestions = 5);
 
 	// 曖昧検索でサジェスト
-	bool FuzzySuggestion(SuggestionList& suggestions, const std::string& input, int maxSuggestions = 5);
+	bool FuzzySuggestion(TagList& suggestions, const std::string& input, int maxSuggestions = 5);
 
 	// 逆引きサジェスト
-	bool ReverseSuggestion(SuggestionList& suggestions, const std::string& input, int maxSuggestions = 5);
+	bool ReverseSuggestion(TagList& suggestions, const std::string& input, int maxSuggestions = 5);
 
 private:
 	// プライベートコンストラクタ（Singleton）

@@ -196,7 +196,7 @@
     <!-- メインプロジェクトのヘッダーファイル -->
     <ClInclude Include="..\src\TextUtils.h" />
     <ClInclude Include="..\src\BooruDB.h" />
-    <ClInclude Include="..\src\Suggestion.h" />
+    <ClInclude Include="..\src\Tag.h" />
     <ClInclude Include="..\src\SuggestionManager.h" />
     <ClInclude Include="..\src\ImageTagDetector.h" />
     <ClInclude Include="..\src\SyntaxHighlighter.h" />

@@ -86,7 +86,7 @@
     <ClInclude Include="..\src\BooruDB.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\Suggestion.h">
+    <ClInclude Include="..\src\Tag.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="..\src\SuggestionManager.h">

@@ -9,8 +9,8 @@ using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 // ToString特殊化
 namespace Microsoft::VisualStudio::CppUnitTestFramework {
 	template<>
-	static std::wstring ToString<Suggestion>(const Suggestion& suggestion) {
-		return L"Suggestion{tag: " + std::wstring(suggestion.tag.begin(), suggestion.tag.end()) + L"}";
+	static std::wstring ToString<Tag>(const Tag& suggestion) {
+		return L"Tag{tag: " + std::wstring(suggestion.tag.begin(), suggestion.tag.end()) + L"}";
 	}
 
 	template<>

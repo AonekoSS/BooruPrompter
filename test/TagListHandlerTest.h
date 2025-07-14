@@ -2,7 +2,7 @@
 
 #include "CppUnitTest.h"
 #include "../src/TagListHandler.h"
-#include "../src/Suggestion.h"
+#include "../src/Tag.h"
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
