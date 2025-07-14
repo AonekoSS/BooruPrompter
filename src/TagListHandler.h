@@ -40,10 +40,13 @@ public:
 	static bool IsDragging() { return s_isDragging; }
 	static int GetDragIndex() { return s_dragIndex; }
 	static int GetDragTargetIndex() { return s_dragTargetIndex; }
-	static size_t GetTagItemsCount() { return s_tagItems.size(); }
 
 	// ドラッグ状態の更新
 	static void UpdateDragTargetIndex(int targetIndex) { s_dragTargetIndex = targetIndex; }
+
+	// タグリストの取得
+	static SuggestionList GetTagItems() { return s_tagItems; }
+	static size_t GetTagItemsCount() { return s_tagItems.size(); }
 
 private:
 	// タグリスト関連のメンバー変数
