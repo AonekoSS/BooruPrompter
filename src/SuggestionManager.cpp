@@ -12,7 +12,7 @@ SuggestionManager::~SuggestionManager() {
 }
 
 // サジェスト処理の開始
-void SuggestionManager::StartSuggestion(std::function<void(const SuggestionList&)> callback) {
+void SuggestionManager::StartSuggestion(std::function<void(const TagList&)> callback) {
 	m_callback = callback;
 	BooruDB::GetInstance().LoadDictionary();
 }
@@ -43,11 +43,11 @@ void SuggestionManager::CancelTimer() {
 void CALLBACK SuggestionManager::SuggestTimerProc(PVOID lpParameter, BOOLEAN TimerOrWaitFired) {
 	auto* instance = static_cast<SuggestionManager*>(lpParameter);
 	if (instance) {
-		instance->Suggestion();
+		instance->Tag();
 	}
 }
 
-void SuggestionManager::Suggestion() {
+void SuggestionManager::Tag() {
 	if (!m_callback) return;
 	auto input = m_currentInput;
 	if (input.empty()) {
@@ -57,14 +57,14 @@ void SuggestionManager::Suggestion() {
 	bool has_multibyte = utf8_has_multibyte(input);
 	if (!has_multibyte) {
 		// 通常のサジェスト（前方一致→曖昧検索）
-		SuggestionList saggestions;
+		TagList saggestions;
 		if (!BooruDB::GetInstance().QuickSuggestion(saggestions, input, 8)) return;
 		if (m_callback) m_callback(saggestions);
 		if (!BooruDB::GetInstance().FuzzySuggestion(saggestions, input, 32)) return;
 		if (m_callback) m_callback(saggestions);
 	} else {
 		// 日本語を含むので逆引きサジェスト
-		SuggestionList saggestions;
+		TagList saggestions;
 		if (!BooruDB::GetInstance().ReverseSuggestion(saggestions, input, 40)) return;
 		if (m_callback) m_callback(saggestions);
 	}

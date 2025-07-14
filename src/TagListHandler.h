@@ -3,7 +3,7 @@
 #include <vector>
 #include <windows.h>
 
-#include "Suggestion.h"
+#include "Tag.h"
 
 class BooruPrompter;
 
@@ -22,7 +22,6 @@ public:
 	static void OnTagListDragDrop(BooruPrompter* pThis, int fromIndex, int toIndex);
 	static void OnTagListDragStart(BooruPrompter* pThis, int index);
 	static void OnTagListDragEnd(BooruPrompter* pThis);
-	static void AddTagToList(BooruPrompter* pThis, const Suggestion& suggestion);
 
 	// プロンプト・タグ同期
 	static void UpdatePromptFromTagList(BooruPrompter* pThis);
@@ -40,14 +39,20 @@ public:
 	static bool IsDragging() { return s_isDragging; }
 	static int GetDragIndex() { return s_dragIndex; }
 	static int GetDragTargetIndex() { return s_dragTargetIndex; }
-	static size_t GetTagItemsCount() { return s_tagItems.size(); }
 
 	// ドラッグ状態の更新
 	static void UpdateDragTargetIndex(int targetIndex) { s_dragTargetIndex = targetIndex; }
 
+	// タグリストの取得
+	static std::vector<std::string> GetTags();
+	static size_t GetTagCount() { return s_tagItems.size(); }
+
+	// タグリストのインデックスからプロンプト内の範囲を取得
+	static bool GetTagPromptRange(int index, size_t& start, size_t& end);
+
 private:
 	// タグリスト関連のメンバー変数
-	static SuggestionList s_tagItems;
+	static TagList s_tagItems;
 	static int s_dragIndex;        // ドラッグ中のアイテムインデックス
 	static int s_dragTargetIndex;  // ドラッグ先のアイテムインデックス
 	static bool s_isDragging;      // ドラッグ中かどうか

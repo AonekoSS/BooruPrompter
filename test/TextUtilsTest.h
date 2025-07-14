@@ -40,6 +40,11 @@ public:
         TEST_METHOD(TestExtractTagsFromTextMultiple);
         TEST_METHOD(TestExtractTagsFromTextWithNewlines);
         TEST_METHOD(TestExtractTagsFromTextMixedDelimiters);
+        TEST_METHOD(TestExtractTagsFromTextWithWhitespace);
+        TEST_METHOD(TestExtractTagsFromTextWithEmptyTags);
+        TEST_METHOD(TestExtractTagsFromTextWithTrailingDelimiter);
+        TEST_METHOD(TestExtractTagsFromTextWithLeadingDelimiter);
+        TEST_METHOD(TestExtractTagsFromTextComplexWhitespace);
 
 	// 文字列分割のテスト
 	TEST_METHOD(TestSplitString);

@@ -1,4 +1,5 @@
 ﻿#include "framework.h"
+#include <sstream>
 #include "TagListHandler.h"
 #include "BooruPrompter.h"
 #include "TextUtils.h"
@@ -6,21 +7,13 @@
 
 
 // 静的メンバー変数の定義
-SuggestionList TagListHandler::s_tagItems;
+TagList TagListHandler::s_tagItems;
 int TagListHandler::s_dragIndex = -1;
 int TagListHandler::s_dragTargetIndex = -1;
 bool TagListHandler::s_isDragging = false;
 
 void TagListHandler::RefreshTagList(BooruPrompter* pThis) {
-	ListView_DeleteAllItems(pThis->m_hwndTagList);
-
-	for (size_t i = 0; i < s_tagItems.size(); ++i) {
-		const auto& item = s_tagItems[i];
-		const auto tag = utf8_to_unicode(item.tag);
-
-		std::vector<std::wstring> texts = {tag, item.description};
-		pThis->AddListViewItem(pThis->m_hwndTagList, static_cast<int>(i), texts);
-	}
+	pThis->RefreshTagList(pThis->m_hwndTagList, s_tagItems);
 }
 
 void TagListHandler::OnTagListDragDrop(BooruPrompter* pThis, int fromIndex, int toIndex) {
@@ -30,7 +23,9 @@ void TagListHandler::OnTagListDragDrop(BooruPrompter* pThis, int fromIndex, int 
 		return;
 	}
 
-	std::swap(s_tagItems[fromIndex], s_tagItems[toIndex]);
+	Tag item = s_tagItems[fromIndex];
+	s_tagItems.erase(s_tagItems.begin() + fromIndex);
+	s_tagItems.insert(s_tagItems.begin() + toIndex, item);
 
 	RefreshTagList(pThis);
 	UpdatePromptFromTagList(pThis);
@@ -56,33 +51,32 @@ void TagListHandler::OnTagListDragEnd(BooruPrompter* pThis) {
 	s_isDragging = false;
 }
 
-void TagListHandler::AddTagToList(BooruPrompter* pThis, const Suggestion& suggestion) {
-	s_tagItems.push_back(suggestion);
-	RefreshTagList(pThis);
-}
-
 void TagListHandler::UpdatePromptFromTagList(BooruPrompter* pThis) {
-	std::wstring newPrompt;
+	std::ostringstream oss;
 	bool isFirst = true;
-	for (size_t i = 0; i < s_tagItems.size(); ++i) {
-		auto tag = utf8_to_unicode(s_tagItems[i].tag);
-		if (!isFirst) newPrompt += L", ";
-		isFirst = tag == L"\n";
-		newPrompt += tag;
+	for (auto& tag : s_tagItems) {
+		if (!isFirst) oss << ", ";
+		isFirst = tag.tag == "\n";
+		oss << tag.tag;
 	}
-	pThis->m_promptEditor->SetText(newPrompt);
+	auto prompt = oss.str();
+	pThis->m_promptEditor->SetText(utf8_to_unicode(prompt));
+	SyncTagListFromPrompt(pThis, prompt);
 }
 
 void TagListHandler::SyncTagListFromPrompt(BooruPrompter* pThis, const std::string& prompt) {
-	auto extractedTags = extract_tags_from_text(prompt);
-	SyncTagList(pThis, extractedTags);
+	s_tagItems = extract_tags_from_text(prompt);
+	for (auto& tag : s_tagItems) {
+		tag.description = BooruDB::GetInstance().GetMetadata(tag.tag);
+	}
+	RefreshTagList(pThis);
 }
 
 void TagListHandler::SyncTagList(BooruPrompter* pThis, const std::vector<std::string>& tags) {
 	s_tagItems.clear();
 	s_tagItems.reserve(tags.size());
 	for (const auto& tag : tags) {
-		Suggestion sug = BooruDB::GetInstance().MakeSuggestion(tag);
+		Tag sug = BooruDB::GetInstance().MakeSuggestion(tag);
 		s_tagItems.push_back(sug);
 	}
 	RefreshTagList(pThis);
@@ -141,7 +135,7 @@ void TagListHandler::MoveTagToTop(BooruPrompter* pThis, int index) {
 		return;
 	}
 
-	Suggestion item = s_tagItems[index];
+	Tag item = s_tagItems[index];
 	s_tagItems.erase(s_tagItems.begin() + index);
 	s_tagItems.insert(s_tagItems.begin(), item);
 
@@ -157,7 +151,7 @@ void TagListHandler::MoveTagToBottom(BooruPrompter* pThis, int index) {
 		return;
 	}
 
-	Suggestion item = s_tagItems[index];
+	Tag item = s_tagItems[index];
 	s_tagItems.erase(s_tagItems.begin() + index);
 	s_tagItems.push_back(item);
 
@@ -184,4 +178,32 @@ void TagListHandler::DeleteTag(BooruPrompter* pThis, int index) {
 		ListView_SetItemState(pThis->m_hwndTagList, newIndex, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
 		ListView_EnsureVisible(pThis->m_hwndTagList, newIndex, FALSE);
 	}
+}
+
+std::vector<std::string> TagListHandler::GetTags() {
+	std::vector<std::string> tags;
+	tags.reserve(s_tagItems.size());
+	for (const auto& item : s_tagItems) {
+		tags.push_back(item.tag);
+	}
+	return tags;
+}
+
+// タグリストのインデックスからプロンプト内の範囲を取得
+bool TagListHandler::GetTagPromptRange(int index, size_t& start, size_t& end) {
+	if (index < 0 || index >= static_cast<int>(s_tagItems.size())) {
+		return false;
+	}
+	start = s_tagItems[index].start;
+	end = s_tagItems[index].end;
+
+	OutputDebugString(L"start: ");
+	OutputDebugString(std::to_wstring(start).c_str());
+	OutputDebugString(L"\n");
+	OutputDebugString(L"end: ");
+	OutputDebugString(std::to_wstring(end).c_str());
+	OutputDebugString(L"\n");
+
+
+	return true;
 }

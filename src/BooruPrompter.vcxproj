@@ -167,7 +167,7 @@
     <ClInclude Include="ImageInfo.h" />
     <ClInclude Include="ImageTagDetector.h" />
     <ClInclude Include="Resource.h" />
-    <ClInclude Include="Suggestion.h" />
+    <ClInclude Include="Tag.h" />
     <ClInclude Include="SuggestionHandler.h" />
     <ClInclude Include="SuggestionManager.h" />
     <ClInclude Include="SyntaxHighlighter.h" />

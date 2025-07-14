@@ -5,7 +5,7 @@
 #include <vector>
 
 #include "BooruDB.h"
-#include "Suggestion.h"
+#include "Tag.h"
 
 class SuggestionManager {
 public:
@@ -13,7 +13,7 @@ public:
 	~SuggestionManager();
 
 	// サジェスト処理の開始
-	void StartSuggestion(std::function<void(const SuggestionList&)> callback);
+	void StartSuggestion(std::function<void(const TagList&)> callback);
 
 	// リクエスト
 	void Request(const std::string& input);
@@ -24,11 +24,11 @@ public:
 private:
 	static constexpr int SUGGEST_DELAY_MS = 500;
 
-	std::function<void(const std::vector<Suggestion>&)> m_callback;
+	std::function<void(const std::vector<Tag>&)> m_callback;
 	HANDLE m_SuggestTimer;
 	std::string m_currentInput;
 
 	void CancelTimer();
 	static void CALLBACK SuggestTimerProc(PVOID lpParameter, BOOLEAN TimerOrWaitFired);
-	void Suggestion();
+	void Tag();
 };

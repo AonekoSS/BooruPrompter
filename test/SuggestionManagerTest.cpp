@@ -52,7 +52,7 @@ namespace SuggestionManagerTest
         SuggestionManager manager;
         bool callbackCalled = false;
 
-        auto callback = [&callbackCalled](const SuggestionList& suggestions) {
+        auto callback = [&callbackCalled](const TagList& suggestions) {
             callbackCalled = true;
         };
 
@@ -80,7 +80,7 @@ namespace SuggestionManagerTest
         bool callbackCalled = false;
         std::string receivedInput;
 
-        auto callback = [&callbackCalled, &receivedInput](const SuggestionList& suggestions) {
+        auto callback = [&callbackCalled, &receivedInput](const TagList& suggestions) {
             callbackCalled = true;
         };
 
@@ -97,7 +97,7 @@ namespace SuggestionManagerTest
         SuggestionManager manager;
         bool callbackCalled = false;
 
-        auto callback = [&callbackCalled](const SuggestionList& suggestions) {
+        auto callback = [&callbackCalled](const TagList& suggestions) {
             callbackCalled = true;
         };
 
@@ -114,7 +114,7 @@ namespace SuggestionManagerTest
         SuggestionManager manager;
         bool callbackCalled = false;
 
-        auto callback = [&callbackCalled](const SuggestionList& suggestions) {
+        auto callback = [&callbackCalled](const TagList& suggestions) {
             callbackCalled = true;
         };
 
@@ -133,7 +133,7 @@ namespace SuggestionManagerTest
         SuggestionManager manager;
         bool callbackCalled = false;
 
-        auto callback = [&callbackCalled](const SuggestionList& suggestions) {
+        auto callback = [&callbackCalled](const TagList& suggestions) {
             callbackCalled = true;
         };
 
@@ -164,7 +164,7 @@ namespace SuggestionManagerTest
         SuggestionManager manager;
         bool callbackCalled = false;
 
-        auto callback = [&callbackCalled](const SuggestionList& suggestions) {
+        auto callback = [&callbackCalled](const TagList& suggestions) {
             callbackCalled = true;
         };
 
@@ -181,7 +181,7 @@ namespace SuggestionManagerTest
         SuggestionManager manager;
         bool callbackCalled = false;
 
-        auto callback = [&callbackCalled](const SuggestionList& suggestions) {
+        auto callback = [&callbackCalled](const TagList& suggestions) {
             callbackCalled = true;
         };
 
@@ -199,7 +199,7 @@ namespace SuggestionManagerTest
         SuggestionManager manager;
         bool callbackCalled = false;
 
-        auto callback = [&callbackCalled](const SuggestionList& suggestions) {
+        auto callback = [&callbackCalled](const TagList& suggestions) {
             callbackCalled = true;
         };
 
@@ -216,7 +216,7 @@ namespace SuggestionManagerTest
         SuggestionManager manager;
         bool callbackCalled = false;
 
-        auto callback = [&callbackCalled](const SuggestionList& suggestions) {
+        auto callback = [&callbackCalled](const TagList& suggestions) {
             callbackCalled = true;
         };
 

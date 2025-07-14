@@ -117,44 +117,6 @@ std::string trim(const std::string& text) {
 	return text.substr(first, last - first + 1);
 }
 
-// カンマ区切り文字列からタグを抽出
-std::vector<std::string> extract_tags_from_text(const std::string& text) {
-	std::vector<std::string> tags;
-	if (text.empty()) {
-		return tags;
-	}
-
-	size_t start = 0;
-	size_t end = 0;
-
-	while (end < text.length()) {
-		// 次のカンマまたは改行を探す
-		end = text.find_first_of(",\n", start);
-		if (end == std::string::npos) {
-			end = text.length();
-		}
-
-		// タグを抽出してトリミング
-		if (end > start) {
-			std::string tag = text.substr(start, end - start);
-			std::string trimmedTag = trim(tag);
-			if (!trimmedTag.empty()) {
-				tags.push_back(trimmedTag);
-			}
-		}
-
-		// 改行コードの場合、改行コード自体もタグとして追加
-		if (end < text.length() && text[end] == '\n') {
-			tags.push_back("\n");
-		}
-
-		// 次の開始位置を設定（区切り文字の次の位置）
-		start = end + 1;
-	}
-
-	return tags;
-}
-
 // 文字列を指定した区切り文字で分割
 std::vector<std::string> split_string(const std::string& str, char delimiter) {
 	std::vector<std::string> tokens;
@@ -256,5 +218,60 @@ std::wstring unescape_newlines(const std::wstring& text) {
 			result += text[i];
 		}
 	}
+	return result;
+}
+
+
+// カンマ区切り文字列からタグを抽出
+TagList extract_tags_from_text(const std::string& text) {
+	TagList result;
+	if (text.empty()) {
+		return result;
+	}
+	result.reserve(text.length());
+	size_t start = 0;
+	size_t end = 0;
+
+	while (end < text.length()) {
+		// 次のカンマまたは改行を探す
+		end = text.find_first_of(",\n", start);
+		if (end == std::string::npos) {
+			end = text.length();
+		}
+
+		// タグを抽出してトリミング
+		if (end > start) {
+			std::string tag = text.substr(start, end - start);
+			std::string trimmedTag = trim(tag);
+			if (!trimmedTag.empty()) {
+				// トリムされた文字列の実際の位置を計算
+				size_t first = tag.find_first_not_of(" \t\n");
+				size_t last = tag.find_last_not_of(" \t\n");
+				size_t trimmedStart = start + first;
+				size_t trimmedEnd = start + last + 1;
+
+				Tag tag;
+				tag.tag = trimmedTag;
+				tag.color = 0;
+				tag.start = trimmedStart;
+				tag.end = trimmedEnd;
+				result.push_back(tag);
+			}
+		}
+
+		// 改行コードの場合、改行コード自体もタグとして追加
+		if (end < text.length() && text[end] == '\n') {
+			Tag tag;
+			tag.tag = "\n";
+			tag.color = 0;
+			tag.start = end;
+			tag.end = end+1;
+			result.push_back(tag);
+		}
+
+		// 次の開始位置を設定（区切り文字の次の位置）
+		start = end + 1;
+	}
+
 	return result;
 }

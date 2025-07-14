@@ -51,7 +51,7 @@ namespace BooruDBTest
     {
         // 基本的なサジェスト作成のテスト
         BooruDB& db = BooruDB::GetInstance();
-        Suggestion suggestion = db.MakeSuggestion("test_tag");
+        Tag suggestion = db.MakeSuggestion("test_tag");
 
         Assert::AreEqual("test_tag", suggestion.tag.c_str());
         // descriptionは空文字列またはメタデータが設定される
@@ -61,7 +61,7 @@ namespace BooruDBTest
     {
         // 空文字列でのサジェスト作成テスト
         BooruDB& db = BooruDB::GetInstance();
-        Suggestion suggestion = db.MakeSuggestion("");
+        Tag suggestion = db.MakeSuggestion("");
 
         Assert::AreEqual("", suggestion.tag.c_str());
     }
@@ -70,7 +70,7 @@ namespace BooruDBTest
     {
         // メタデータ付きのサジェスト作成テスト
         BooruDB& db = BooruDB::GetInstance();
-        Suggestion suggestion = db.MakeSuggestion("blue_eyes");
+        Tag suggestion = db.MakeSuggestion("blue_eyes");
 
         Assert::AreEqual("blue_eyes", suggestion.tag.c_str());
         // メタデータが設定されているかどうかは辞書の内容に依存
@@ -80,7 +80,7 @@ namespace BooruDBTest
     {
         // 即時サジェストのテスト
         BooruDB& db = BooruDB::GetInstance();
-        SuggestionList suggestions;
+        TagList suggestions;
         bool result = db.QuickSuggestion(suggestions, "blue", 5);
 
         // 結果は辞書の内容に依存するが、関数が正常に実行されることを確認
@@ -91,7 +91,7 @@ namespace BooruDBTest
     {
         // 空文字列での即時サジェストテスト
         BooruDB& db = BooruDB::GetInstance();
-        SuggestionList suggestions;
+        TagList suggestions;
         bool result = db.QuickSuggestion(suggestions, "", 5);
 
         // 空文字列の場合は結果が空になることを期待
@@ -102,7 +102,7 @@ namespace BooruDBTest
     {
         // マッチしない文字列での即時サジェストテスト
         BooruDB& db = BooruDB::GetInstance();
-        SuggestionList suggestions;
+        TagList suggestions;
         bool result = db.QuickSuggestion(suggestions, "xyz123", 5);
 
         // マッチしない場合は結果が空になることを期待
@@ -113,7 +113,7 @@ namespace BooruDBTest
     {
         // 最大数制限のテスト
         BooruDB& db = BooruDB::GetInstance();
-        SuggestionList suggestions;
+        TagList suggestions;
         bool result = db.QuickSuggestion(suggestions, "blue", 3);
 
         // 最大数が制限されていることを確認
@@ -124,7 +124,7 @@ namespace BooruDBTest
     {
         // 曖昧検索サジェストのテスト
         BooruDB& db = BooruDB::GetInstance();
-        SuggestionList suggestions;
+        TagList suggestions;
         bool result = db.FuzzySuggestion(suggestions, "blu", 5);
 
         // 結果は辞書の内容に依存するが、関数が正常に実行されることを確認
@@ -135,7 +135,7 @@ namespace BooruDBTest
     {
         // 空文字列での曖昧検索サジェストテスト
         BooruDB& db = BooruDB::GetInstance();
-        SuggestionList suggestions;
+        TagList suggestions;
         bool result = db.FuzzySuggestion(suggestions, "", 5);
 
         // 空文字列の場合は結果が空になることを期待
@@ -146,7 +146,7 @@ namespace BooruDBTest
     {
         // マッチしない文字列での曖昧検索サジェストテスト
         BooruDB& db = BooruDB::GetInstance();
-        SuggestionList suggestions;
+        TagList suggestions;
         bool result = db.FuzzySuggestion(suggestions, "xyz123", 5);
 
         // マッチしない場合は結果が空になることを期待
@@ -157,7 +157,7 @@ namespace BooruDBTest
     {
         // 最大数制限のテスト
         BooruDB& db = BooruDB::GetInstance();
-        SuggestionList suggestions;
+        TagList suggestions;
         bool result = db.FuzzySuggestion(suggestions, "blu", 3);
 
         // 最大数が制限されていることを確認
@@ -168,7 +168,7 @@ namespace BooruDBTest
     {
         // 逆引きサジェストのテスト
         BooruDB& db = BooruDB::GetInstance();
-        SuggestionList suggestions;
+        TagList suggestions;
         bool result = db.ReverseSuggestion(suggestions, "blue", 5);
 
         // 結果は辞書の内容に依存するが、関数が正常に実行されることを確認
@@ -179,7 +179,7 @@ namespace BooruDBTest
     {
         // 空文字列での逆引きサジェストテスト
         BooruDB& db = BooruDB::GetInstance();
-        SuggestionList suggestions;
+        TagList suggestions;
         bool result = db.ReverseSuggestion(suggestions, "", 5);
 
         // 空文字列の場合は結果が空になることを期待
@@ -190,7 +190,7 @@ namespace BooruDBTest
     {
         // マッチしない文字列での逆引きサジェストテスト
         BooruDB& db = BooruDB::GetInstance();
-        SuggestionList suggestions;
+        TagList suggestions;
         bool result = db.ReverseSuggestion(suggestions, "xyz123", 5);
 
         // マッチしない場合は結果が空になることを期待
@@ -201,7 +201,7 @@ namespace BooruDBTest
     {
         // 最大数制限のテスト
         BooruDB& db = BooruDB::GetInstance();
-        SuggestionList suggestions;
+        TagList suggestions;
         bool result = db.ReverseSuggestion(suggestions, "blue", 3);
 
         // 最大数が制限されていることを確認

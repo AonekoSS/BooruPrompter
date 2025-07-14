@@ -212,7 +212,7 @@ void BooruPrompter::OnCreate(HWND hwnd) {
 	m_hwndSuggestions = CreateListView(hwnd, ID_SUGGESTIONS, L"", suggestionColumns);
 
 	// サジェスト開始
-	m_suggestionManager.StartSuggestion([this](const SuggestionList& suggestions) {
+	m_suggestionManager.StartSuggestion([this](const TagList& suggestions) {
 		SuggestionHandler::UpdateSuggestionList(this, suggestions);
 	});
 
@@ -244,7 +244,7 @@ HWND BooruPrompter::CreateListView(HWND parent, int id, const std::wstring& titl
 		WS_EX_CLIENTEDGE,
 		WC_LISTVIEW,
 		title.c_str(),
-		WS_CHILD | WS_VISIBLE | LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS,
+		WS_CHILD | WS_VISIBLE | LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | WS_VSCROLL,
 		0, 0, 0, 0,
 		parent,
 		reinterpret_cast<HMENU>(static_cast<UINT_PTR>(id)),
@@ -299,6 +299,46 @@ void BooruPrompter::AddListViewItem(HWND hwndListView, int index, const std::vec
 			ListView_SetItem(hwndListView, &lvi);
 		}
 	}
+}
+
+void BooruPrompter::RefreshTagList(HWND hwndListView, const TagList& tagItems){
+    SendMessage(hwndListView, WM_SETREDRAW, FALSE, 0);
+    int oldCount = ListView_GetItemCount(hwndListView);
+    int newCount = (int)tagItems.size();
+
+    // 既存アイテムの内容を更新
+	auto minCount = std::min(oldCount, newCount);
+    for (int i = 0; i < minCount; ++i) {
+        const auto& item = tagItems[i];
+        const auto tag = utf8_to_unicode(item.tag);
+        LVITEM lvi{};
+        lvi.mask = LVIF_TEXT;
+        lvi.iItem = i;
+        // 1カラム目
+        lvi.iSubItem = 0;
+        lvi.pszText = (LPWSTR)tag.c_str();
+        ListView_SetItem(hwndListView, &lvi);
+        // 2カラム目
+        lvi.iSubItem = 1;
+        lvi.pszText = (LPWSTR)item.description.c_str();
+        ListView_SetItem(hwndListView, &lvi);
+    }
+
+    // 余分なアイテムを削除
+    for (int i = oldCount - 1; i >= newCount; --i) {
+        ListView_DeleteItem(hwndListView, i);
+    }
+
+    // 新規アイテムを追加
+    for (int i = oldCount; i < newCount; ++i) {
+        const auto& item = tagItems[i];
+        const auto tag = utf8_to_unicode(item.tag);
+        std::vector<std::wstring> texts = { tag, item.description };
+        AddListViewItem(hwndListView, i, texts);
+    }
+
+    SendMessage(hwndListView, WM_SETREDRAW, TRUE, 0);
+    InvalidateRect(hwndListView, NULL, TRUE);
 }
 
 void BooruPrompter::OnSize(HWND hwnd) {
@@ -434,11 +474,25 @@ void BooruPrompter::OnNotifyMessage(HWND hwnd, WPARAM wParam, LPARAM lParam) {
 		LPNMITEMACTIVATE pnmia = reinterpret_cast<LPNMITEMACTIVATE>(lParam);
 		SuggestionHandler::OnSuggestionSelected(this, pnmia->iItem);
 	}
-	else if (pnmh->idFrom == ID_TAG_LIST && pnmh->code == LVN_BEGINDRAG) {
-		// ドラッグ開始
-		LPNMLISTVIEW pnmlv = reinterpret_cast<LPNMLISTVIEW>(lParam);
-		TagListHandler::OnTagListDragStart(this, pnmlv->iItem);
-		SetCapture(hwnd);
+	else if (pnmh->idFrom == ID_TAG_LIST) {
+		if (pnmh->code == LVN_BEGINDRAG) {
+			// ドラッグ開始
+			LPNMLISTVIEW pnmlv = reinterpret_cast<LPNMLISTVIEW>(lParam);
+			TagListHandler::OnTagListDragStart(this, pnmlv->iItem);
+			SetCapture(hwnd);
+		} else if (pnmh->code == LVN_ITEMCHANGED) {
+			LPNMLISTVIEW pnmlv = reinterpret_cast<LPNMLISTVIEW>(lParam);
+			if ((pnmlv->uChanged & LVIF_STATE) && (pnmlv->uNewState & LVIS_SELECTED)) {
+				int sel = pnmlv->iItem;
+				if (sel >= 0) {
+					size_t start = 0, end = 0;
+					if (TagListHandler::GetTagPromptRange(sel, start, end)) {
+						m_promptEditor->SetSelection((DWORD)start, (DWORD)end);
+						m_promptEditor->SetFocus();
+					}
+				}
+			}
+		}
 	}
 }
 
@@ -556,12 +610,12 @@ void BooruPrompter::HandleTagListDrag(int x, int y) {
 	int targetIndex = ListView_HitTest(m_hwndTagList, &ht);
 
 	// すべてのアイテムのハイライトをクリア
-	for (int i = 0; i < static_cast<int>(TagListHandler::GetTagItemsCount()); ++i) {
+	for (int i = 0; i < static_cast<int>(TagListHandler::GetTagCount()); ++i) {
 		ListView_SetItemState(m_hwndTagList, i, 0, LVIS_DROPHILITED);
 	}
 
 	// ターゲットアイテムをハイライト
-	if (targetIndex >= 0 && targetIndex < static_cast<int>(TagListHandler::GetTagItemsCount())) {
+	if (targetIndex >= 0 && targetIndex < static_cast<int>(TagListHandler::GetTagCount())) {
 		ListView_SetItemState(m_hwndTagList, targetIndex, LVIS_DROPHILITED, LVIS_DROPHILITED);
 		TagListHandler::UpdateDragTargetIndex(targetIndex);
 	} else {

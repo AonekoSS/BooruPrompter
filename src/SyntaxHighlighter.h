@@ -6,14 +6,7 @@
 #include <functional>
 #include <richedit.h>
 #include <richole.h>
-
-// タグの色情報を表す構造体
-struct TagColor {
-    std::wstring tag;
-    COLORREF color;
-
-    TagColor(const std::wstring& t, COLORREF c) : tag(t), color(c) {}
-};
+#include "Tag.h"
 
 // シンタックスハイライタークラス
 class SyntaxHighlighter {
@@ -72,7 +65,7 @@ private:
     bool m_isImeComposing;
 
     // タグの抽出と色付け
-    std::vector<TagColor> ExtractTagsWithColors(const std::wstring& text);
+    std::vector<Tag> ExtractTags(const std::wstring& text);
 
     // 描画処理
     void OnPaint(HWND hwnd);
