@@ -244,7 +244,7 @@ HWND BooruPrompter::CreateListView(HWND parent, int id, const std::wstring& titl
 		WS_EX_CLIENTEDGE,
 		WC_LISTVIEW,
 		title.c_str(),
-		WS_CHILD | WS_VISIBLE | LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS,
+		WS_CHILD | WS_VISIBLE | LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | WS_VSCROLL,
 		0, 0, 0, 0,
 		parent,
 		reinterpret_cast<HMENU>(static_cast<UINT_PTR>(id)),
@@ -299,6 +299,46 @@ void BooruPrompter::AddListViewItem(HWND hwndListView, int index, const std::vec
 			ListView_SetItem(hwndListView, &lvi);
 		}
 	}
+}
+
+void BooruPrompter::RefreshTagList(HWND hwndListView, const SuggestionList& tagItems){
+    SendMessage(hwndListView, WM_SETREDRAW, FALSE, 0);
+    int oldCount = ListView_GetItemCount(hwndListView);
+    int newCount = (int)tagItems.size();
+
+    // 既存アイテムの内容を更新
+	auto minCount = std::min(oldCount, newCount);
+    for (int i = 0; i < minCount; ++i) {
+        const auto& item = tagItems[i];
+        const auto tag = utf8_to_unicode(item.tag);
+        LVITEM lvi{};
+        lvi.mask = LVIF_TEXT;
+        lvi.iItem = i;
+        // 1カラム目
+        lvi.iSubItem = 0;
+        lvi.pszText = (LPWSTR)tag.c_str();
+        ListView_SetItem(hwndListView, &lvi);
+        // 2カラム目
+        lvi.iSubItem = 1;
+        lvi.pszText = (LPWSTR)item.description.c_str();
+        ListView_SetItem(hwndListView, &lvi);
+    }
+
+    // 余分なアイテムを削除
+    for (int i = oldCount - 1; i >= newCount; --i) {
+        ListView_DeleteItem(hwndListView, i);
+    }
+
+    // 新規アイテムを追加
+    for (int i = oldCount; i < newCount; ++i) {
+        const auto& item = tagItems[i];
+        const auto tag = utf8_to_unicode(item.tag);
+        std::vector<std::wstring> texts = { tag, item.description };
+        AddListViewItem(hwndListView, i, texts);
+    }
+
+    SendMessage(hwndListView, WM_SETREDRAW, TRUE, 0);
+    InvalidateRect(hwndListView, NULL, TRUE);
 }
 
 void BooruPrompter::OnSize(HWND hwnd) {

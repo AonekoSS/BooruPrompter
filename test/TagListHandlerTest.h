@@ -20,10 +20,6 @@ class MockBooruPrompter {
 public:
 	HWND m_hwndTagList = nullptr;
 	std::unique_ptr<MockSyntaxHighlighter> m_promptEditor;
-
-	void AddListViewItem(HWND hwndListView, int index, const std::vector<std::wstring>& texts) {
-		// モック実装
-	}
 };
 
 namespace TagListHandlerTest {

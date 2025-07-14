@@ -12,19 +12,7 @@ int TagListHandler::s_dragTargetIndex = -1;
 bool TagListHandler::s_isDragging = false;
 
 void TagListHandler::RefreshTagList(BooruPrompter* pThis) {
-	SendMessage(pThis->m_hwndTagList, WM_SETREDRAW, FALSE, 0);
-
-	ListView_DeleteAllItems(pThis->m_hwndTagList);
-	for (size_t i = 0; i < s_tagItems.size(); ++i) {
-		const auto& item = s_tagItems[i];
-		const auto tag = utf8_to_unicode(item.tag);
-
-		std::vector<std::wstring> texts = { tag, item.description };
-		pThis->AddListViewItem(pThis->m_hwndTagList, static_cast<int>(i), texts);
-	}
-
-	SendMessage(pThis->m_hwndTagList, WM_SETREDRAW, TRUE, 0);
-	InvalidateRect(pThis->m_hwndTagList, NULL, TRUE);
+	pThis->RefreshTagList(pThis->m_hwndTagList, s_tagItems);
 }
 
 void TagListHandler::OnTagListDragDrop(BooruPrompter* pThis, int fromIndex, int toIndex) {

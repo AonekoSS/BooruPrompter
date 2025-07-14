@@ -66,6 +66,8 @@ private:
 	std::wstring GetEditText() const;
 	void SetEditText(const std::wstring& text);
 	void AddListViewItem(HWND hwndListView, int index, const std::vector<std::wstring>& texts);
+	void RefreshTagList(HWND hwndListView, const SuggestionList& tagItems);
+
 
 	// 画像タグ検出関連
 	void ProcessImageFileAsync(const std::wstring& filePath);

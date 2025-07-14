@@ -5,20 +5,8 @@
 #include "TagListHandler.h"
 
 void SuggestionHandler::UpdateSuggestionList(BooruPrompter* pThis, const SuggestionList& suggestions) {
-	// リストをクリア
-	ListView_DeleteAllItems(pThis->m_hwndSuggestions);
-
-	// 現在のサジェストリストを保存
 	pThis->m_currentSuggestions = suggestions;
-
-	// 新しいサジェストを追加
-	for (size_t i = 0; i < suggestions.size(); ++i) {
-		const auto tag = utf8_to_unicode(suggestions[i].tag);
-		const auto& description = suggestions[i].description;
-
-		std::vector<std::wstring> texts = {tag, description};
-		pThis->AddListViewItem(pThis->m_hwndSuggestions, static_cast<int>(i), texts);
-	}
+	pThis->RefreshTagList(pThis->m_hwndSuggestions, suggestions);
 }
 
 void SuggestionHandler::OnSuggestionSelected(BooruPrompter* pThis, int index) {
