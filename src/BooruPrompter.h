@@ -10,7 +10,7 @@
 #include "SuggestionHandler.h"
 #include "SuggestionManager.h"
 #include "TagListHandler.h"
-#include "SyntaxHighlighter.h"
+#include "PromptEditor.h"
 
 // スプリッター関連の定数
 constexpr int SPLITTER_TYPE_NONE = 0;
@@ -75,7 +75,7 @@ private:
 	bool TryInitializeImageTagDetector();
 
 	HWND m_hwnd;
-	std::unique_ptr<SyntaxHighlighter> m_promptEditor; // シンタックスハイライト付きエディター
+	std::unique_ptr<PromptEditor> m_promptEditor; // Scintillaベースのエディター
 	HWND m_hwndSuggestions; // サジェスト表示用リストビュー
 	HWND m_hwndTagList;     // タグリスト表示用リストビュー
 	HWND m_hwndToolbar;    // ツールバーのハンドル

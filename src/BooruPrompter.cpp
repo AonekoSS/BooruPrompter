@@ -8,6 +8,7 @@
 #include "BooruPrompter.h"
 #include "TextUtils.h"
 #include "ImageInfo.h"
+#include "PromptEditor.h"
 
 // スプリッター関連の定数
 constexpr int SPLITTER_HIT_AREA = 8;  // スプリッターの判定領域（ピクセル）
@@ -194,7 +195,7 @@ void BooruPrompter::OnCreate(HWND hwnd) {
 	});
 
 		// シンタックスハイライト付きエディターの作成
-	m_promptEditor = std::make_unique<SyntaxHighlighter>();
+	m_promptEditor = std::make_unique<PromptEditor>();
 	if (!m_promptEditor->Initialize(hwnd, 0, 0, 0, 0, (HMENU)ID_EDIT)) {
 		return;
 	}
