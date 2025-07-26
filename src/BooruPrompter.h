@@ -63,8 +63,8 @@ private:
 
 	// ヘルパーメソッド
 	HWND CreateListView(HWND parent, int id, const std::wstring& title, const std::vector<std::pair<std::wstring, int>>& columns);
-	std::wstring GetEditText() const;
-	void SetEditText(const std::wstring& text);
+	std::wstring GetPrompt() const;
+	void SetPrompt(const std::wstring& text);
 	void AddListViewItem(HWND hwndListView, int index, const std::vector<std::wstring>& texts);
 	void RefreshTagList(HWND hwndListView, const TagList& tagItems);
 

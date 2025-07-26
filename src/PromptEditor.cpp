@@ -1,7 +1,6 @@
 ﻿#include "framework.h"
 #include "PromptEditor.h"
 #include <Scintilla.h>
-#include <ScintillaMessages.h>
 #include <windowsx.h>
 #include <vector>
 #include "TextUtils.h"
@@ -18,11 +17,9 @@ COLORREF TAG_COLORS[] = {
 	RGB(185, 112, 255),
 };
 
-PromptEditor::PromptEditor() : m_hwnd(nullptr), m_isImeComposing(false), m_originalProc(nullptr) {
-}
+PromptEditor::PromptEditor() : m_hwnd(nullptr), m_originalProc(nullptr) {}
 
-PromptEditor::~PromptEditor() {
-}
+PromptEditor::~PromptEditor() {}
 
 bool PromptEditor::Initialize(HWND hwndParent, int x, int y, int width, int height, HMENU id) {
 
@@ -46,59 +43,31 @@ bool PromptEditor::Initialize(HWND hwndParent, int x, int y, int width, int heig
 	SetWindowLongPtr(m_hwnd, GWLP_USERDATA, (LONG_PTR)this);
 
 	// 基本的なScintilla設定
-	SetupScintillaStyles();
+	SetupStyles();
 	return true;
 }
 
-void PromptEditor::SetTextA(const std::string& text) {
+void PromptEditor::SetText(const std::string& text) {
 	SendMessage(m_hwnd, SCI_SETTEXT, 0, (LPARAM)text.c_str());
-	ApplySyntaxHighlighting();
-}
-void PromptEditor::SetText(const std::wstring& text) {
-	SetTextA(unicode_to_utf8(text));
+	ApplySyntaxHighlighting(text);
 }
 
-std::string PromptEditor::GetTextA() const {
+std::string PromptEditor::GetText() const {
 	int len = (int)SendMessage(m_hwnd, SCI_GETLENGTH, 0, 0);
 	std::vector<char> buffer(len + 1);
 	SendMessage(m_hwnd, SCI_GETTEXT, len + 1, (LPARAM)buffer.data());
 	return std::string(buffer.data());
 }
-std::wstring PromptEditor::GetText() const {
-	return utf8_to_unicode(GetTextA());
-}
 
-void PromptEditor::ApplySyntaxHighlighting() {
-	if (m_isImeComposing) return;
-
+void PromptEditor::ApplySyntaxHighlighting(const std::string& text) {
+	auto tags = extract_tags_from_text(text);
 	SendMessage(m_hwnd, SCI_STARTSTYLING, 0, 0);
 	SendMessage(m_hwnd, SCI_SETSTYLING, (int)SendMessage(m_hwnd, SCI_GETLENGTH, 0, 0), STYLE_DEFAULT);
-
-	std::string text = GetTextA();
-	auto tags = extract_tags_from_text(text);
 	int style = 0;
 	for (const auto& tag : tags) {
 		SendMessage(m_hwnd, SCI_STARTSTYLING, tag.start, 0);
 		SendMessage(m_hwnd, SCI_SETSTYLING, tag.end - tag.start, style);
 		style = (style + 1) % _countof(TAG_COLORS);
-	}
-}
-
-void PromptEditor::HandleNotification(SCNotification* notification) {
-	switch (notification->nmhdr.code) {
-	case SCN_CHARADDED:
-		// IME入力の処理
-		if (notification->ch == 0) {
-			// IME入力開始
-			m_isImeComposing = true;
-		}
-		break;
-	case SCN_UPDATEUI:
-		// IME入力終了の検出
-		if (m_isImeComposing) {
-			m_isImeComposing = false;
-		}
-		break;
 	}
 }
 
@@ -123,24 +92,24 @@ void PromptEditor::SetTextChangeCallback(std::function<void()> callback) {
 	m_textChangeCallback = callback;
 }
 
-bool PromptEditor::IsImeComposing() const {
-	return m_isImeComposing;
-}
+void PromptEditor::SetupStyles() {
+	// フォント設定
+	SendMessage(m_hwnd, SCI_STYLESETFONT, STYLE_DEFAULT, (LPARAM)"Consolas");
+	SendMessage(m_hwnd, SCI_STYLESETSIZE, STYLE_DEFAULT, 11);
 
-void PromptEditor::SetupScintillaStyles() {
 	// 基本スタイル
 	SendMessage(m_hwnd, SCI_STYLESETBACK, STYLE_DEFAULT, RGB(0, 0, 0));  // 黒背景
-	SendMessage(m_hwnd, SCI_STYLESETFORE, STYLE_DEFAULT, RGB(255, 255, 255));  // 白文字
+	SendMessage(m_hwnd, SCI_STYLESETFORE, STYLE_DEFAULT, RGB(128, 128, 128));  // グレー文字
 
 	// タグ用スタイル
 	for (int i = 0; i < _countof(TAG_COLORS); i++) {
 		SendMessage(m_hwnd, SCI_STYLESETBACK, i, RGB(0, 0, 0));  // 黒背景
-		SendMessage(m_hwnd, SCI_STYLESETFORE, i, TAG_COLORS[i]);  // デフォルトのタグ色
+		SendMessage(m_hwnd, SCI_STYLESETFORE, i, TAG_COLORS[i]);  // タグ色
 	}
 
 	// 選択範囲の色設定
-	SendMessage(m_hwnd, SCI_SETSELBACK, TRUE, RGB(0, 0, 0));
-	SendMessage(m_hwnd, SCI_SETSELFORE, TRUE, RGB(255, 255, 255));
+	SendMessage(m_hwnd, SCI_SETSELBACK, TRUE, RGB(255, 255, 255));
+	SendMessage(m_hwnd, SCI_SETSELFORE, TRUE, RGB(0, 0, 0));
 
 	// キャレットの色設定
 	SendMessage(m_hwnd, SCI_SETCARETFORE, RGB(255, 255, 255), 0);
@@ -149,7 +118,8 @@ void PromptEditor::SetupScintillaStyles() {
 	SendMessage(m_hwnd, SCI_SETMARGINWIDTHN, 0, 0);
 
 	// 自動折り返しを無効化
-	SendMessage(m_hwnd, SCI_SETWRAPMODE, SC_WRAP_NONE, 0);
+	SendMessage(m_hwnd, SCI_SETWRAPMODE, SC_WRAP_WORD, 0);
+	SendMessage(m_hwnd, SCI_SETHSCROLLBAR, FALSE, 0);
 
 	// エンドオブライン表示を無効化
 	SendMessage(m_hwnd, SCI_SETVIEWEOL, FALSE, 0);
@@ -158,36 +128,22 @@ void PromptEditor::SetupScintillaStyles() {
 	SendMessage(m_hwnd, SCI_SETVIEWWS, SCWS_INVISIBLE, 0);
 }
 
+void PromptEditor::OnTextChanged() {
+	std::string currentText = GetText();
+	if (currentText != m_lastText) {
+		m_lastText = currentText;
+		ApplySyntaxHighlighting(currentText);
+		if (m_textChangeCallback) {
+			m_textChangeCallback();
+		}
+	}
+}
+
 LRESULT CALLBACK PromptEditor::ScintillaProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 	PromptEditor* self = (PromptEditor*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
-	if (self) {
-		// WM_NOTIFYメッセージを処理
-		if (uMsg == WM_NOTIFY) {
-			NMHDR* nmhdr = (NMHDR*)lParam;
-			if (nmhdr->hwndFrom == hwnd) {
-				SCNotification* notification = (SCNotification*)lParam;
-				self->HandleNotification(notification);
-			}
-		}
-
-		LRESULT result = CallWindowProc(self->m_originalProc, hwnd, uMsg, wParam, lParam);
-
-		// テキスト変更イベントを処理（IME入力中は除外）
-		if (!self->m_isImeComposing && (uMsg == WM_CHAR || uMsg == WM_PASTE || uMsg == WM_CUT || uMsg == WM_CLEAR || uMsg == WM_KEYDOWN)) {
-			// テキストが実際に変更されたかチェック
-			std::wstring currentText = self->GetText();
-			if (currentText != self->m_lastText) {
-				self->m_lastText = currentText;
-				// シンタックスハイライトを適用
-				self->ApplySyntaxHighlighting();
-				// コールバックを呼び出し
-				if (self->m_textChangeCallback) {
-					self->m_textChangeCallback();
-				}
-			}
-		}
-
-		return result;
+	if (!self) return CallWindowProc(DefWindowProc, hwnd, uMsg, wParam, lParam);
+	if (uMsg == WM_CHAR || uMsg == WM_PASTE || uMsg == WM_CUT || uMsg == WM_CLEAR || uMsg == WM_KEYDOWN) {
+		self->OnTextChanged();
 	}
-	return CallWindowProc(DefWindowProc, hwnd, uMsg, wParam, lParam);
+	return CallWindowProc(self->m_originalProc, hwnd, uMsg, wParam, lParam);
 }

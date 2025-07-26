@@ -60,7 +60,7 @@ void TagListHandler::UpdatePromptFromTagList(BooruPrompter* pThis) {
 		oss << tag.tag;
 	}
 	auto prompt = oss.str();
-	pThis->m_promptEditor->SetText(utf8_to_unicode(prompt));
+	pThis->m_promptEditor->SetText(prompt);
 	SyncTagListFromPrompt(pThis, prompt);
 }
 

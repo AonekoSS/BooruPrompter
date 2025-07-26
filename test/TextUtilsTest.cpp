@@ -121,7 +121,7 @@ namespace TextUtilsTest {
 
 	void TextUtilsTest::TestGetSpanAtCursor() {
 		// 基本的なワード範囲取得のテスト
-		std::wstring text = L"oh, Hello World, xxx";
+		std::string text = "oh, Hello World, xxx";
 		auto result = get_span_at_cursor(text, 10);
 		size_t start = std::get<0>(result);
 		size_t end = std::get<1>(result);
@@ -131,7 +131,7 @@ namespace TextUtilsTest {
 
 	void TextUtilsTest::TestGetSpanAtCursorEmpty() {
 		// 空文字列のテスト
-		std::wstring text = L"";
+		std::string text = "";
 		auto result = get_span_at_cursor(text, 0);
 		size_t start = std::get<0>(result);
 		size_t end = std::get<1>(result);
@@ -141,7 +141,7 @@ namespace TextUtilsTest {
 
 	void TextUtilsTest::TestGetSpanAtCursorBoundary() {
 		// 境界値のテスト
-		std::wstring text = L"Hello";
+		std::string text = "Hello";
 		auto result = get_span_at_cursor(text, 0);
 		size_t start = std::get<0>(result);
 		size_t end = std::get<1>(result);
@@ -151,7 +151,7 @@ namespace TextUtilsTest {
 
 	void TextUtilsTest::TestGetSpanAtCursorWithNewlines() {
 		// 改行区切りのワード範囲取得テスト
-		std::wstring text = L"tag1\ntag2\ntag3";
+		std::string text = "tag1\ntag2\ntag3";
 		auto result = get_span_at_cursor(text, 7); // "tag2"の"g"の位置
 		size_t start = std::get<0>(result);
 		size_t end = std::get<1>(result);
@@ -161,7 +161,7 @@ namespace TextUtilsTest {
 
 	void TextUtilsTest::TestGetSpanAtCursorMixedDelimiters() {
 		// カンマと改行が混在するワード範囲取得テスト
-		std::wstring text = L"tag1,tag2\ntag3,tag4";
+		std::string text = "tag1,tag2\ntag3,tag4";
 		auto result = get_span_at_cursor(text, 7); // "tag2"の"g"の位置
 		size_t start = std::get<0>(result);
 		size_t end = std::get<1>(result);
