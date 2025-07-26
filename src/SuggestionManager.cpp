@@ -20,7 +20,6 @@ void SuggestionManager::StartSuggestion(std::function<void(const TagList&)> call
 // リクエスト
 void SuggestionManager::Request(const std::string& input) {
 	if (m_currentInput == input) return;
-	BooruDB::GetInstance().Cancel();
 	CancelTimer();
 	m_currentInput = input;
 	CreateTimerQueueTimer(&m_SuggestTimer, nullptr, SuggestTimerProc, this, SUGGEST_DELAY_MS, 0, 0);

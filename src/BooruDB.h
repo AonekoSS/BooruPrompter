@@ -3,6 +3,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <atomic>
 
 #include "Tag.h"
 
@@ -21,7 +22,7 @@ public:
 	bool LoadDictionary();
 
 	// 処理の中断
-	void Cancel() { ++active_query_; }
+	void Cancel() { active_query_ = 0; }
 
 	// メタ情報の取得
 	std::wstring GetMetadata(const std::string& tag);
@@ -48,5 +49,5 @@ private:
 
 	std::vector<std::string> dictionary_;
 	std::unordered_map<std::string, std::wstring> metadata_;
-	int active_query_;
+	std::atomic<int> active_query_;
 };
