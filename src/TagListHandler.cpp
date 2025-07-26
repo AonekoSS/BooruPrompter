@@ -196,14 +196,5 @@ bool TagListHandler::GetTagPromptRange(int index, size_t& start, size_t& end) {
 	}
 	start = s_tagItems[index].start;
 	end = s_tagItems[index].end;
-
-	OutputDebugString(L"start: ");
-	OutputDebugString(std::to_wstring(start).c_str());
-	OutputDebugString(L"\n");
-	OutputDebugString(L"end: ");
-	OutputDebugString(std::to_wstring(end).c_str());
-	OutputDebugString(L"\n");
-
-
 	return true;
 }

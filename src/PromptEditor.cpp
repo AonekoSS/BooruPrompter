@@ -5,8 +5,12 @@
 #include <vector>
 #include "TextUtils.h"
 
+const int FONT_SIZE = 11;
+const COLORREF TEXT_COLOR = RGB(255, 255, 255);
+const COLORREF BACKGROUND_COLOR = RGB(0, 0, 0);
+const COLORREF SEPARATOR_COLOR = RGB(128, 128, 128);
 
-COLORREF TAG_COLORS[] = {
+const COLORREF TAG_COLORS[] = {
 	RGB(25, 200, 245),
 	RGB(255, 160, 134),
 	RGB(20, 228, 100),
@@ -63,11 +67,11 @@ void PromptEditor::ApplySyntaxHighlighting(const std::string& text) {
 	auto tags = extract_tags_from_text(text);
 	SendMessage(m_hwnd, SCI_STARTSTYLING, 0, 0);
 	SendMessage(m_hwnd, SCI_SETSTYLING, (int)SendMessage(m_hwnd, SCI_GETLENGTH, 0, 0), STYLE_DEFAULT);
-	int style = 0;
+	int index = 0;
 	for (const auto& tag : tags) {
+		auto style = (index++ % _countof(TAG_COLORS)) + 1;
 		SendMessage(m_hwnd, SCI_STARTSTYLING, tag.start, 0);
 		SendMessage(m_hwnd, SCI_SETSTYLING, tag.end - tag.start, style);
-		style = (style + 1) % _countof(TAG_COLORS);
 	}
 }
 
@@ -93,38 +97,37 @@ void PromptEditor::SetTextChangeCallback(std::function<void()> callback) {
 }
 
 void PromptEditor::SetupStyles() {
-	// フォント設定
-	SendMessage(m_hwnd, SCI_STYLESETFONT, STYLE_DEFAULT, (LPARAM)"Consolas");
-	SendMessage(m_hwnd, SCI_STYLESETSIZE, STYLE_DEFAULT, 11);
+	// フォントサイズ
+	SendMessage(m_hwnd, SCI_STYLESETSIZE, 0, FONT_SIZE);
+	SendMessage(m_hwnd, SCI_STYLESETSIZE, STYLE_DEFAULT, FONT_SIZE);
 
 	// 基本スタイル
-	SendMessage(m_hwnd, SCI_STYLESETBACK, STYLE_DEFAULT, RGB(0, 0, 0));  // 黒背景
-	SendMessage(m_hwnd, SCI_STYLESETFORE, STYLE_DEFAULT, RGB(128, 128, 128));  // グレー文字
+	SendMessage(m_hwnd, SCI_STYLESETBACK, 0, BACKGROUND_COLOR);
+	SendMessage(m_hwnd, SCI_STYLESETFORE, 0, TEXT_COLOR);
+
+	// セパレーター
+	SendMessage(m_hwnd, SCI_STYLESETBACK, STYLE_DEFAULT, BACKGROUND_COLOR);
+	SendMessage(m_hwnd, SCI_STYLESETFORE, STYLE_DEFAULT, SEPARATOR_COLOR);
 
 	// タグ用スタイル
 	for (int i = 0; i < _countof(TAG_COLORS); i++) {
-		SendMessage(m_hwnd, SCI_STYLESETBACK, i, RGB(0, 0, 0));  // 黒背景
-		SendMessage(m_hwnd, SCI_STYLESETFORE, i, TAG_COLORS[i]);  // タグ色
+		auto style = i + 1;
+		SendMessage(m_hwnd, SCI_STYLESETBACK, style, BACKGROUND_COLOR);
+		SendMessage(m_hwnd, SCI_STYLESETFORE, style, TAG_COLORS[i]);
 	}
 
 	// 選択範囲の色設定
-	SendMessage(m_hwnd, SCI_SETSELBACK, TRUE, RGB(255, 255, 255));
-	SendMessage(m_hwnd, SCI_SETSELFORE, TRUE, RGB(0, 0, 0));
+	SendMessage(m_hwnd, SCI_SETSELBACK, TRUE, TEXT_COLOR);
+	SendMessage(m_hwnd, SCI_SETSELFORE, TRUE, BACKGROUND_COLOR);
 
 	// キャレットの色設定
-	SendMessage(m_hwnd, SCI_SETCARETFORE, RGB(255, 255, 255), 0);
+	SendMessage(m_hwnd, SCI_SETCARETFORE, TEXT_COLOR, 0);
 
-	// 行番号表示を無効化
+	// その他
 	SendMessage(m_hwnd, SCI_SETMARGINWIDTHN, 0, 0);
-
-	// 自動折り返しを無効化
 	SendMessage(m_hwnd, SCI_SETWRAPMODE, SC_WRAP_WORD, 0);
 	SendMessage(m_hwnd, SCI_SETHSCROLLBAR, FALSE, 0);
-
-	// エンドオブライン表示を無効化
 	SendMessage(m_hwnd, SCI_SETVIEWEOL, FALSE, 0);
-
-	// 空白文字表示を無効化
 	SendMessage(m_hwnd, SCI_SETVIEWWS, SCWS_INVISIBLE, 0);
 }
 
