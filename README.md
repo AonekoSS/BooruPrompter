@@ -41,5 +41,5 @@ WebツールじゃなくてWindowsアプリです！<br>
 - [rapidfuzz-cpp](https://github.com/rapidfuzz/rapidfuzz-cpp) - 高速なあいまい検索ライブラリ
 - [booru-japanese-tag](https://github.com/boorutan/booru-japanese-tag) - Danbooruのタグの日本語化プロジェクト
 - [ONNX Runtime](https://onnxruntime.ai/) - 生成AIランタイム
-
+- [Scintilla](https://www.scintilla.org/) - コードエディタ向けのコンポーネント
 
