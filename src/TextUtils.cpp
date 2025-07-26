@@ -190,6 +190,8 @@ std::wstring escape_newlines(const std::wstring& text) {
 		case L'\n':
 			result += L"\\n";
 			break;
+		case L'\r':
+			break;
 		default:
 			result += c;
 		}

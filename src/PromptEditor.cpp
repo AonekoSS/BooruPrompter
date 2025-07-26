@@ -9,6 +9,7 @@ const int FONT_SIZE = 11;
 const COLORREF TEXT_COLOR = RGB(255, 255, 255);
 const COLORREF BACKGROUND_COLOR = RGB(0, 0, 0);
 const COLORREF SEPARATOR_COLOR = RGB(128, 128, 128);
+const COLORREF LINENUMBER_COLOR = RGB(128, 128, 128);
 
 const COLORREF TAG_COLORS[] = {
 	RGB(25, 200, 245),
@@ -123,8 +124,13 @@ void PromptEditor::SetupStyles() {
 	// キャレットの色設定
 	SendMessage(m_hwnd, SCI_SETCARETFORE, TEXT_COLOR, 0);
 
+	// 行番号の表示
+	SendMessage(m_hwnd, SCI_SETMARGINTYPEN, 0, SC_MARGIN_NUMBER);
+	SendMessage(m_hwnd, SCI_SETMARGINWIDTHN, 0, 20);
+	SendMessage(m_hwnd, SCI_STYLESETBACK, STYLE_LINENUMBER, BACKGROUND_COLOR);
+	SendMessage(m_hwnd, SCI_STYLESETFORE, STYLE_LINENUMBER, LINENUMBER_COLOR);
+
 	// その他
-	SendMessage(m_hwnd, SCI_SETMARGINWIDTHN, 0, 0);
 	SendMessage(m_hwnd, SCI_SETWRAPMODE, SC_WRAP_WORD, 0);
 	SendMessage(m_hwnd, SCI_SETHSCROLLBAR, FALSE, 0);
 	SendMessage(m_hwnd, SCI_SETVIEWEOL, FALSE, 0);
