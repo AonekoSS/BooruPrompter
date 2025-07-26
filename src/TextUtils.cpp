@@ -73,20 +73,20 @@ bool utf8_has_multibyte(const std::string& str) {
 }
 
 // カーソル位置のワード範囲取得
-std::tuple<size_t, size_t> get_span_at_cursor(const std::wstring& text, int pos) {
+std::tuple<size_t, size_t> get_span_at_cursor(const std::string& text, int pos) {
 	// カーソル位置の前後のカンマまたは改行を探す
-	size_t start = text.find_last_of(L",\n", (pos > 0) ? pos - 1 : 0);
-	size_t end = text.find_first_of(L",\n", pos);
+	size_t start = text.find_last_of(",\n", (pos > 0) ? pos - 1 : 0);
+	size_t end = text.find_first_of(",\n", pos);
 
 	// 開始位置の調整
-	if (start == std::wstring::npos) {
+	if (start == std::string::npos) {
 		start = 0;
 	} else {
 		start++; // 区切り文字の次の位置から
 	}
 
 	// 終了位置の調整
-	if (end == std::wstring::npos) {
+	if (end == std::string::npos) {
 		end = text.length();
 	}
 	if (end < start) {
@@ -189,6 +189,8 @@ std::wstring escape_newlines(const std::wstring& text) {
 			break;
 		case L'\n':
 			result += L"\\n";
+			break;
+		case L'\r':
 			break;
 		default:
 			result += c;

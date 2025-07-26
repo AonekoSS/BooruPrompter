@@ -8,6 +8,7 @@
 #include "BooruPrompter.h"
 #include "TextUtils.h"
 #include "ImageInfo.h"
+#include "PromptEditor.h"
 
 // スプリッター関連の定数
 constexpr int SPLITTER_HIT_AREA = 8;  // スプリッターの判定領域（ピクセル）
@@ -194,7 +195,7 @@ void BooruPrompter::OnCreate(HWND hwnd) {
 	});
 
 		// シンタックスハイライト付きエディターの作成
-	m_promptEditor = std::make_unique<SyntaxHighlighter>();
+	m_promptEditor = std::make_unique<PromptEditor>();
 	if (!m_promptEditor->Initialize(hwnd, 0, 0, 0, 0, (HMENU)ID_EDIT)) {
 		return;
 	}
@@ -225,7 +226,7 @@ void BooruPrompter::OnCreate(HWND hwnd) {
 
 	// 保存されたプロンプトを復元
 	if (!m_savedPrompt.empty()) {
-		m_promptEditor->SetText(m_savedPrompt);
+		SetPrompt(m_savedPrompt);
 		TagListHandler::SyncTagListFromPrompt(this, unicode_to_utf8(m_savedPrompt.c_str()));
 	}
 
@@ -276,12 +277,12 @@ HWND BooruPrompter::CreateListView(HWND parent, int id, const std::wstring& titl
 	return hwnd;
 }
 
-std::wstring BooruPrompter::GetEditText() const {
-	return m_promptEditor->GetText();
+std::wstring BooruPrompter::GetPrompt() const {
+	return utf8_to_unicode(m_promptEditor->GetText());
 }
 
-void BooruPrompter::SetEditText(const std::wstring& text) {
-	m_promptEditor->SetText(text);
+void BooruPrompter::SetPrompt(const std::wstring& text) {
+	m_promptEditor->SetText(unicode_to_utf8(text));
 }
 
 void BooruPrompter::AddListViewItem(HWND hwndListView, int index, const std::vector<std::wstring>& texts) {
@@ -434,7 +435,7 @@ void BooruPrompter::OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify) 
 		}
 		break;
 	case ID_CLEAR:
-		m_promptEditor->SetText(L"");
+		SetPrompt(L"");
 		TagListHandler::SyncTagListFromPrompt(this, "");
 		m_suggestionManager.Request({});
 		break;
@@ -443,7 +444,7 @@ void BooruPrompter::OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify) 
 		{
 			std::wstring text = GetFromClipboard();
 			if (!text.empty()) {
-				m_promptEditor->SetText(text);
+				SetPrompt(text);
 				TagListHandler::SyncTagListFromPrompt(this, unicode_to_utf8(text.c_str()));
 				m_suggestionManager.Request({});
 			}
@@ -452,7 +453,7 @@ void BooruPrompter::OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify) 
 	case ID_COPY:
 		// コピー処理
 		{
-			std::wstring text = m_promptEditor->GetText();
+			std::wstring text = GetPrompt();
 			if (CopyToClipboard(text)) {
 				UpdateProgress(100, L"プロンプトをクリップボードにコピー");
 			}
@@ -537,7 +538,7 @@ void BooruPrompter::ProcessImageFileAsync(const std::wstring& filePath) {
 void BooruPrompter::OnImageProcessingComplete(const ImageProcessingResult& result) {
 	switch (result.type) {
 	case IMAGE_PROCESSING_METADATA_SUCCESS: // メタデータ取得成功
-		SetEditText(result.metadata);
+		SetPrompt(result.metadata);
 		TagListHandler::SyncTagListFromPrompt(this, unicode_to_utf8(result.metadata.c_str()));
 		UpdateProgress(100, L"ファイルからプロンプトを取得");
 		break;
@@ -650,28 +651,23 @@ void BooruPrompter::OnTextChanged(HWND hwnd) {
 	// 進捗表示をクリア
 	ClearProgress();
 
-	// IME入力中はサジェストを一時停止
-	if (m_promptEditor->IsImeComposing()) {
-		return;
-	}
-
 	// 現在のカーソル位置を取得
 	DWORD startPos = m_promptEditor->GetSelectionStart();
 	DWORD endPos = m_promptEditor->GetSelectionEnd();
 
 	// 現在のテキストを取得
-	std::wstring currentText = m_promptEditor->GetText();
+	std::string currentText = m_promptEditor->GetText();
 
 	// カーソル位置のワードを取得
 	const auto [start, end] = get_span_at_cursor(currentText, startPos);
 	const auto currentWord = trim(currentText.substr(start, end - start));
 
 	// サジェスト開始
-	m_suggestionManager.Request(unicode_to_utf8(currentWord.c_str()));
-	if (!currentWord.empty()) UpdateStatusText(L"サジェスト中： " + currentWord);
+	m_suggestionManager.Request(currentWord);
+	if (!currentWord.empty()) UpdateStatusText(L"サジェスト中： " + utf8_to_unicode(currentWord));
 
 	// プロンプトが変更されたのでタグリストを更新
-	TagListHandler::SyncTagListFromPrompt(this, unicode_to_utf8(currentText.c_str()));
+	TagListHandler::SyncTagListFromPrompt(this, currentText);
 }
 
 int BooruPrompter::Run() {
@@ -872,7 +868,7 @@ void BooruPrompter::SaveSettings() {
 	GetWindowRect(m_hwnd, &windowRect);
 
 	// 現在のプロンプトテキストを取得
-	std::wstring currentPrompt = m_promptEditor->GetText();
+	std::wstring currentPrompt = GetPrompt();
 
 	// INIファイルに保存
 	WritePrivateProfileString(L"Window", L"X", std::to_wstring(windowRect.left).c_str(), iniPath.c_str());

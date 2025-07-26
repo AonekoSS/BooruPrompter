@@ -19,7 +19,7 @@ std::string booru_to_image_tag(const std::string& booru_tag);
 bool utf8_has_multibyte(const std::string& str);
 
 // カーソル位置のワード範囲取得
-std::tuple<size_t, size_t> get_span_at_cursor(const std::wstring& text, int pos);
+std::tuple<size_t, size_t> get_span_at_cursor(const std::string& text, int pos);
 
 // 文字列を指定した区切り文字で分割
 std::vector<std::string> split_string(const std::string& str, char delimiter);

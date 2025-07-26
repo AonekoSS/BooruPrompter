@@ -27,9 +27,6 @@
     <ClCompile Include="SuggestionManagerTest.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="SyntaxHighlighterTest.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
     <ClCompile Include="TagListHandlerTest.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
@@ -45,9 +42,6 @@
     <ClCompile Include="..\src\ImageTagDetector.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\SyntaxHighlighter.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\TagListHandler.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
@@ -58,6 +52,9 @@
       <Filter>ソース ファイル</Filter>
     </ClCompile>
     <ClCompile Include="..\src\BooruPrompter.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\PromptEditor.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
   </ItemGroup>
