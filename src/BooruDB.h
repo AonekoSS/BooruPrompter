@@ -7,7 +7,13 @@
 
 #include "Tag.h"
 
+// テスト用フレンドクラス（前方宣言）
+namespace TagListHandlerTest {
+	class BooruDBTestHelper;
+}
+
 class BooruDB {
+	friend class TagListHandlerTest::BooruDBTestHelper;
 public:
 	// Singletonインスタンスを取得
 	static BooruDB& GetInstance();
@@ -42,6 +48,10 @@ public:
 	// タグの辞書内でのインデックスを取得（使用頻度の代替として使用）
 	int GetTagIndex(const std::string& tag) const;
 
+	// タグのカテゴリーを取得（ダミー実装）
+	// 0: general（一般タグ）、4: character（キャラクター）、9: rating（レーティング）
+	int GetTagCategory(const std::string& tag) const;
+
 private:
 	// プライベートコンストラクタ（Singleton）
 	BooruDB();
@@ -51,6 +61,7 @@ private:
 	static constexpr double REVERSE_SUGGESTION_CUTOFF = 70.0;
 
 	std::vector<std::string> dictionary_;
+	std::unordered_map<std::string, int> category_;
 	std::unordered_map<std::string, std::wstring> metadata_;
 	std::atomic<int> active_query_;
 };

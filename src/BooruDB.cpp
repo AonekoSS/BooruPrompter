@@ -20,22 +20,53 @@ BooruDB::BooruDB() : active_query_(0) {}
 BooruDB::~BooruDB() {}
 
 bool BooruDB::LoadDictionary() {
+	dictionary_.clear();
+	dictionary_.reserve(500000);
 
-	std::ifstream file(fullpath(L"danbooru-machine-jp.csv"));
-	if (!file.is_open()) {
-		OutputDebugString(L"not found dictionary file\n");
-		return false;
+	// 辞書ファイル（日本語）
+	{
+		metadata_.clear();
+		metadata_.reserve(100000);
+		std::ifstream file(fullpath(L"danbooru-machine-jp.csv"));
+		if (!file.is_open()) {
+			OutputDebugString(L"not found dictionary file\n");
+			return false;
+		}
+
+		std::string line;
+		while (std::getline(file, line, '\n')) {
+			std::istringstream iss(line);
+			std::string tag, metadata;
+			if (std::getline(iss, tag, ',')) {
+				tag = booru_to_image_tag(tag);
+				dictionary_.push_back(tag);
+				if (std::getline(iss, metadata)) {
+					metadata_[tag] = utf8_to_unicode(metadata);
+				}
+			}
+		}
 	}
 
-	std::string line;
-	while (std::getline(file, line, '\n')) {
-		std::istringstream iss(line);
-		std::string tag, metadata;
-		if (std::getline(iss, tag, ',')) {
-			tag = booru_to_image_tag(tag);
-			dictionary_.push_back(tag);
-			if (std::getline(iss, metadata)) {
-				metadata_[tag] = utf8_to_unicode(metadata);
+	// カテゴリー辞書
+	{
+		category_.clear();
+		category_.reserve(400000);
+
+		std::ifstream file(fullpath(L"danbooru.csv"));
+		if (!file.is_open()) {
+			OutputDebugString(L"not found category dictionary file\n");
+			return false;
+		}
+
+		std::string line;
+		while (std::getline(file, line, '\n')) {
+			std::istringstream iss(line);
+			std::string tag, category;
+			if (std::getline(iss, tag, ',')) {
+				tag = booru_to_image_tag(tag);
+				if (std::getline(iss, category, ',')) {
+					category_[tag] = std::stoi(category);
+				}
 			}
 		}
 	}
@@ -118,8 +149,6 @@ bool BooruDB::ReverseSuggestion(TagList& suggestions, const std::string& input, 
 	return true;
 }
 
-
-
 // メタ情報の取得
 std::wstring BooruDB::GetMetadata(const std::string& tag) {
 	auto it = metadata_.find(tag);
@@ -129,11 +158,26 @@ std::wstring BooruDB::GetMetadata(const std::string& tag) {
 	return L"";
 }
 
+
+// カテゴリー名
+static std::wstring GetCategoryName(int category) {
+	switch (category) {
+		case 1: return L" - [Artist]";
+		case 3: return L" - [Copyright]";
+		case 4: return L" - [Character]";
+		case 5: return L" - [Metadata]";
+	default:
+		return L"";
+	}
+}
+
 // メタ情報付きのサジェストに変換
 Tag BooruDB::MakeSuggestion(const std::string& tag) {
+	int category = GetTagCategory(tag);
 	Tag suggestion;
 	suggestion.tag = tag;
-	suggestion.description = GetMetadata(tag);
+	suggestion.description = GetMetadata(tag) + GetCategoryName(category);
+	suggestion.category = category;
 	return suggestion;
 }
 
@@ -145,5 +189,14 @@ int BooruDB::GetTagIndex(const std::string& tag) const {
 	}
 	// 見つからない場合は最後に配置（辞書サイズより大きい値を返す）
 	return static_cast<int>(dictionary_.size() + 1);
+}
+
+// タグのカテゴリーを取得
+int BooruDB::GetTagCategory(const std::string& tag) const {
+	auto it = category_.find(tag);
+	if (it != category_.end()) {
+		return it->second;
+	}
+	return 0;
 }
 

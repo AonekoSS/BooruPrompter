@@ -7,7 +7,6 @@
 #include "TextUtils.h"
 #include "BooruDB.h"
 
-
 // 静的メンバー変数の定義
 TagList TagListHandler::s_tagItems;
 int TagListHandler::s_dragIndex = -1;
@@ -69,7 +68,7 @@ void TagListHandler::UpdatePromptFromTagList(BooruPrompter* pThis) {
 void TagListHandler::SyncTagListFromPrompt(BooruPrompter* pThis, const std::string& prompt) {
 	s_tagItems = extract_tags_from_text(prompt);
 	for (auto& tag : s_tagItems) {
-		tag.description = BooruDB::GetInstance().GetMetadata(tag.tag);
+		tag = BooruDB::GetInstance().MakeSuggestion(tag.tag);
 	}
 	RefreshTagList(pThis);
 }
@@ -201,6 +200,12 @@ bool TagListHandler::GetTagPromptRange(int index, size_t& start, size_t& end) {
 	return true;
 }
 
+// タグリストのインデックスからカテゴリーを取得
+int TagListHandler::GetCategory(int index) {
+	if (index < 0 || index >= static_cast<int>(s_tagItems.size())) return 0;
+	return s_tagItems[index].category;
+}
+
 // タグ整理（A-Z：アルファベット順）
 void TagListHandler::SortTagsAZ(BooruPrompter* pThis) {
 	if (s_tagItems.empty()) {
@@ -233,6 +238,44 @@ void TagListHandler::SortTagsFav(BooruPrompter* pThis) {
 		int indexA = indexCache.at(a.tag);
 		int indexB = indexCache.at(b.tag);
 		return indexA < indexB;
+	});
+
+	RefreshTagList(pThis);
+	UpdatePromptFromTagList(pThis);
+}
+
+// タグ整理（カテゴリー順）
+void TagListHandler::SortTagsCategory(BooruPrompter* pThis) {
+	if (s_tagItems.empty()) {
+		return;
+	}
+
+	// カテゴリーのキャッシュ
+	std::unordered_map<std::string, int> categoryCache;
+	categoryCache.reserve(s_tagItems.size());
+
+	// インデックスのキャッシュ
+	std::unordered_map<std::string, int> indexCache;
+	indexCache.reserve(s_tagItems.size());
+
+	for (const auto& tag : s_tagItems) {
+		if (categoryCache.find(tag.tag) == categoryCache.end()) {
+			categoryCache[tag.tag] = BooruDB::GetInstance().GetTagCategory(tag.tag);
+		}
+		if (indexCache.find(tag.tag) == indexCache.end()) {
+			indexCache[tag.tag] = BooruDB::GetInstance().GetTagIndex(tag.tag);
+		}
+	}
+
+	// カテゴリー順にソート（カテゴリーが同じ場合はインデックス順）
+	std::sort(s_tagItems.begin(), s_tagItems.end(), [&categoryCache, &indexCache](const Tag& a, const Tag& b) {
+		int categoryA = categoryCache.at(a.tag);
+		int categoryB = categoryCache.at(b.tag);
+		if (categoryA != categoryB) {
+			return categoryA < categoryB;
+		}
+		// 同じカテゴリー内ではインデックス順
+		return indexCache.at(a.tag) < indexCache.at(b.tag);
 	});
 
 	RefreshTagList(pThis);

@@ -50,10 +50,14 @@ public:
 	// タグリストのインデックスからプロンプト内の範囲を取得
 	static bool GetTagPromptRange(int index, size_t& start, size_t& end);
 
+	// タグリストのインデックスからカテゴリーを取得
+	static int GetCategory(int index);
+
 	// タグ整理
 	static void SortTagsAZ(BooruPrompter* pThis);      // アルファベット順
 	static void SortTagsFav(BooruPrompter* pThis);     // 使用頻度順
 	static void SortTagsCustom(BooruPrompter* pThis);  // 独自ルール
+	static void SortTagsCategory(BooruPrompter* pThis); // カテゴリー順
 
 private:
 	// タグリスト関連のメンバー変数
