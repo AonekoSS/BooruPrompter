@@ -245,8 +245,37 @@ void TagListHandler::SortTagsCustom(BooruPrompter* pThis) {
 		return;
 	}
 
-// TODO: 独自ルールのソート
+	// 対象オブジェクト（最後の単語）でリストをグループ化
+	std::vector<std::pair<std::string, TagList>> tagList;
+	tagList.reserve(s_tagItems.size());
 
+	for (const auto& tag : s_tagItems) {
+		size_t sep = tag.tag.find_last_of(' ');
+		auto lastWord = (sep != std::string::npos) ? tag.tag.substr(sep + 1) : tag.tag;
+		auto it = std::find_if(tagList.begin(), tagList.end(), [&lastWord](const std::pair<std::string, TagList>& pair) {
+			return pair.first == lastWord;
+		});
+		if (it == tagList.end()) {
+			tagList.push_back(std::make_pair(lastWord, TagList{ tag }));
+		} else {
+			it->second.push_back(tag);
+		}
+	}
+
+	// 単独タグの削除（重複オブジェクトがある場合）
+	for (auto it = tagList.begin(); it != tagList.end(); ++it ) {
+		if (it->second.size() > 1) {
+			erase_if(it->second, [](const Tag& tag) {
+				return tag.tag.find_last_of(' ') == std::string::npos;
+			});
+		}
+	}
+
+	// タグリストをマージして更新
+	s_tagItems.clear();
+	for (auto it = tagList.begin(); it != tagList.end(); ++it) {
+		s_tagItems.insert(s_tagItems.end(), it->second.begin(), it->second.end());
+	}
 	RefreshTagList(pThis);
 	UpdatePromptFromTagList(pThis);
 }
