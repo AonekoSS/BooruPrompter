@@ -3,6 +3,7 @@
 #include "CppUnitTest.h"
 #include "../src/TagListHandler.h"
 #include "../src/Tag.h"
+#include "../src/BooruDB.h"
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
@@ -23,9 +24,19 @@ public:
 };
 
 namespace TagListHandlerTest {
-	TEST_CLASS(TagListHandlerTest) {
+// BooruDBのテスト用ヘルパークラス
+class BooruDBTestHelper {
 public:
-	// 初期化とクリーンアップ
+	static void SetupTestData(BooruDB& db);
+};
+
+TEST_CLASS(TagListHandlerTest) {
+public:
+	// テストクラス全体の初期化とクリーンアップ
+	TEST_CLASS_INITIALIZE(ClassInitialize);
+	TEST_CLASS_CLEANUP(ClassCleanup);
+
+	// 各テストメソッドの初期化とクリーンアップ
 	TEST_METHOD_INITIALIZE(SetUp);
 	TEST_METHOD_CLEANUP(TearDown);
 
@@ -83,5 +94,5 @@ public:
 
 private:
 	MockBooruPrompter* m_mockPrompter;
-	};
+};
 }

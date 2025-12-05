@@ -7,7 +7,13 @@
 
 #include "Tag.h"
 
+// テスト用フレンドクラス（前方宣言）
+namespace TagListHandlerTest {
+	class BooruDBTestHelper;
+}
+
 class BooruDB {
+	friend class TagListHandlerTest::BooruDBTestHelper;
 public:
 	// Singletonインスタンスを取得
 	static BooruDB& GetInstance();

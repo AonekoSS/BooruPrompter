@@ -6,7 +6,7 @@
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
 namespace TextUtilsTest {
-	TEST_CLASS(TextUtilsTest) {
+TEST_CLASS(TextUtilsTest) {
 public:
 	// UTF-8とユニコード変換のテスト
 	TEST_METHOD(TestUtf8ToUnicode);
@@ -26,25 +26,25 @@ public:
 	TEST_METHOD(TestUtf8HasMultibyteAsciiOnly);
 	TEST_METHOD(TestUtf8HasMultibyteJapanese);
 
-	        // カーソル位置のワード範囲取得のテスト
-        TEST_METHOD(TestGetSpanAtCursor);
-        TEST_METHOD(TestGetSpanAtCursorEmpty);
-        TEST_METHOD(TestGetSpanAtCursorBoundary);
-        TEST_METHOD(TestGetSpanAtCursorWithNewlines);
-        TEST_METHOD(TestGetSpanAtCursorMixedDelimiters);
+	// カーソル位置のワード範囲取得のテスト
+	TEST_METHOD(TestGetSpanAtCursor);
+	TEST_METHOD(TestGetSpanAtCursorEmpty);
+	TEST_METHOD(TestGetSpanAtCursorBoundary);
+	TEST_METHOD(TestGetSpanAtCursorWithNewlines);
+	TEST_METHOD(TestGetSpanAtCursorMixedDelimiters);
 
-	        // タグ抽出のテスト
-        TEST_METHOD(TestExtractTagsFromText);
-        TEST_METHOD(TestExtractTagsFromTextEmpty);
-        TEST_METHOD(TestExtractTagsFromTextSingle);
-        TEST_METHOD(TestExtractTagsFromTextMultiple);
-        TEST_METHOD(TestExtractTagsFromTextWithNewlines);
-        TEST_METHOD(TestExtractTagsFromTextMixedDelimiters);
-        TEST_METHOD(TestExtractTagsFromTextWithWhitespace);
-        TEST_METHOD(TestExtractTagsFromTextWithEmptyTags);
-        TEST_METHOD(TestExtractTagsFromTextWithTrailingDelimiter);
-        TEST_METHOD(TestExtractTagsFromTextWithLeadingDelimiter);
-        TEST_METHOD(TestExtractTagsFromTextComplexWhitespace);
+	// タグ抽出のテスト
+	TEST_METHOD(TestExtractTagsFromText);
+	TEST_METHOD(TestExtractTagsFromTextEmpty);
+	TEST_METHOD(TestExtractTagsFromTextSingle);
+	TEST_METHOD(TestExtractTagsFromTextMultiple);
+	TEST_METHOD(TestExtractTagsFromTextWithNewlines);
+	TEST_METHOD(TestExtractTagsFromTextMixedDelimiters);
+	TEST_METHOD(TestExtractTagsFromTextWithWhitespace);
+	TEST_METHOD(TestExtractTagsFromTextWithEmptyTags);
+	TEST_METHOD(TestExtractTagsFromTextWithTrailingDelimiter);
+	TEST_METHOD(TestExtractTagsFromTextWithLeadingDelimiter);
+	TEST_METHOD(TestExtractTagsFromTextComplexWhitespace);
 
 	// 文字列分割のテスト
 	TEST_METHOD(TestSplitString);
@@ -71,5 +71,5 @@ public:
 	TEST_METHOD(TestUnescapeNewlines);
 	TEST_METHOD(TestUnescapeNewlinesEmpty);
 	TEST_METHOD(TestUnescapeNewlinesNoEscape);
-	};
+};
 }
