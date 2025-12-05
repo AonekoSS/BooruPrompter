@@ -254,7 +254,7 @@ TagList extract_tags_from_text(const std::string& text) {
 
 				Tag tag;
 				tag.tag = trimmedTag;
-				tag.color = 0;
+				tag.category = 0;
 				tag.start = trimmedStart;
 				tag.end = trimmedEnd;
 				result.push_back(tag);
@@ -265,7 +265,7 @@ TagList extract_tags_from_text(const std::string& text) {
 		if (end < text.length() && text[end] == '\n') {
 			Tag tag;
 			tag.tag = "\n";
-			tag.color = 0;
+			tag.category = 0;
 			tag.start = end;
 			tag.end = end+1;
 			result.push_back(tag);

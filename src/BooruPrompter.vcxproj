@@ -144,7 +144,7 @@
     </CopyFileToFolders>
   </ItemGroup>
   <ItemGroup>
-    <CopyFileToFolders Include="..\external\booru-japanese-tag\danbooru.csv">
+    <CopyFileToFolders Include="..\external\danbooru.csv">
       <FileType>Document</FileType>
     </CopyFileToFolders>
   </ItemGroup>

@@ -49,6 +49,18 @@ constexpr COLORREF LISTVIEW_BK_COLOR = RGB(16,16,16);
 constexpr COLORREF LISTVIEW_ALT_COLOR = RGB(32,32,32);
 constexpr COLORREF LISTVIEW_TEXT_COLOR = RGB(255,255,255);
 
+// カテゴリーから色を取得
+static COLORREF GetCategoryColor(int category) {
+	switch (category) {
+		case 1: return RGB(255, 255, 0); // Artist
+		case 3: return RGB(0, 255, 90); // Copyright
+		case 4: return RGB(0, 160, 255); // Character
+		case 5: return RGB(255, 90, 255); // Metadata
+	default:
+		return LISTVIEW_TEXT_COLOR;
+	}
+}
+
 // アプリケーションのエントリポイント
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	_In_opt_ HINSTANCE hPrevInstance,
@@ -963,7 +975,17 @@ LRESULT CALLBACK BooruPrompter::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, 
 						return CDRF_NOTIFYITEMDRAW | CDRF_NEWFONT;
 					case CDDS_ITEMPREPAINT: {
 						int row = static_cast<int>(lplvcd->nmcd.dwItemSpec);
-						lplvcd->clrText = LISTVIEW_TEXT_COLOR;
+						if (pnmh->hwndFrom == pThis->m_hwndTagList) {
+							lplvcd->clrText = GetCategoryColor(TagListHandler::GetCategory(row));
+						} else if (pnmh->hwndFrom == pThis->m_hwndSuggestions) {
+							int category = 0;
+							if (row >= 0 && row < static_cast<int>(pThis->m_currentSuggestions.size())) {
+								category = pThis->m_currentSuggestions[row].category;
+							}
+							lplvcd->clrText = GetCategoryColor(category);
+						} else {
+							lplvcd->clrText = LISTVIEW_TEXT_COLOR;
+						}
 						lplvcd->clrTextBk = (row % 2 == 0) ? LISTVIEW_BK_COLOR : LISTVIEW_ALT_COLOR;
 						return CDRF_DODEFAULT;
 					}

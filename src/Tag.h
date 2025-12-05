@@ -5,7 +5,7 @@
 struct Tag {
 	std::string tag;
 	std::wstring description;
-	COLORREF color;
+	int category;
 	size_t start, end;
 };
 

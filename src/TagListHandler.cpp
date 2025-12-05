@@ -7,7 +7,6 @@
 #include "TextUtils.h"
 #include "BooruDB.h"
 
-
 // 静的メンバー変数の定義
 TagList TagListHandler::s_tagItems;
 int TagListHandler::s_dragIndex = -1;
@@ -69,7 +68,7 @@ void TagListHandler::UpdatePromptFromTagList(BooruPrompter* pThis) {
 void TagListHandler::SyncTagListFromPrompt(BooruPrompter* pThis, const std::string& prompt) {
 	s_tagItems = extract_tags_from_text(prompt);
 	for (auto& tag : s_tagItems) {
-		tag.description = BooruDB::GetInstance().GetMetadata(tag.tag);
+		tag = BooruDB::GetInstance().MakeSuggestion(tag.tag);
 	}
 	RefreshTagList(pThis);
 }
@@ -199,6 +198,12 @@ bool TagListHandler::GetTagPromptRange(int index, size_t& start, size_t& end) {
 	start = s_tagItems[index].start;
 	end = s_tagItems[index].end;
 	return true;
+}
+
+// タグリストのインデックスからカテゴリーを取得
+int TagListHandler::GetCategory(int index) {
+	if (index < 0 || index >= static_cast<int>(s_tagItems.size())) return 0;
+	return s_tagItems[index].category;
 }
 
 // タグ整理（A-Z：アルファベット順）
