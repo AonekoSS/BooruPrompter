@@ -239,6 +239,44 @@ void TagListHandler::SortTagsFav(BooruPrompter* pThis) {
 	UpdatePromptFromTagList(pThis);
 }
 
+// タグ整理（カテゴリー順）
+void TagListHandler::SortTagsCategory(BooruPrompter* pThis) {
+	if (s_tagItems.empty()) {
+		return;
+	}
+
+	// カテゴリーのキャッシュ
+	std::unordered_map<std::string, int> categoryCache;
+	categoryCache.reserve(s_tagItems.size());
+
+	// インデックスのキャッシュ
+	std::unordered_map<std::string, int> indexCache;
+	indexCache.reserve(s_tagItems.size());
+
+	for (const auto& tag : s_tagItems) {
+		if (categoryCache.find(tag.tag) == categoryCache.end()) {
+			categoryCache[tag.tag] = BooruDB::GetInstance().GetTagCategory(tag.tag);
+		}
+		if (indexCache.find(tag.tag) == indexCache.end()) {
+			indexCache[tag.tag] = BooruDB::GetInstance().GetTagIndex(tag.tag);
+		}
+	}
+
+	// カテゴリー順にソート（カテゴリーが同じ場合はインデックス順）
+	std::sort(s_tagItems.begin(), s_tagItems.end(), [&categoryCache, &indexCache](const Tag& a, const Tag& b) {
+		int categoryA = categoryCache.at(a.tag);
+		int categoryB = categoryCache.at(b.tag);
+		if (categoryA != categoryB) {
+			return categoryA < categoryB;
+		}
+		// 同じカテゴリー内ではインデックス順
+		return indexCache.at(a.tag) < indexCache.at(b.tag);
+	});
+
+	RefreshTagList(pThis);
+	UpdatePromptFromTagList(pThis);
+}
+
 // タグ整理（独自ルール）
 void TagListHandler::SortTagsCustom(BooruPrompter* pThis) {
 	if (s_tagItems.empty()) {

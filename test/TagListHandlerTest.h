@@ -78,6 +78,8 @@ public:
 	TEST_METHOD(TestSortTagsFavEmpty);
 	TEST_METHOD(TestSortTagsCustom);
 	TEST_METHOD(TestSortTagsCustomEmpty);
+	TEST_METHOD(TestSortTagsCategory);
+	TEST_METHOD(TestSortTagsCategoryEmpty);
 
 private:
 	MockBooruPrompter* m_mockPrompter;

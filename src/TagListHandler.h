@@ -54,6 +54,7 @@ public:
 	static void SortTagsAZ(BooruPrompter* pThis);      // アルファベット順
 	static void SortTagsFav(BooruPrompter* pThis);     // 使用頻度順
 	static void SortTagsCustom(BooruPrompter* pThis);  // 独自ルール
+	static void SortTagsCategory(BooruPrompter* pThis); // カテゴリー順
 
 private:
 	// タグリスト関連のメンバー変数

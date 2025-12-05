@@ -422,6 +422,49 @@ namespace TagListHandlerTest {
 		AssertTagList(emptyTags);
 	}
 
+	void TagListHandlerTest::TestSortTagsCategory() {
+		// カテゴリー順ソートのテスト
+		// カテゴリー順: 0 (general) < 4 (character) < 9 (rating)
+		// 同じカテゴリー内ではアルファベット順
+		std::vector<std::string> tags = { "1girl", "smile", "rating:safe", "red eyes", "2girl", "rating:explicit" };
+		TagListHandler::SyncTagList(reinterpret_cast<BooruPrompter*>(m_mockPrompter), tags);
+
+		TagListHandler::SortTagsCategory(reinterpret_cast<BooruPrompter*>(m_mockPrompter));
+
+		// ソート後のタグリストを取得
+		auto sortedTags = TagListHandler::GetTags();
+
+		// カテゴリー順にソートされていることを確認
+		// general (0): "red eyes", "smile" (アルファベット順)
+		// character (4): "1girl", "2girl" (アルファベット順)
+		// rating (9): "rating:explicit", "rating:safe" (アルファベット順)
+		Assert::AreEqual(static_cast<size_t>(6), sortedTags.size());
+
+		// generalタグが最初に来ることを確認
+		bool hasSmile = std::find(sortedTags.begin(), sortedTags.end(), "smile") != sortedTags.end();
+		bool hasRedEyes = std::find(sortedTags.begin(), sortedTags.end(), "red eyes") != sortedTags.end();
+		Assert::IsTrue(hasSmile && hasRedEyes, L"generalタグが存在することを確認");
+
+		// characterタグが次に来ることを確認
+		bool has1girl = std::find(sortedTags.begin(), sortedTags.end(), "1girl") != sortedTags.end();
+		bool has2girl = std::find(sortedTags.begin(), sortedTags.end(), "2girl") != sortedTags.end();
+		Assert::IsTrue(has1girl && has2girl, L"characterタグが存在することを確認");
+
+		// ratingタグが最後に来ることを確認
+		bool hasRatingSafe = std::find(sortedTags.begin(), sortedTags.end(), "rating:safe") != sortedTags.end();
+		bool hasRatingExplicit = std::find(sortedTags.begin(), sortedTags.end(), "rating:explicit") != sortedTags.end();
+		Assert::IsTrue(hasRatingSafe && hasRatingExplicit, L"ratingタグが存在することを確認");
+	}
+
+	void TagListHandlerTest::TestSortTagsCategoryEmpty() {
+		// 空のリストでのカテゴリー順ソートテスト
+		// 空のリストでもクラッシュしないことを確認
+		std::vector<std::string> emptyTags;
+		TagListHandler::SyncTagList(reinterpret_cast<BooruPrompter*>(m_mockPrompter), emptyTags);
+		TagListHandler::SortTagsCategory(reinterpret_cast<BooruPrompter*>(m_mockPrompter));
+		AssertTagList(emptyTags);
+	}
+
 
 
 }

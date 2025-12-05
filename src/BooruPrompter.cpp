@@ -38,9 +38,10 @@ enum {
 	ID_CLEAR = 1007,
 	ID_PASTE = 1008,
 	ID_COPY = 1009,
-	ID_SORT_TAGS_AZ = 1013,
-	ID_SORT_TAGS_FAV = 1014,
-	ID_SORT_TAGS_CUSTOM = 1015
+	ID_SORT_TAGS_CUSTOM = 1010,
+	ID_SORT_TAGS_AZ = 1011,
+	ID_SORT_TAGS_FAV = 1012,
+	ID_SORT_TAGS_CATEGORY = 1013,
 };
 
 // リストビューの配色定数
@@ -151,11 +152,12 @@ void BooruPrompter::OnCreate(HWND hwnd) {
 		{STD_PROPERTIES, ID_SORT_TAGS_CUSTOM, TBSTATE_ENABLED, BTNS_BUTTON, {0}, 0, (INT_PTR)L"タグ整理"},
 		{STD_REPLACE, ID_SORT_TAGS_AZ, TBSTATE_ENABLED, BTNS_BUTTON, {0}, 0, (INT_PTR)L"タグ整列(A-Z)"},
 		{STD_REPLACE, ID_SORT_TAGS_FAV, TBSTATE_ENABLED, BTNS_BUTTON, {0}, 0, (INT_PTR)L"タグ整列(Fav)"},
+		{STD_REPLACE, ID_SORT_TAGS_CATEGORY, TBSTATE_ENABLED, BTNS_BUTTON, {0}, 0, (INT_PTR)L"タグ整列(CAT)"},
 	};
 
 	// ツールバーにボタンを追加
 	SendMessage(m_hwndToolbar, TB_BUTTONSTRUCTSIZE, sizeof(TBBUTTON), 0);
-	SendMessage(m_hwndToolbar, TB_ADDBUTTONS, 7, (LPARAM)&tbButtons);
+	SendMessage(m_hwndToolbar, TB_ADDBUTTONS, static_cast<WPARAM>(std::size(tbButtons)), (LPARAM)&tbButtons);
 
 	// ステータスバーの作成
 	m_hwndStatusBar = CreateWindowEx(
@@ -466,6 +468,10 @@ void BooruPrompter::OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify) 
 			}
 		}
 		break;
+	case ID_SORT_TAGS_CUSTOM:
+		// タグ整理（独自ルール）
+		TagListHandler::SortTagsCustom(this);
+		break;
 	case ID_SORT_TAGS_AZ:
 		// タグ整理（A-Z）
 		TagListHandler::SortTagsAZ(this);
@@ -474,9 +480,9 @@ void BooruPrompter::OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify) 
 		// タグ整理（Fav）
 		TagListHandler::SortTagsFav(this);
 		break;
-	case ID_SORT_TAGS_CUSTOM:
-		// タグ整理（独自ルール）
-		TagListHandler::SortTagsCustom(this);
+	case ID_SORT_TAGS_CATEGORY:
+		// タグ整理（カテゴリー）
+		TagListHandler::SortTagsCategory(this);
 		break;
 	}
 

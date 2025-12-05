@@ -144,6 +144,11 @@
     </CopyFileToFolders>
   </ItemGroup>
   <ItemGroup>
+    <CopyFileToFolders Include="..\external\booru-japanese-tag\danbooru.csv">
+      <FileType>Document</FileType>
+    </CopyFileToFolders>
+  </ItemGroup>
+  <ItemGroup>
     <CopyFileToFolders Include="..\external\onnxruntime\lib\onnxruntime.dll">
       <FileType>Document</FileType>
     </CopyFileToFolders>
