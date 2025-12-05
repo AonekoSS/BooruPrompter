@@ -15,7 +15,7 @@ skirt,スカート
 blonde_hair,金髪
 large_breasts,巨乳
 brown_hair,茶髪
-simple_background,白背景
+simple_background,単色背景
 shirt,シャツ
 black_hair,黒髪
 hair_ornament,髪飾り
@@ -25,7 +25,7 @@ hat,帽子
 gloves,手袋
 1boy,一人の男の子
 long_sleeves,長袖
-white_background,白背景
+white_background,白色背景
 dress,ドレス
 original,オリジナル
 ribbon,リボン
@@ -80,7 +80,7 @@ hair_bow,リボンの髪飾り
 greyscale,モノクロ
 hetero,異性愛
 white_hair,白髪
-male_focus,男
+male_focus,男の子
 heart,ハート
 pantyhose,パンスト
 bikini,ビキニ
@@ -121,7 +121,7 @@ barefoot,裸足
 serafuku,セーラー服
 pussy,マンコ
 teeth,歯
-solo_focus,一人
+solo_focus,一人だけ強調
 sleeveless,袖なし
 day,昼間
 alternate_costume,別のコスチューム
@@ -208,7 +208,7 @@ grin,にやにや笑う
 uniform,ユニフォーム
 :o,開いた口
 huge_breasts,爆乳
-blurry,ぼやけ
+blurry,ぼかし
 black_eyes,黒目
 character_name,キャラ名付き
 apron,エプロン
@@ -296,7 +296,7 @@ black_panties,黒パン
 hands_up,両手を上げる
 fur_trim,毛皮
 pubic_hair,陰毛
-gradient_background,グラデーションの背景
+gradient_background,グラデーション背景
 fox_ears,狐耳
 one-piece_swimsuit,一部位の水着
 loli,ロリ
@@ -323,12 +323,15 @@ fruit,フルーツ
 night,夜
 cum_in_pussy,中出し
 bottomless,ボトムレス
+blurry_background,背景ぼかし
 red_skirt,赤スカート
 6+girls,六人以上の女の子
 ocean,海
 animal,動物
 embarrassed,照れ顔
 on_bed,ベッドで
+blue_background,青色背景
+transparent_background,背景透過
 drill_hair,縦ロール
 topless,トップレス
 skirt_lift,スカートのたくしあげ
@@ -336,31 +339,55 @@ magical_girl,魔法少女
 bound,緊縛
 playboy_bunny,バニーガール
 erection,勃起
+pink_background,ピンク背景
 school_swimsuit,スクール水着
 cum_on_body,ぶっかけ
 3boys,三人の男の子
 straddling,騎乗位
+black_background,黒色背景
 elf,エルフ
 fox_girl,狐娘
 between_breasts,谷間
 blue_archive,ブルーアーカイブ
 dog_ears,犬耳
 ejaculation,射精
+yellow_background,黄色背景
+red_background,赤色背景
 gift,プレゼント
 after_sex,事後
+backlighting,逆光
+brown_background,茶色背景
 condom,コンドーム
 rape,レイプ
-spread_pussy,マンコを開く
+green_background,緑色背景
+purple_background,紫色背景
+spread_pussy,くぱぁ
 cum_in_mouth,口内射精
 dog_tail,いぬしっぽ
+blue_theme,青色
+blurry_foreground,前景ぼかし
+text_focus,文字強調
+orange_background,オレンジ色背景
+hip_focus,腰強調
 dog_girl,犬娘
+ass_focus,おしり強調
 heart_censor,ハートで修正済み
 magic,魔法
+foot_focus,足強調
 orgasm,オーガズム
 sound_effects,オノマトペ
+animal_focus,動物強調
+pink_theme,ピンク色
+purple_theme,紫色
+red_theme,赤色
+green_theme,緑色
 torso_grab,胴体掴み
 lotion,ローション
 instant_loss,即堕ち
+eye_focus,目強調
+breast_focus,胸強調
+armpit_focus,脇の下強調
+navel_focus,おへそ強調
 spasm,痙攣
 commentary_request,解説リクエスト
 absurdres,不条理
@@ -443,7 +470,6 @@ toes,つま先
 side-tie_bikini_bottom,サイドタイのビキニボトム
 black_bikini,ブラックビキニ
 shadow,影
-blurry_background,ぼやけた背景
 glowing,輝く
 nose_blush,鼻の赤面
 feet_out_of_frame,フレームから足
@@ -480,13 +506,11 @@ watermark,透かし
 garter_straps,ガーターストラップ
 ass_visible_through_thighs,太ももを通して見えるお尻
 kirisame_marisa,キリサメ・マリサ
-blue_background,青い背景
 non-web_source,非ウェブソース
 highleg,highleg
 scar,傷跡
 white_bikini,白いビキニ
 on_side,側
-transparent_background,透明な背景
 plaid_skirt,格子縞のスカート
 mahou_shoujo_madoka_magica,マホウ・ショーホ・マドカ・マジカ
 upper_teeth,上歯
@@ -556,7 +580,6 @@ oral,オーラル
 red_dress,赤いドレス
 cat,猫
 squatting,しゃがんでいます
-pink_background,ピンクの背景
 underwear_only,下着のみ
 scrunchie,シュシュ
 sunglasses,サングラス
@@ -694,7 +717,6 @@ blue_jacket,青いジャケット
 blouse,ブラウス
 clenched_teeth,歯を食いしばっています
 jojo_no_kimyou_na_bouken,Jojo No kimyou na bouken
-black_background,黒い背景
 towel,タオル
 goggles,ゴーグル
 cover_page,表紙ページ
@@ -835,7 +857,6 @@ cum_on_breasts,胸に精液
 hair_over_shoulder,肩越しの髪
 hair_flaps,髪の毛
 twin_drills,ツインドリル
-yellow_background,黄色の背景
 skin_tight,肌がきつく
 torn_legwear,引き裂かれたレッグウェア
 :<,：<
@@ -859,7 +880,6 @@ light_particles,光粒子
 side_braid,サイドブレード
 corset,コルセット
 micro_bikini,マイクロビキニ
-red_background,赤い背景
 multiple_penises,複数のペニス
 pelvic_curtain,骨盤のカーテン
 mary_janes,メアリー・ジェーンズ
@@ -991,7 +1011,6 @@ low-tied_long_hair,縛られた長い髪
 hair_rings,ヘアリング
 legs_up,足を上げます
 jpeg_artifacts,JPEGアーティファクト
-backlighting,バックライト
 halloween,ハロウィーン
 pencil_skirt,鉛筆スカート
 single_glove,シングルグローブ
@@ -1024,7 +1043,6 @@ holding_book,本を持っている
 puffy_long_sleeves,ふくらんでいる長袖
 tearing_up,引き裂く
 arm_at_side,横に腕
-brown_background,茶色の背景
 akemi_homura,Akemi Homura
 happy_birthday,お誕生日おめでとう
 long_fingernails,長い爪
@@ -1078,8 +1096,6 @@ beads,ビーズ
 denim_shorts,デニムショートパンツ
 saigyouji_yuyuko,saigyuji yuyuko
 curly_hair,巻き毛
-green_background,緑の背景
-purple_background,紫色の背景
 black-framed_eyewear,ブラックフレームアイウェア
 pokemon_swsh,ポケモンSWSH
 one-hour_drawing_challenge,1時間の描画チャレンジ
@@ -1177,7 +1193,6 @@ white_skin,白い肌
 white_pupils,白人の生徒
 single_earring,シングルイヤリング
 hat_removed,帽子が削除されました
-blue_theme,青いテーマ
 bespectacled,眼鏡をかけた
 folded_ponytail,折り畳まれたポニーテール
 ghost,おばけ
@@ -1271,7 +1286,6 @@ kagamine_rin,鏡音リン
 breastplate,胸当て
 chocolate,チョコレート
 threesome,三人組
-blurry_foreground,ぼやけて前景
 jumping,ジャンピング
 white_shorts,白いショートパンツ
 rock,ロック
@@ -1368,7 +1382,6 @@ orange_bow,オレンジ色の弓
 spoon,スプーン
 nose,鼻
 love_live!_sunshine!!,ライブが大好き！日光！！
-text_focus,テキストフォーカス
 partially_translated,部分的に翻訳されています
 panties_around_one_leg,片足の周りのパンティー
 card,カード
@@ -1430,14 +1443,12 @@ door,ドア
 can,できる
 arrow_(projectile),矢印（発射体）
 fantasy,ファンタジー
-orange_background,オレンジ色の背景
 overflow,オーバーフロー
 sitting_on_person,人に座っている
 on_floor,床で
 scar_across_eye,目を越えて傷
 fork,フォーク
 alternate_color,代替色
-hip_focus,ヒップフォーカス
 round_eyewear,丸いアイウェア
 hinanawi_tenshi,hinanawi tenshi
 xenoblade_chronicles_(series),Xenoblade Chronicles（シリーズ）
@@ -1571,7 +1582,6 @@ ahegao,ahegao
 basket,バスケット
 nipple_slip,乳首スリップ
 vambraces,バンブレース
-ass_focus,お尻の焦点
 bookshelf,本棚
 gakuran,ガクラン
 logo,ロゴ
@@ -1758,7 +1768,6 @@ ninja,忍者
 mecha_musume,メカムサメ
 sideways_glance,横向き
 triangular_headpiece,三角形のヘッドピース
-foot_focus,足の焦点
 hakama_short_skirt,ハカマショートスカート
 tamamo_(fate),タマモ（運命）
 sexually_suggestive,性的に示唆的です
@@ -2378,7 +2387,6 @@ smoking_pipe,喫煙用パイプ
 tainaka_ritsu,Tainaka ritsu
 ;o,; o
 bad_source,悪いソース
-animal_focus,動物の焦点
 split,スプリット
 yuudachi_kai_ni_(kancolle),ユダチカイニ（カンコル）
 body_writing,ボディライティング
@@ -2414,7 +2422,6 @@ holding_fruit,果物を持っている
 lumine_(genshin_impact),ルミン（Genshin Impact）
 object_on_head,頭のオブジェクト
 arm_ribbon,アームリボン
-pink_theme,ピンクのテーマ
 pink_rose,ピンクのバラ
 cookie,クッキー
 shoes_removed,靴が削除されました
@@ -2440,7 +2447,6 @@ single_shoe,シングルシューズ
 fireworks,花火
 jeanne_d'arc_alter_(avenger)_(fate),JeanneD'Arc Alter（Avenger）（運命）
 sonoda_umi,ソノダ・ウミ
-purple_theme,紫のテーマ
 multiple_others,他の複数
 folded,折りたたまれています
 bridge,橋
@@ -2497,7 +2503,6 @@ toujou_nozomi,Toujou nozomi
 beer,ビール
 green_vest,緑のベスト
 :/,：/
-red_theme,赤いテーマ
 rainbow,虹
 hammer,ハンマー
 hooded_cloak,フード付きマント
@@ -2649,7 +2654,6 @@ pokemon_xy,ポケモンxy
 on_chair,椅子に
 heads_together,頭を一緒に
 shirt_pull,シャツプル
-green_theme,緑のテーマ
 track_suit,トラックスーツ
 black_capelet,黒いカペレット
 white_belt,白いベルト
@@ -5886,7 +5890,6 @@ blue_apron,青いエプロン
 character_print,キャラクタープリント
 crescent_facial_mark,三日月形のフェイシャルマーク
 eastern_dragon,東ドラゴン
-eye_focus,目の焦点
 rotom,ロトム
 black_lagoon,ブラックラグーン
 yume_nikki,Yume Nikki
@@ -8221,7 +8224,6 @@ frog_print,カエルプリント
 multiple_straps,複数のストラップ
 tokyo_ghoul:re,東京グール：Re
 catstudioinc_(punepuni),Catstudioinc（Punepuni）
-breast_focus,乳房の焦点
 chan_co,Chan Co
 holding_scissors,ハサミを保持します
 marth_(fire_emblem),マース（火の紋章）
@@ -19880,7 +19882,6 @@ airborne,空中
 akiyama_rinko,秋山リンコ
 amo_(shibu3),amo（shibu3）
 ana_(rznuscrf),ana（rznuscrf）
-armpit_focus,脇の下のフォーカス
 bioshock_(series),BioShock（シリーズ）
 chikotam,チコタム
 danball_senki,ダンボール・センキ
@@ -23438,7 +23439,6 @@ nakamura_sumikage,中村sumikage
 namco,ナムコ
 nana_(raiupika),ナナ（raiupika）
 narushima_kanna,奈良カンナ
-navel_focus,へその焦点
 nigiri_(ngr24),nigiri（ngr24）
 ninomotonino,ニノモトニノ
 nose_art,ノーズアート
