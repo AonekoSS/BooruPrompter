@@ -39,6 +39,9 @@ public:
 	// 逆引きサジェスト
 	bool ReverseSuggestion(TagList& suggestions, const std::string& input, int maxSuggestions = 5);
 
+	// タグの辞書内でのインデックスを取得（使用頻度の代替として使用）
+	int GetTagIndex(const std::string& tag) const;
+
 private:
 	// プライベートコンストラクタ（Singleton）
 	BooruDB();

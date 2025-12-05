@@ -137,3 +137,13 @@ Tag BooruDB::MakeSuggestion(const std::string& tag) {
 	return suggestion;
 }
 
+// タグの辞書内でのインデックスを取得（使用頻度の代替として使用）
+int BooruDB::GetTagIndex(const std::string& tag) const {
+	auto it = std::find(dictionary_.begin(), dictionary_.end(), tag);
+	if (it != dictionary_.end()) {
+		return static_cast<int>(std::distance(dictionary_.begin(), it));
+	}
+	// 見つからない場合は最後に配置（辞書サイズより大きい値を返す）
+	return static_cast<int>(dictionary_.size() + 1);
+}
+
