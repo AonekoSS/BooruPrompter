@@ -37,7 +37,10 @@ enum {
 	ID_PROGRESS_BAR = 1006,
 	ID_CLEAR = 1007,
 	ID_PASTE = 1008,
-	ID_COPY = 1009
+	ID_COPY = 1009,
+	ID_SORT_TAGS_AZ = 1013,
+	ID_SORT_TAGS_FAV = 1014,
+	ID_SORT_TAGS_CUSTOM = 1015
 };
 
 // リストビューの配色定数
@@ -143,12 +146,16 @@ void BooruPrompter::OnCreate(HWND hwnd) {
 	TBBUTTON tbButtons[] = {
 		{STD_DELETE, ID_CLEAR, TBSTATE_ENABLED, BTNS_BUTTON, {0}, 0, (INT_PTR)L"クリア"},
 		{STD_PASTE, ID_PASTE, TBSTATE_ENABLED, BTNS_BUTTON, {0}, 0, (INT_PTR)L"貼り付け"},
-		{STD_COPY, ID_COPY, TBSTATE_ENABLED, BTNS_BUTTON, {0}, 0, (INT_PTR)L"コピー" }
+		{STD_COPY, ID_COPY, TBSTATE_ENABLED, BTNS_BUTTON, {0}, 0, (INT_PTR)L"コピー" },
+		{0, 0, TBSTATE_ENABLED, BTNS_SEP, {0}, 0, 0},
+		{0, ID_SORT_TAGS_CUSTOM, TBSTATE_ENABLED, BTNS_BUTTON, {0}, 0, (INT_PTR)L"タグ整理"},
+		{0, ID_SORT_TAGS_AZ, TBSTATE_ENABLED, BTNS_BUTTON, {0}, 0, (INT_PTR)L"タグ整理（A-Z）"},
+		{0, ID_SORT_TAGS_FAV, TBSTATE_ENABLED, BTNS_BUTTON, {0}, 0, (INT_PTR)L"タグ整理（Fav）"},
 	};
 
 	// ツールバーにボタンを追加
 	SendMessage(m_hwndToolbar, TB_BUTTONSTRUCTSIZE, sizeof(TBBUTTON), 0);
-	SendMessage(m_hwndToolbar, TB_ADDBUTTONS, 3, (LPARAM)&tbButtons);
+	SendMessage(m_hwndToolbar, TB_ADDBUTTONS, 7, (LPARAM)&tbButtons);
 
 	// ステータスバーの作成
 	m_hwndStatusBar = CreateWindowEx(
@@ -458,6 +465,18 @@ void BooruPrompter::OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify) 
 				UpdateProgress(100, L"プロンプトをクリップボードにコピー");
 			}
 		}
+		break;
+	case ID_SORT_TAGS_AZ:
+		// タグ整理（A-Z）
+		TagListHandler::SortTagsAZ(this);
+		break;
+	case ID_SORT_TAGS_FAV:
+		// タグ整理（Fav）
+		TagListHandler::SortTagsFav(this);
+		break;
+	case ID_SORT_TAGS_CUSTOM:
+		// タグ整理（独自ルール）
+		TagListHandler::SortTagsCustom(this);
 		break;
 	}
 

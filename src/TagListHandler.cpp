@@ -1,5 +1,7 @@
 ﻿#include "framework.h"
 #include <sstream>
+#include <algorithm>
+#include <unordered_map>
 #include "TagListHandler.h"
 #include "BooruPrompter.h"
 #include "TextUtils.h"
@@ -197,4 +199,54 @@ bool TagListHandler::GetTagPromptRange(int index, size_t& start, size_t& end) {
 	start = s_tagItems[index].start;
 	end = s_tagItems[index].end;
 	return true;
+}
+
+// タグ整理（A-Z：アルファベット順）
+void TagListHandler::SortTagsAZ(BooruPrompter* pThis) {
+	if (s_tagItems.empty()) {
+		return;
+	}
+	std::sort(s_tagItems.begin(), s_tagItems.end(), [](const Tag& a, const Tag& b) {
+		return a.tag < b.tag;
+	});
+	RefreshTagList(pThis);
+	UpdatePromptFromTagList(pThis);
+}
+
+// タグ整理（Fav：使用頻度順）
+void TagListHandler::SortTagsFav(BooruPrompter* pThis) {
+	if (s_tagItems.empty()) {
+		return;
+	}
+
+	// インデックスのキャッシュ
+	std::unordered_map<std::string, int> indexCache;
+	indexCache.reserve(s_tagItems.size());
+
+	for (const auto& tag : s_tagItems) {
+		if (indexCache.find(tag.tag) == indexCache.end()) {
+			indexCache[tag.tag] = BooruDB::GetInstance().GetTagIndex(tag.tag);
+		}
+	}
+
+	std::sort(s_tagItems.begin(), s_tagItems.end(), [&indexCache](const Tag& a, const Tag& b) {
+		int indexA = indexCache.at(a.tag);
+		int indexB = indexCache.at(b.tag);
+		return indexA < indexB;
+	});
+
+	RefreshTagList(pThis);
+	UpdatePromptFromTagList(pThis);
+}
+
+// タグ整理（独自ルール）
+void TagListHandler::SortTagsCustom(BooruPrompter* pThis) {
+	if (s_tagItems.empty()) {
+		return;
+	}
+
+// TODO: 独自ルールのソート
+
+	RefreshTagList(pThis);
+	UpdatePromptFromTagList(pThis);
 }
