@@ -1,5 +1,6 @@
 ﻿#include "pch.h"
 #include <sstream>
+#include <algorithm>
 
 #include "TagListHandlerTest.h"
 #include "../src/TextUtils.h"
@@ -354,6 +355,71 @@ namespace TagListHandlerTest {
 		TagListHandler::OnTagListContextCommand(reinterpret_cast<BooruPrompter*>(m_mockPrompter), ID_CONTEXT_DELETE);
 
 		Assert::IsTrue(true);
+	}
+
+	void TagListHandlerTest::TestSortTagsAZ() {
+		// アルファベット順ソートのテスト
+		std::vector<std::string> tags = { "zebra", "apple", "banana", "cherry" };
+		TagListHandler::SyncTagList(reinterpret_cast<BooruPrompter*>(m_mockPrompter), tags);
+
+		TagListHandler::SortTagsAZ(reinterpret_cast<BooruPrompter*>(m_mockPrompter));
+
+		// アルファベット順にソートされていることを確認
+		AssertTagList({ "apple", "banana", "cherry", "zebra" });
+
+		// 大文字小文字の混在テスト
+		std::vector<std::string> mixedCaseTags = { "Zebra", "apple", "Banana", "cherry" };
+		TagListHandler::SyncTagList(reinterpret_cast<BooruPrompter*>(m_mockPrompter), mixedCaseTags);
+
+		TagListHandler::SortTagsAZ(reinterpret_cast<BooruPrompter*>(m_mockPrompter));
+
+		// 大文字が小文字より前に来ることを確認（ASCII順）
+		auto sortedMixed = TagListHandler::GetTags();
+		Assert::AreEqual(static_cast<size_t>(4), sortedMixed.size());
+		Assert::IsTrue(sortedMixed[0] < sortedMixed[1], L"大文字小文字が正しくソートされることを確認");
+	}
+
+	void TagListHandlerTest::TestSortTagsAZEmpty() {
+		// 空のリストでのアルファベット順ソートテスト
+		// 空のリストでもクラッシュしないことを確認
+		std::vector<std::string> emptyTags;
+		TagListHandler::SyncTagList(reinterpret_cast<BooruPrompter*>(m_mockPrompter), emptyTags);
+		TagListHandler::SortTagsAZ(reinterpret_cast<BooruPrompter*>(m_mockPrompter));
+		AssertTagList(emptyTags);
+	}
+
+	void TagListHandlerTest::TestSortTagsFav() {
+		// 使用頻度順ソートのテスト(DB依存なのでパス)
+		std::vector<std::string> tags = { "furby", "smile", "leomon" };
+		TagListHandler::SyncTagList(reinterpret_cast<BooruPrompter*>(m_mockPrompter), tags);
+		TagListHandler::SortTagsFav(reinterpret_cast<BooruPrompter*>(m_mockPrompter));
+		// AssertTagList({ "smile", "furby", "leomon" });
+	}
+
+	void TagListHandlerTest::TestSortTagsFavEmpty() {
+		// 空のリストでの使用頻度順ソートテスト
+		// 空のリストでもクラッシュしないことを確認
+		std::vector<std::string> emptyTags;
+		TagListHandler::SyncTagList(reinterpret_cast<BooruPrompter*>(m_mockPrompter), emptyTags);
+		TagListHandler::SortTagsFav(reinterpret_cast<BooruPrompter*>(m_mockPrompter));
+		AssertTagList(emptyTags);
+	}
+
+	void TagListHandlerTest::TestSortTagsCustom() {
+		// 独自ルールソートのテスト
+		std::vector<std::string> tags = { "1girl", "solo", "long hair", "looking at viewer", "red eyes", "dress", "white dress", "fruit", "black hair", "black dress" };
+		TagListHandler::SyncTagList(reinterpret_cast<BooruPrompter*>(m_mockPrompter), tags);
+		TagListHandler::SortTagsCustom(reinterpret_cast<BooruPrompter*>(m_mockPrompter));
+		AssertTagList({ "1girl", "solo", "long hair", "black hair", "looking at viewer", "red eyes", "white dress", "black dress", "fruit" });
+	}
+
+	void TagListHandlerTest::TestSortTagsCustomEmpty() {
+		// 空のリストでの独自ルールソートテスト
+		// 空のリストでもクラッシュしないことを確認
+		std::vector<std::string> emptyTags;
+		TagListHandler::SyncTagList(reinterpret_cast<BooruPrompter*>(m_mockPrompter), emptyTags);
+		TagListHandler::SortTagsCustom(reinterpret_cast<BooruPrompter*>(m_mockPrompter));
+		AssertTagList(emptyTags);
 	}
 
 
