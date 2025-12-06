@@ -223,6 +223,29 @@ std::wstring unescape_newlines(const std::wstring& text) {
 	return result;
 }
 
+std::string unescape_newlines(const std::string& text) {
+	std::string result;
+	for (size_t i = 0; i < text.length(); ++i) {
+		if (text[i] == '\\' && i + 1 < text.length()) {
+			switch (text[i + 1]) {
+			case '\\':
+				result += '\\';
+				++i;
+				break;
+			case 'n':
+				result += "\n";
+				++i;
+				break;
+			default:
+				result += text[i + 1];
+			}
+		} else {
+			result += text[i];
+		}
+	}
+	return result;
+}
+
 
 // カンマ区切り文字列からタグを抽出
 TagList extract_tags_from_text(const std::string& text) {

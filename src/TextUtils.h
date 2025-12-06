@@ -39,5 +39,7 @@ std::wstring newlines_for_parse(const std::wstring& text);
 std::wstring escape_newlines(const std::wstring& text);
 std::wstring unescape_newlines(const std::wstring& text);
 
+std::string unescape_newlines(const std::string& text);
+
 // カンマ区切り文字列からタグを抽出
 TagList extract_tags_from_text(const std::string& text);

@@ -104,8 +104,8 @@ static std::vector<std::string> ExtractJsonParams(const std::string& json, const
 
 // 通常形式のパラメータからプロンプトを抽出
 static std::string ExtractPromptFromNormal(const std::string& parameters) {
-	// 改行文字で分割（a1111の場合）
-	auto lf_pos = parameters.find('\n');
+	// 改行文字で分割、ネガの手前まで（a1111の場合）
+	auto lf_pos = parameters.find("\nNegative prompt:");
 	if (lf_pos != std::string::npos) {
 		return parameters.substr(0, lf_pos);
 	}
@@ -173,9 +173,10 @@ static std::string ReadPNGInfo(const std::wstring& filePath) {
 
 	// FooocusのJSON形式からプロンプトを取り出す
 	if (fooocus_scheme) {
-		auto params = ExtractJsonParams(parameters, "full_prompt");
+		auto params = ExtractJsonParams(parameters, "prompt");
 		if (params.empty()) return std::string();
-		return params[0];
+		auto prompt = unescape_newlines(params[0]);
+		return prompt;
 	}
 
 	return ExtractPromptFromNormal(parameters);
