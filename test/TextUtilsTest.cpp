@@ -278,6 +278,65 @@ void TextUtilsTest::TestExtractTagsFromTextComplexWhitespace() {
 	AssertTagEquals(tags[4], "tag3", 30, 34);
 }
 
+void TextUtilsTest::TestExtractTagsFromTextWithBrackets() {
+	// 括弧を含むタグ抽出のテスト（コロンなし）
+	std::string text = "tag1, (tag2, tag3), tag4";
+	TagList tags = extract_tags_from_text(text);
+	Assert::AreEqual(6, (int)tags.size());
+	AssertTagEquals(tags[0], "tag1", 0, 4);
+	AssertTagEquals(tags[1], "(", 6, 7);
+	AssertTagEquals(tags[2], "tag2", 7, 11);
+	AssertTagEquals(tags[3], "tag3", 13, 17);
+	AssertTagEquals(tags[4], ")", 17, 18);
+	AssertTagEquals(tags[5], "tag4", 20, 24);
+}
+
+void TextUtilsTest::TestExtractTagsFromTextWithBracketsAndColon() {
+	// 括弧とコロンを含むタグ抽出のテスト
+	std::string text = "(hoge, fuga:1.4)";
+	TagList tags = extract_tags_from_text(text);
+	Assert::AreEqual(4, (int)tags.size());
+	AssertTagEquals(tags[0], "(", 0, 1);
+	AssertTagEquals(tags[1], "hoge", 1, 5);
+	AssertTagEquals(tags[2], "fuga", 7, 11);
+	AssertTagEquals(tags[3], ":1.4)", 11, 16);
+}
+
+void TextUtilsTest::TestExtractTagsFromTextWithEscapedBrackets() {
+	// エスケープされた括弧を含むタグ抽出のテスト
+	std::string text = "tag1, \\(test\\), tag2";
+	TagList tags = extract_tags_from_text(text);
+	Assert::AreEqual(3, (int)tags.size());
+	AssertTagEquals(tags[0], "tag1", 0, 4);
+	AssertTagEquals(tags[1], "\\(test\\)", 6, 14);
+	AssertTagEquals(tags[2], "tag2", 16, 20);
+}
+
+void TextUtilsTest::TestExtractTagsFromTextWithEmptyBrackets() {
+	// 空の括弧のテスト
+	std::string text = "tag1, (), tag2";
+	TagList tags = extract_tags_from_text(text);
+	Assert::AreEqual(4, (int)tags.size());
+	AssertTagEquals(tags[0], "tag1", 0, 4);
+	AssertTagEquals(tags[1], "(", 6, 7);
+	AssertTagEquals(tags[2], ")", 7, 8);
+	AssertTagEquals(tags[3], "tag2", 10, 14);
+}
+
+void TextUtilsTest::TestExtractTagsFromTextWithMultipleBrackets() {
+	// 複数の括弧を含むタグ抽出のテスト
+	std::string text = "(tag1), (tag2:1.2), tag3";
+	TagList tags = extract_tags_from_text(text);
+	Assert::AreEqual(7, (int)tags.size());
+	AssertTagEquals(tags[0], "(", 0, 1);
+	AssertTagEquals(tags[1], "tag1", 1, 5);
+	AssertTagEquals(tags[2], ")", 5, 6);
+	AssertTagEquals(tags[3], "(", 8, 9);
+	AssertTagEquals(tags[4], "tag2", 9, 13);
+	AssertTagEquals(tags[5], ":1.2)", 13, 18);
+	AssertTagEquals(tags[6], "tag3", 20, 24);
+}
+
 void TextUtilsTest::TestSplitString() {
 	// 基本的な文字列分割のテスト
 	std::string str = "a,b,c";

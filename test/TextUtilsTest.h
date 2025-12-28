@@ -45,6 +45,11 @@ public:
 	TEST_METHOD(TestExtractTagsFromTextWithTrailingDelimiter);
 	TEST_METHOD(TestExtractTagsFromTextWithLeadingDelimiter);
 	TEST_METHOD(TestExtractTagsFromTextComplexWhitespace);
+	TEST_METHOD(TestExtractTagsFromTextWithBrackets);
+	TEST_METHOD(TestExtractTagsFromTextWithBracketsAndColon);
+	TEST_METHOD(TestExtractTagsFromTextWithEscapedBrackets);
+	TEST_METHOD(TestExtractTagsFromTextWithEmptyBrackets);
+	TEST_METHOD(TestExtractTagsFromTextWithMultipleBrackets);
 
 	// 文字列分割のテスト
 	TEST_METHOD(TestSplitString);
