@@ -20,8 +20,41 @@ BooruDB::BooruDB() : active_query_(0) {}
 BooruDB::~BooruDB() {}
 
 bool BooruDB::LoadDictionary() {
+
+	// カスタムリストを読み込み
+	std::vector<std::string> customTags;
+	{
+		std::wstring customTagsPath = fullpath(L"custom_tags.txt");
+		std::ifstream file(customTagsPath);
+		if (!file.is_open()) {
+			// ファイルが存在しない場合はサンプルファイルを作成
+			std::ofstream outFile(customTagsPath);
+			if (outFile.is_open()) {
+				outFile << "# カスタムタグリスト\n";
+				outFile << "# 1行1タグの形式で記述してください\n";
+				outFile << "# このファイルのタグはソート時に先頭に配置されます\n";
+				outFile << "1girl\n";
+				outFile << "2girls\n";
+				outFile << "solo\n";
+			}
+		} else {
+			// ファイルが存在する場合は読み込む
+			std::string line;
+			while (std::getline(file, line, '\n')) {
+				std::string trimmedLine = trim(line);
+				// 空行とコメント行（#で始まる行）をスキップ
+				if (trimmedLine.empty() || trimmedLine[0] == '#') {
+					continue;
+				}
+				std::string tag = booru_to_image_tag(trimmedLine);
+				customTags.push_back(tag);
+			}
+		}
+	}
+
 	dictionary_.clear();
-	dictionary_.reserve(500000);
+	dictionary_.reserve(500000 + customTags.size());
+	dictionary_.insert(dictionary_.end(), customTags.begin(), customTags.end());
 
 	// 辞書ファイル（日本語）
 	{
@@ -50,7 +83,7 @@ bool BooruDB::LoadDictionary() {
 	// カテゴリー辞書
 	{
 		category_.clear();
-		category_.reserve(400000);
+		category_.reserve(400000 + customTags.size());
 
 		std::ifstream file(fullpath(L"danbooru.csv"));
 		if (!file.is_open()) {
@@ -68,6 +101,11 @@ bool BooruDB::LoadDictionary() {
 					category_[tag] = std::stoi(category);
 				}
 			}
+		}
+
+		// カスタムタグはレーティング用タグ扱いでカテゴリを上書き
+		for (const auto& tag : customTags) {
+			category_[tag] = 9;
 		}
 	}
 
