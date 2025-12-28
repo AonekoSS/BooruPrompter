@@ -246,6 +246,13 @@ std::string unescape_newlines(const std::string& text) {
 	return result;
 }
 
+// 区切りタグかどうかを判定（改行、開き括弧、閉じ括弧）
+bool is_delimiter_tag(const std::string& tag) {
+	if (tag.empty()) {
+		return false;
+	}
+	return tag == "\n" || tag == "(" || tag.back() == ')';
+}
 
 // カンマ区切り文字列からタグを抽出
 TagList extract_tags_from_text(const std::string& text) {

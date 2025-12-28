@@ -56,8 +56,8 @@ void TagListHandler::UpdatePromptFromTagList(BooruPrompter* pThis) {
 	std::ostringstream oss;
 	bool isFirst = true;
 	for (auto& tag : s_tagItems) {
-		if (!isFirst) oss << ", ";
-		isFirst = tag.tag == "\n";
+		if (!isFirst && tag.tag.back() != ')') oss << ", ";
+		isFirst = (tag.tag == "\n") || (tag.tag == "(");
 		oss << tag.tag;
 	}
 	auto prompt = oss.str();
@@ -212,16 +212,16 @@ void TagListHandler::SortTags(BooruPrompter* pThis) {
 		return;
 	}
 
-	// 空のタグ（\n）を区切りにグループ化
+	// 改行と括弧を区切りにグループ化
 	std::vector<TagList> groups;
 	TagList currentGroup;
 	for (const auto& tag : s_tagItems) {
-		if (tag.tag == "\n") {
+		if (is_delimiter_tag(tag.tag)) {
 			if (!currentGroup.empty()) {
 				groups.push_back(currentGroup);
 				currentGroup.clear();
 			}
-			// \nタグも保持するために別途管理
+			// 区切りタグも保持するために別途管理
 			groups.push_back(TagList{ tag });
 		} else {
 			currentGroup.push_back(tag);
@@ -246,10 +246,10 @@ void TagListHandler::SortTags(BooruPrompter* pThis) {
 		}
 	}
 
-	// 各グループ内で最後の単語でグループ化してソート（\nタグのグループはスキップ）
+	// 各グループ内で最後の単語でグループ化してソート（区切りタグのグループはスキップ）
 	for (auto& group : groups) {
-		// \nタグのみのグループは処理しない
-		if (group.size() == 1 && group[0].tag == "\n") {
+		// 区切りタグのみのグループは処理しない
+		if (group.size() == 1 && is_delimiter_tag(group[0].tag)) {
 			continue;
 		}
 
