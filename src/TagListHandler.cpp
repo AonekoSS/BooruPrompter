@@ -68,7 +68,12 @@ void TagListHandler::UpdatePromptFromTagList(BooruPrompter* pThis) {
 void TagListHandler::SyncTagListFromPrompt(BooruPrompter* pThis, const std::string& prompt) {
 	s_tagItems = extract_tags_from_text(prompt);
 	for (auto& tag : s_tagItems) {
+		// start と end の位置情報を保持
+		size_t start = tag.start;
+		size_t end = tag.end;
 		tag = BooruDB::GetInstance().MakeSuggestion(tag.tag);
+		tag.start = start;
+		tag.end = end;
 	}
 	RefreshTagList(pThis);
 }
