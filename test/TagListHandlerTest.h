@@ -83,14 +83,9 @@ public:
 	TEST_METHOD(TestOnTagListContextCommandInvalidIndex);
 
 	// タグソートのテスト
-	TEST_METHOD(TestSortTagsAZ);
-	TEST_METHOD(TestSortTagsAZEmpty);
-	TEST_METHOD(TestSortTagsFav);
-	TEST_METHOD(TestSortTagsFavEmpty);
-	TEST_METHOD(TestSortTagsCustom);
-	TEST_METHOD(TestSortTagsCustomEmpty);
-	TEST_METHOD(TestSortTagsCategory);
-	TEST_METHOD(TestSortTagsCategoryEmpty);
+	TEST_METHOD(TestSortTags);
+	TEST_METHOD(TestSortTagsEmpty);
+
 
 private:
 	MockBooruPrompter* m_mockPrompter;

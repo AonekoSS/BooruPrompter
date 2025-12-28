@@ -45,6 +45,19 @@ public:
 	TEST_METHOD(TestExtractTagsFromTextWithTrailingDelimiter);
 	TEST_METHOD(TestExtractTagsFromTextWithLeadingDelimiter);
 	TEST_METHOD(TestExtractTagsFromTextComplexWhitespace);
+	TEST_METHOD(TestExtractTagsFromTextWithBrackets);
+	TEST_METHOD(TestExtractTagsFromTextWithBracketsAndColon);
+	TEST_METHOD(TestExtractTagsFromTextWithEscapedBrackets);
+	TEST_METHOD(TestExtractTagsFromTextWithEmptyBrackets);
+	TEST_METHOD(TestExtractTagsFromTextWithMultipleBrackets);
+
+	// 括弧タグ判定のテスト
+	TEST_METHOD(TestIsBracketTag);
+	TEST_METHOD(TestIsBracketTagOpenBracket);
+	TEST_METHOD(TestIsBracketTagCloseBracket);
+	TEST_METHOD(TestIsBracketTagWithCloseBracket);
+	TEST_METHOD(TestIsBracketTagWithEscapedCloseBracket);
+	TEST_METHOD(TestIsBracketTagWithColon);
 
 	// 文字列分割のテスト
 	TEST_METHOD(TestSplitString);

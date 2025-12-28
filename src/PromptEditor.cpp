@@ -22,6 +22,13 @@ const COLORREF TAG_COLORS[] = {
 	RGB(185, 112, 255),
 };
 
+// 括弧用スタイル番号
+const int STYLE_BRACKET = 10;
+
+// 括弧用の色
+const COLORREF BRACKET_BACKGROUND_COLOR = RGB(0, 60, 100);
+const COLORREF BRACKET_TEXT_COLOR = RGB(255, 255, 255);
+
 PromptEditor::PromptEditor() : m_hwnd(nullptr), m_originalProc(nullptr) {}
 
 PromptEditor::~PromptEditor() {}
@@ -70,7 +77,14 @@ void PromptEditor::ApplySyntaxHighlighting(const std::string& text) {
 	SendMessage(m_hwnd, SCI_SETSTYLING, (int)SendMessage(m_hwnd, SCI_GETLENGTH, 0, 0), STYLE_DEFAULT);
 	int index = 0;
 	for (const auto& tag : tags) {
-		auto style = (index++ % _countof(TAG_COLORS)) + 1;
+		int style;
+		if (is_bracket_tag(tag.tag)) {
+			// 括弧記号は専用スタイル
+			style = STYLE_BRACKET;
+		} else {
+			// 通常のタグは色をローテーション
+			style = (index++ % _countof(TAG_COLORS)) + 1;
+		}
 		SendMessage(m_hwnd, SCI_STARTSTYLING, tag.start, 0);
 		SendMessage(m_hwnd, SCI_SETSTYLING, tag.end - tag.start, style);
 	}
@@ -116,6 +130,10 @@ void PromptEditor::SetupStyles() {
 		SendMessage(m_hwnd, SCI_STYLESETBACK, style, BACKGROUND_COLOR);
 		SendMessage(m_hwnd, SCI_STYLESETFORE, style, TAG_COLORS[i]);
 	}
+
+	// 括弧用スタイル
+	SendMessage(m_hwnd, SCI_STYLESETBACK, STYLE_BRACKET, BRACKET_BACKGROUND_COLOR);
+	SendMessage(m_hwnd, SCI_STYLESETFORE, STYLE_BRACKET, BRACKET_TEXT_COLOR);
 
 	// 選択範囲の色設定
 	SendMessage(m_hwnd, SCI_SETSELBACK, TRUE, TEXT_COLOR);

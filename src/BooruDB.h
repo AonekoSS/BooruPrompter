@@ -7,6 +7,9 @@
 
 #include "Tag.h"
 
+// カスタムタグファイル名
+constexpr const wchar_t* CUSTOM_TAGS_FILENAME = L"custom_tags.txt";
+
 // テスト用フレンドクラス（前方宣言）
 namespace TagListHandlerTest {
 	class BooruDBTestHelper;
