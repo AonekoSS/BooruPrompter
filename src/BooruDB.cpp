@@ -24,18 +24,16 @@ bool BooruDB::LoadDictionary() {
 	// カスタムリストを読み込み
 	std::vector<std::string> customTags;
 	{
-		std::wstring customTagsPath = fullpath(L"custom_tags.txt");
+		std::wstring customTagsPath = fullpath(CUSTOM_TAGS_FILENAME);
 		std::ifstream file(customTagsPath);
 		if (!file.is_open()) {
 			// ファイルが存在しない場合はサンプルファイルを作成
 			std::ofstream outFile(customTagsPath);
 			if (outFile.is_open()) {
-				outFile << "# カスタムタグリスト\n";
 				outFile << "# 1行1タグの形式で記述してください\n";
-				outFile << "# このファイルのタグはソート時に先頭に配置されます\n";
-				outFile << "1girl\n";
-				outFile << "2girls\n";
-				outFile << "solo\n";
+				outFile << "# このファイルに書いたタグはソートの際、先頭に配置されます\n";
+				outFile << "# 編集後はアプリを再起動してください\n\n";
+				outFile << "1girl\n2girls\nsolo\n";
 			}
 		} else {
 			// ファイルが存在する場合は読み込む
