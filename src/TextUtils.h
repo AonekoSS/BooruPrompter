@@ -46,3 +46,4 @@ TagList extract_tags_from_text(const std::string& text);
 
 // 区切りタグかどうかを判定（改行、開き括弧、閉じ括弧）
 bool is_delimiter_tag(const std::string& tag);
+bool is_bracket_tag(const std::string& tag);

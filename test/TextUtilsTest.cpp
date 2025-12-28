@@ -337,6 +337,44 @@ void TextUtilsTest::TestExtractTagsFromTextWithMultipleBrackets() {
 	AssertTagEquals(tags[6], "tag3", 20, 24);
 }
 
+void TextUtilsTest::TestIsBracketTag() {
+	// 基本的な括弧タグ判定のテスト
+	Assert::IsTrue(is_bracket_tag("("));
+	Assert::IsTrue(is_bracket_tag(")"));
+	Assert::IsFalse(is_bracket_tag("tag"));
+	Assert::IsFalse(is_bracket_tag(""));
+}
+
+void TextUtilsTest::TestIsBracketTagOpenBracket() {
+	// 開き括弧のテスト
+	Assert::IsTrue(is_bracket_tag("("));
+}
+
+void TextUtilsTest::TestIsBracketTagCloseBracket() {
+	// 閉じ括弧のみのテスト
+	Assert::IsTrue(is_bracket_tag(")"));
+}
+
+void TextUtilsTest::TestIsBracketTagWithCloseBracket() {
+	// 閉じ括弧で終わるタグのテスト
+	Assert::IsTrue(is_bracket_tag("tag)"));
+	Assert::IsTrue(is_bracket_tag(":1.4)"));
+	Assert::IsTrue(is_bracket_tag("test)"));
+}
+
+void TextUtilsTest::TestIsBracketTagWithEscapedCloseBracket() {
+	// エスケープされた閉じ括弧を含むタグのテスト
+	Assert::IsFalse(is_bracket_tag("tag\\)"));
+	Assert::IsFalse(is_bracket_tag("\\)"));
+}
+
+void TextUtilsTest::TestIsBracketTagWithColon() {
+	// コロンを含む閉じ括弧タグのテスト
+	Assert::IsTrue(is_bracket_tag(":1.4)"));
+	Assert::IsTrue(is_bracket_tag(":2.0)"));
+	Assert::IsFalse(is_bracket_tag(":1.4\\)"));
+}
+
 void TextUtilsTest::TestSplitString() {
 	// 基本的な文字列分割のテスト
 	std::string str = "a,b,c";

@@ -246,13 +246,29 @@ std::string unescape_newlines(const std::string& text) {
 	return result;
 }
 
-// 区切りタグかどうかを判定（改行、開き括弧、閉じ括弧）
+// 区切りタグかどうかを判定
 bool is_delimiter_tag(const std::string& tag) {
 	if (tag.empty()) {
 		return false;
 	}
-	return tag == "\n" || tag == "(" || tag.back() == ')';
+	return tag == "\n" || is_bracket_tag(tag);
 }
+
+// 括弧タグかどうかを判定（開き括弧、閉じ括弧）
+bool is_bracket_tag(const std::string& tag) {
+	if (tag.empty()) {
+		return false;
+	}
+	if (tag == "(") {
+		return true;
+	}
+	// 最後の文字が')'で、その直前が'\'でない場合（エスケープされていない）
+	if (tag.back() == ')') {
+		return tag.length() == 1 || tag[tag.length() - 2] != '\\';
+	}
+	return false;
+}
+
 
 // カンマ区切り文字列からタグを抽出
 TagList extract_tags_from_text(const std::string& text) {
