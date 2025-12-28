@@ -39,9 +39,6 @@ enum {
 	ID_PASTE = 1008,
 	ID_COPY = 1009,
 	ID_SORT_TAGS_CUSTOM = 1010,
-	ID_SORT_TAGS_AZ = 1011,
-	ID_SORT_TAGS_FAV = 1012,
-	ID_SORT_TAGS_CATEGORY = 1013,
 };
 
 // リストビューの配色定数
@@ -162,9 +159,6 @@ void BooruPrompter::OnCreate(HWND hwnd) {
 		{STD_COPY, ID_COPY, TBSTATE_ENABLED, BTNS_BUTTON, {0}, 0, (INT_PTR)L"コピー" },
 		{0, 0, TBSTATE_ENABLED, BTNS_SEP, {0}, 0, 0},
 		{STD_PROPERTIES, ID_SORT_TAGS_CUSTOM, TBSTATE_ENABLED, BTNS_BUTTON, {0}, 0, (INT_PTR)L"タグ整理"},
-		{STD_REPLACE, ID_SORT_TAGS_AZ, TBSTATE_ENABLED, BTNS_BUTTON, {0}, 0, (INT_PTR)L"タグ整列(A-Z)"},
-		{STD_REPLACE, ID_SORT_TAGS_FAV, TBSTATE_ENABLED, BTNS_BUTTON, {0}, 0, (INT_PTR)L"タグ整列(Fav)"},
-		{STD_REPLACE, ID_SORT_TAGS_CATEGORY, TBSTATE_ENABLED, BTNS_BUTTON, {0}, 0, (INT_PTR)L"タグ整列(CAT)"},
 	};
 
 	// ツールバーにボタンを追加
@@ -481,20 +475,8 @@ void BooruPrompter::OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify) 
 		}
 		break;
 	case ID_SORT_TAGS_CUSTOM:
-		// タグ整理（独自ルール）
-		TagListHandler::SortTagsCustom(this);
-		break;
-	case ID_SORT_TAGS_AZ:
-		// タグ整理（A-Z）
-		TagListHandler::SortTagsAZ(this);
-		break;
-	case ID_SORT_TAGS_FAV:
-		// タグ整理（Fav）
-		TagListHandler::SortTagsFav(this);
-		break;
-	case ID_SORT_TAGS_CATEGORY:
-		// タグ整理（カテゴリー）
-		TagListHandler::SortTagsCategory(this);
+		// タグ整理
+		TagListHandler::SortTags(this);
 		break;
 	}
 
