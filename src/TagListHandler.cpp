@@ -206,35 +206,30 @@ int TagListHandler::GetCategory(int index) {
 	return s_tagItems[index].category;
 }
 
-// タグ整理（独自ルール + 人気順 + カテゴリ順）
+// タグ整理
 void TagListHandler::SortTags(BooruPrompter* pThis) {
 	if (s_tagItems.empty()) {
 		return;
 	}
 
-	// 対象オブジェクト（最後の単語）でリストをグループ化
-	std::vector<std::pair<std::string, TagList>> tagList;
-	tagList.reserve(s_tagItems.size());
+	// 空のタグ（\n）を区切りにグループ化
+	std::vector<TagList> groups;
+	TagList currentGroup;
 	for (const auto& tag : s_tagItems) {
-		size_t sep = tag.tag.find_last_of(' ');
-		auto lastWord = (sep != std::string::npos) ? tag.tag.substr(sep + 1) : tag.tag;
-		auto it = std::find_if(tagList.begin(), tagList.end(), [&lastWord](const std::pair<std::string, TagList>& pair) {
-			return pair.first == lastWord;
-		});
-		if (it == tagList.end()) {
-			tagList.push_back(std::make_pair(lastWord, TagList{ tag }));
+		if (tag.tag == "\n") {
+			if (!currentGroup.empty()) {
+				groups.push_back(currentGroup);
+				currentGroup.clear();
+			}
+			// \nタグも保持するために別途管理
+			groups.push_back(TagList{ tag });
 		} else {
-			it->second.push_back(tag);
+			currentGroup.push_back(tag);
 		}
 	}
-
-	// 単独タグの削除（重複オブジェクトがある場合）
-	for (auto it = tagList.begin(); it != tagList.end(); ++it ) {
-		if (it->second.size() > 1) {
-			erase_if(it->second, [](const Tag& tag) {
-				return tag.tag.find_last_of(' ') == std::string::npos;
-			});
-		}
+	// 最後のグループを追加
+	if (!currentGroup.empty()) {
+		groups.push_back(currentGroup);
 	}
 
 	// カテゴリーとインデックスのキャッシュ（ソートの高速化用）
@@ -250,44 +245,76 @@ void TagListHandler::SortTags(BooruPrompter* pThis) {
 			indexCache[tag.tag] = BooruDB::GetInstance().GetTagIndex(tag.tag);
 		}
 	}
-	for (const auto& tag : tagList) {
-			if (categoryCache.find(tag.first) == categoryCache.end()) {
-			categoryCache[tag.first] = BooruDB::GetInstance().GetTagCategory(tag.first);
-		}
-		if (indexCache.find(tag.first) == indexCache.end()) {
-			indexCache[tag.first] = BooruDB::GetInstance().GetTagIndex(tag.first);
-		}
-	}
 
-	// 各グループ内でソート
-	for (auto& pair : tagList) {
-		std::sort(pair.second.begin(), pair.second.end(), [&indexCache, &categoryCache](const Tag& a, const Tag& b) {
-			int categoryA = categoryCache.at(a.tag);
-			int categoryB = categoryCache.at(b.tag);
+	// 各グループ内で最後の単語でグループ化してソート（\nタグのグループはスキップ）
+	for (auto& group : groups) {
+		// \nタグのみのグループは処理しない
+		if (group.size() == 1 && group[0].tag == "\n") {
+			continue;
+		}
+
+		// 対象オブジェクト（最後の単語）でリストをグループ化
+		std::vector<std::pair<std::string, TagList>> tagList;
+		tagList.reserve(group.size());
+		for (const auto& tag : group) {
+			size_t sep = tag.tag.find_last_of(' ');
+			auto lastWord = (sep != std::string::npos) ? tag.tag.substr(sep + 1) : tag.tag;
+			auto it = std::find_if(tagList.begin(), tagList.end(), [&lastWord](const std::pair<std::string, TagList>& pair) {
+				return pair.first == lastWord;
+				});
+			if (it == tagList.end()) {
+				tagList.push_back(std::make_pair(lastWord, TagList{ tag }));
+			} else {
+				it->second.push_back(tag);
+			}
+		}
+
+		// 単独タグの削除（重複オブジェクトがある場合）
+		for (auto it = tagList.begin(); it != tagList.end(); ++it) {
+			if (it->second.size() > 1) {
+				erase_if(it->second, [](const Tag& tag) {
+					return tag.tag.find_last_of(' ') == std::string::npos;
+					});
+			}
+		}
+
+		// 各グループ内でソート
+		for (auto& pair : tagList) {
+			std::sort(pair.second.begin(), pair.second.end(), [&indexCache, &categoryCache](const Tag& a, const Tag& b) {
+				int categoryA = categoryCache.at(a.tag);
+				int categoryB = categoryCache.at(b.tag);
+				if (categoryA != categoryB) return categoryA > categoryB;
+				int indexA = indexCache.at(a.tag);
+				int indexB = indexCache.at(b.tag);
+				return indexA < indexB;
+				});
+		}
+
+		// グループ単位のソート
+		std::sort(tagList.begin(), tagList.end(), [&indexCache, &categoryCache](const std::pair<std::string, TagList>& tagA, const std::pair<std::string, TagList>& tagB) {
+			const auto& a = tagA.second.begin()->tag;
+			const auto& b = tagB.second.begin()->tag;
+			int categoryA = categoryCache.at(a);
+			int categoryB = categoryCache.at(b);
 			if (categoryA != categoryB) return categoryA > categoryB;
-			int indexA = indexCache.at(a.tag);
-			int indexB = indexCache.at(b.tag);
+			int indexA = indexCache.at(a);
+			int indexB = indexCache.at(b);
 			return indexA < indexB;
-		});
-	}
-	// グループ単位のソート
-	std::sort(tagList.begin(), tagList.end(), [&indexCache, &categoryCache](const std::pair<std::string, TagList>& tagA, const std::pair<std::string, TagList>& tagB) {
-		const auto& a = tagA.second.begin()->tag;
-		const auto& b = tagB.second.begin()->tag;
-		int categoryA = categoryCache.at(a);
-		int categoryB = categoryCache.at(b);
-		if (categoryA != categoryB) return categoryA > categoryB;
-		int indexA = indexCache.at(a);
-		int indexB = indexCache.at(b);
-		return indexA < indexB;
-	});
+			});
 
+		// グループをマージして更新
+		group.clear();
+		for (auto it = tagList.begin(); it != tagList.end(); ++it) {
+			group.insert(group.end(), it->second.begin(), it->second.end());
+		}
+	}
 
 	// タグリストをマージして更新
 	s_tagItems.clear();
-	for (auto it = tagList.begin(); it != tagList.end(); ++it) {
-		s_tagItems.insert(s_tagItems.end(), it->second.begin(), it->second.end());
+	for (const auto& group : groups) {
+		s_tagItems.insert(s_tagItems.end(), group.begin(), group.end());
 	}
 	RefreshTagList(pThis);
 	UpdatePromptFromTagList(pThis);
 }
+
