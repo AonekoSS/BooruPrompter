@@ -46,6 +46,7 @@ private:
 	// ウィンドウメッセージの個別処理
 	void OnCreate(HWND hwnd);
 	void OnSize(HWND hwnd);
+	void OnGetMinMaxInfo(HWND hwnd, LPARAM lParam);
 	void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify);
 	void OnNotifyMessage(HWND hwnd, WPARAM wParam, LPARAM lParam);
 	void OnDropFiles(HWND hwnd, WPARAM wParam);
@@ -60,6 +61,9 @@ private:
 	void HandleSplitterMouse(int x, int y, bool isDown, bool isUp);
 	void UpdateSplitterCursor(int x, int y);
 	std::pair<int, int> GetToolbarAndStatusHeight();
+	
+	// タグリストの幅を取得（カラム幅の合計 + マージン）
+	int GetTagListWidth() const;
 
 	// ヘルパーメソッド
 	HWND CreateListView(HWND parent, int id, const std::wstring& title, const std::vector<std::pair<std::wstring, int>>& columns);
