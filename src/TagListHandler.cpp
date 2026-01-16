@@ -275,12 +275,18 @@ void TagListHandler::SortTags(BooruPrompter* pThis) {
 		}
 
 		// 単独タグの削除（重複オブジェクトがある場合）
-		for (auto it = tagList.begin(); it != tagList.end(); ++it) {
+		for (auto it = tagList.begin(); it != tagList.end(); ) {
 			if (it->second.size() > 1) {
 				erase_if(it->second, [](const Tag& tag) {
 					return tag.tag.find_last_of(' ') == std::string::npos;
 					});
+				// 削除後に空になったエントリを削除
+				if (it->second.empty()) {
+					it = tagList.erase(it);
+					continue;
+				}
 			}
+			++it;
 		}
 
 		// 各グループ内でソート
