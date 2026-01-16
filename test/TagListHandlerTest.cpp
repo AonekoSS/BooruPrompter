@@ -410,7 +410,7 @@ void TagListHandlerTest::TestOnTagListContextCommandInvalidIndex() {
 
 void TagListHandlerTest::TestSortTags() {
 	// 独自ルールソートのテスト
-	std::vector<std::string> tags = { "1girl", "solo", "long hair", "looking at viewer", "red eyes", "dress", "white dress", "fruit", "black hair", "black dress" };
+	std::vector<std::string> tags = { "1girl", "solo", "1girl", "long hair", "looking at viewer", "red eyes", "dress", "white dress", "fruit", "black hair", "black dress" };
 	TagListHandler::SyncTagList(reinterpret_cast<BooruPrompter*>(m_mockPrompter), tags);
 	TagListHandler::SortTags(reinterpret_cast<BooruPrompter*>(m_mockPrompter));
 	// 結果がカスタム依存になったので一旦テストをキャンセル
