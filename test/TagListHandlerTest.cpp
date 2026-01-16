@@ -413,8 +413,7 @@ void TagListHandlerTest::TestSortTags() {
 	std::vector<std::string> tags = { "1girl", "solo", "1girl", "long hair", "looking at viewer", "red eyes", "dress", "white dress", "fruit", "black hair", "black dress" };
 	TagListHandler::SyncTagList(reinterpret_cast<BooruPrompter*>(m_mockPrompter), tags);
 	TagListHandler::SortTags(reinterpret_cast<BooruPrompter*>(m_mockPrompter));
-	// 結果がカスタム依存になったので一旦テストをキャンセル
-	// AssertTagList({ "1girl", "solo", "long hair", "black hair", "looking at viewer", "red eyes", "white dress", "black dress", "fruit" });
+	AssertTagList({ "1girl", "solo", "red eyes", "long hair", "black hair", "looking at viewer", "white dress", "black dress", "fruit" });
 }
 
 void TagListHandlerTest::TestSortTagsEmpty() {
