@@ -3,6 +3,7 @@
 #include <sstream>
 #include <algorithm>
 #include <iostream>
+#include <unordered_set>
 #include "BooruDB.h"
 #include "rapidfuzz/fuzz.hpp"
 #include "rapidfuzz/distance/prefix.hpp"
@@ -54,6 +55,9 @@ bool BooruDB::LoadDictionary() {
 	dictionary_.reserve(500000 + customTags.size());
 	dictionary_.insert(dictionary_.end(), customTags.begin(), customTags.end());
 
+	// カスタムタグのセット（重複排除用）
+	std::unordered_set<std::string> customTagsSet(customTags.begin(), customTags.end());
+
 	// 辞書ファイル（日本語）
 	{
 		metadata_.clear();
@@ -70,7 +74,9 @@ bool BooruDB::LoadDictionary() {
 			std::string tag, metadata;
 			if (std::getline(iss, tag, ',')) {
 				tag = booru_to_image_tag(tag);
-				dictionary_.push_back(tag);
+				if (customTagsSet.find(tag) == customTagsSet.end()) {
+					dictionary_.push_back(tag);
+				}
 				if (std::getline(iss, metadata)) {
 					metadata_[tag] = utf8_to_unicode(metadata);
 				}
