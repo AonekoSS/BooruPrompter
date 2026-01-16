@@ -274,19 +274,11 @@ void TagListHandler::SortTags(BooruPrompter* pThis) {
 			}
 		}
 
-		// 単独タグの削除（重複オブジェクトがある場合）
-		for (auto it = tagList.begin(); it != tagList.end(); ) {
-			if (it->second.size() > 1) {
-				erase_if(it->second, [](const Tag& tag) {
-					return tag.tag.find_last_of(' ') == std::string::npos;
-					});
-				// 削除後に空になったエントリを削除
-				if (it->second.empty()) {
-					it = tagList.erase(it);
-					continue;
-				}
+		// 複数単語のタグがある場合、単独タグは削除してしまう（特殊対応）
+		for (auto it = tagList.begin(); it != tagList.end(); ++it) {
+			if (std::any_of(it->second.begin(), it->second.end(), [](const Tag& tag){ return tag.tag.find_last_of(' ') != std::string::npos; })) {
+				erase_if(it->second, [](const Tag& tag){ return tag.tag.find_last_of(' ') == std::string::npos; });
 			}
-			++it;
 		}
 
 		// 各グループ内でソート
@@ -299,6 +291,11 @@ void TagListHandler::SortTags(BooruPrompter* pThis) {
 				int indexB = indexCache.at(b.tag);
 				return indexA < indexB;
 				});
+			// 同じタグの重複を除去
+			auto it = std::unique(pair.second.begin(), pair.second.end(), [](const Tag& a, const Tag& b) {
+				return a.tag == b.tag;
+				});
+			pair.second.erase(it, pair.second.end());
 		}
 
 		// グループ単位のソート
