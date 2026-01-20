@@ -26,6 +26,7 @@ void SuggestionHandler::OnSuggestionSelected(BooruPrompter* pThis, int index) {
 	auto currentText = pThis->m_promptEditor->GetText();
 
 	// カーソル位置のワード範囲を取得
+	if (startPos > 0) --startPos;
 	const auto [start, end] = get_span_at_cursor(currentText, static_cast<int>(startPos));
 
 	// タグを挿入

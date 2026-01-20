@@ -74,11 +74,8 @@ bool utf8_has_multibyte(const std::string& str) {
 
 // カーソル位置のワード範囲取得
 std::tuple<size_t, size_t> get_span_at_cursor(const std::string& text, int pos) {
-	// カーソル位置がカンマまたは改行の場合は1つ進める
-	if(text[pos] == ',' || text[pos] == '\n') { ++pos; }
-
 	// カーソル位置の前後のカンマまたは改行を探す
-	size_t start = text.find_last_of(",\n", (pos > 0) ? pos - 1 : 0);
+	size_t start = text.find_last_of(",\n", pos);
 	size_t end = text.find_first_of(",\n", pos);
 
 	// 開始位置の調整
