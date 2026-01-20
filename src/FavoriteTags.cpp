@@ -8,6 +8,11 @@
 
 std::vector<std::string> FavoriteTags::s_favorites;
 
+void FavoriteTags::ClearFavorites() {
+	s_favorites.clear();
+	Save();
+}
+
 void FavoriteTags::Load() {
 	s_favorites.clear();
 
@@ -36,15 +41,15 @@ void FavoriteTags::Save() {
 	}
 }
 
-bool FavoriteTags::AddFavorite(const Tag& tag) {
+bool FavoriteTags::AddFavorite(const std::string& tag) {
 	// 既に存在するかチェック
 	for (const auto& name : s_favorites) {
-		if (name == tag.tag) {
+		if (name == tag) {
 			return false;
 		}
 	}
 
-	s_favorites.push_back(tag.tag);
+	s_favorites.push_back(tag);
 	Save();
 	return true;
 }

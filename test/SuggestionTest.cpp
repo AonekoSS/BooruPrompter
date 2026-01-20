@@ -1,37 +1,37 @@
 ﻿#include "pch.h"
-#include "SuggestionManagerTest.h"
+#include "SuggestionTest.h"
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
 // ToString特殊化
 namespace Microsoft::VisualStudio::CppUnitTestFramework {
 template<>
-static std::wstring ToString<SuggestionManager>(SuggestionManager* q) {
-	return L"SuggestionManager*";
+static std::wstring ToString<Suggestion>(Suggestion* q) {
+	return L"Suggestion*";
 }
 }
 
-namespace SuggestionManagerTest {
-void SuggestionManagerTest::SetUp() {
+namespace SuggestionTest {
+void SuggestionTest::SetUp() {
 	// テスト前の初期化処理
 }
 
-void SuggestionManagerTest::TearDown() {
+void SuggestionTest::TearDown() {
 	// テスト後のクリーンアップ処理
 }
 
-void SuggestionManagerTest::TestConstructor() {
+void SuggestionTest::TestConstructor() {
 	// コンストラクタのテスト
-	SuggestionManager manager;
+	Suggestion manager;
 
 	// オブジェクトが正常に作成されることを確認
 	Assert::IsTrue(true);
 }
 
-void SuggestionManagerTest::TestDestructor() {
+void SuggestionTest::TestDestructor() {
 	// デストラクタのテスト
 	{
-		SuggestionManager manager;
+		Suggestion manager;
 		// スコープを抜けるとデストラクタが呼ばれる
 	}
 
@@ -39,9 +39,9 @@ void SuggestionManagerTest::TestDestructor() {
 	Assert::IsTrue(true);
 }
 
-void SuggestionManagerTest::TestStartSuggestion() {
+void SuggestionTest::TestStartSuggestion() {
 	// サジェスト処理開始のテスト
-	SuggestionManager manager;
+	Suggestion manager;
 	bool callbackCalled = false;
 
 	auto callback = [&callbackCalled](const TagList& suggestions) {
@@ -54,9 +54,9 @@ void SuggestionManagerTest::TestStartSuggestion() {
 	Assert::IsTrue(true);
 }
 
-void SuggestionManagerTest::TestStartSuggestionWithNullCallback() {
+void SuggestionTest::TestStartSuggestionWithNullCallback() {
 	// nullコールバックでのサジェスト処理開始テスト
-	SuggestionManager manager;
+	Suggestion manager;
 
 	// nullコールバックでもクラッシュしないことを確認
 	manager.StartSuggestion(nullptr);
@@ -64,9 +64,9 @@ void SuggestionManagerTest::TestStartSuggestionWithNullCallback() {
 	Assert::IsTrue(true);
 }
 
-void SuggestionManagerTest::TestRequest() {
+void SuggestionTest::TestRequest() {
 	// 基本的なリクエスト処理のテスト
-	SuggestionManager manager;
+	Suggestion manager;
 	bool callbackCalled = false;
 	std::string receivedInput;
 
@@ -81,9 +81,9 @@ void SuggestionManagerTest::TestRequest() {
 	Assert::IsTrue(true);
 }
 
-void SuggestionManagerTest::TestRequestEmpty() {
+void SuggestionTest::TestRequestEmpty() {
 	// 空文字列でのリクエスト処理テスト
-	SuggestionManager manager;
+	Suggestion manager;
 	bool callbackCalled = false;
 
 	auto callback = [&callbackCalled](const TagList& suggestions) {
@@ -97,9 +97,9 @@ void SuggestionManagerTest::TestRequestEmpty() {
 	Assert::IsTrue(true);
 }
 
-void SuggestionManagerTest::TestRequestMultiple() {
+void SuggestionTest::TestRequestMultiple() {
 	// 複数回のリクエスト処理テスト
-	SuggestionManager manager;
+	Suggestion manager;
 	bool callbackCalled = false;
 
 	auto callback = [&callbackCalled](const TagList& suggestions) {
@@ -115,9 +115,9 @@ void SuggestionManagerTest::TestRequestMultiple() {
 	Assert::IsTrue(true);
 }
 
-void SuggestionManagerTest::TestShutdown() {
+void SuggestionTest::TestShutdown() {
 	// 基本的なシャットダウンテスト
-	SuggestionManager manager;
+	Suggestion manager;
 	bool callbackCalled = false;
 
 	auto callback = [&callbackCalled](const TagList& suggestions) {
@@ -132,9 +132,9 @@ void SuggestionManagerTest::TestShutdown() {
 	Assert::IsTrue(true);
 }
 
-void SuggestionManagerTest::TestShutdownMultiple() {
+void SuggestionTest::TestShutdownMultiple() {
 	// 複数回のシャットダウンテスト
-	SuggestionManager manager;
+	Suggestion manager;
 
 	manager.Shutdown();
 	manager.Shutdown();
@@ -144,9 +144,9 @@ void SuggestionManagerTest::TestShutdownMultiple() {
 	Assert::IsTrue(true);
 }
 
-void SuggestionManagerTest::TestTimerDelay() {
+void SuggestionTest::TestTimerDelay() {
 	// タイマー遅延のテスト
-	SuggestionManager manager;
+	Suggestion manager;
 	bool callbackCalled = false;
 
 	auto callback = [&callbackCalled](const TagList& suggestions) {
@@ -160,9 +160,9 @@ void SuggestionManagerTest::TestTimerDelay() {
 	Assert::IsTrue(true);
 }
 
-void SuggestionManagerTest::TestTimerCancellation() {
+void SuggestionTest::TestTimerCancellation() {
 	// タイマーキャンセルのテスト
-	SuggestionManager manager;
+	Suggestion manager;
 	bool callbackCalled = false;
 
 	auto callback = [&callbackCalled](const TagList& suggestions) {
@@ -177,9 +177,9 @@ void SuggestionManagerTest::TestTimerCancellation() {
 	Assert::IsTrue(true);
 }
 
-void SuggestionManagerTest::TestCallbackExecution() {
+void SuggestionTest::TestCallbackExecution() {
 	// コールバック実行のテスト
-	SuggestionManager manager;
+	Suggestion manager;
 	bool callbackCalled = false;
 
 	auto callback = [&callbackCalled](const TagList& suggestions) {
@@ -193,9 +193,9 @@ void SuggestionManagerTest::TestCallbackExecution() {
 	Assert::IsTrue(true);
 }
 
-void SuggestionManagerTest::TestCallbackWithEmptyInput() {
+void SuggestionTest::TestCallbackWithEmptyInput() {
 	// 空入力でのコールバックテスト
-	SuggestionManager manager;
+	Suggestion manager;
 	bool callbackCalled = false;
 
 	auto callback = [&callbackCalled](const TagList& suggestions) {

@@ -1,12 +1,12 @@
 ﻿#pragma once
 
 #include "CppUnitTest.h"
-#include "../src/SuggestionManager.h"
+#include "../src/Suggestion.h"
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
-namespace SuggestionManagerTest {
-TEST_CLASS(SuggestionManagerTest) {
+namespace SuggestionTest {
+TEST_CLASS(SuggestionTest) {
 public:
 	// 初期化とクリーンアップ
 	TEST_METHOD_INITIALIZE(SetUp);

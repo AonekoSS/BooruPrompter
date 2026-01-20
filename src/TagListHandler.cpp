@@ -139,7 +139,7 @@ void TagListHandler::OnTagListContextCommand(BooruPrompter* pThis, int commandId
 	case ID_CONTEXT_ADD_FAVORITE:
 		{
 			const auto& tag = s_tagItems[selectedIndex];
-			if (FavoriteTags::AddFavorite(tag)) {
+			if (FavoriteTags::AddFavorite(tag.tag)) {
 				pThis->UpdateStatusText(L"お気に入りに追加: " + utf8_to_unicode(tag.tag));
 			} else {
 				pThis->UpdateStatusText(L"既にお気に入りに登録されています: " + utf8_to_unicode(tag.tag));

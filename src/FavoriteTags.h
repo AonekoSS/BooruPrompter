@@ -11,6 +11,9 @@ constexpr const wchar_t* FAVORITE_TAGS_FILENAME = L"favorite_tags.txt";
 // お気に入りタグの管理モジュール
 class FavoriteTags {
 public:
+	// お気に入りリストをクリア
+	static void ClearFavorites();
+
 	// ファイルからお気に入りリストを読み込み
 	static void Load();
 
@@ -18,7 +21,7 @@ public:
 	static void Save();
 
 	// タグをお気に入りに追加（既に存在する場合は false を返す）
-	static bool AddFavorite(const Tag& tag);
+	static bool AddFavorite(const std::string& tag);
 
 	// インデックスを指定して削除
 	static void RemoveFavorite(int index);
