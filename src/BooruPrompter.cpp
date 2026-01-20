@@ -40,6 +40,7 @@ enum {
 	ID_COPY = 1009,
 	ID_SORT_TAGS_CUSTOM = 1010,
 	ID_TAG_SETTINGS = 1011,
+	ID_FAVORITES = 1012,
 };
 
 // リストビューの配色定数
@@ -135,6 +136,8 @@ bool BooruPrompter::Initialize(HINSTANCE hInstance) {
 }
 
 void BooruPrompter::OnCreate(HWND hwnd) {
+	// お気に入りタグを読み込み
+	FavoriteTagsManager::Load();
 	// ツールバーの作成
 	m_hwndToolbar = CreateWindowEx(
 		0,
@@ -160,7 +163,9 @@ void BooruPrompter::OnCreate(HWND hwnd) {
 		{STD_COPY, ID_COPY, TBSTATE_ENABLED, BTNS_BUTTON, {0}, 0, (INT_PTR)L"コピー" },
 		{0, 0, TBSTATE_ENABLED, BTNS_SEP, {0}, 0, 0},
 		{STD_PROPERTIES, ID_SORT_TAGS_CUSTOM, TBSTATE_ENABLED, BTNS_BUTTON, {0}, 0, (INT_PTR)L"タグ整理"},
-		{STD_REPLACE, ID_TAG_SETTINGS, TBSTATE_ENABLED, BTNS_BUTTON, {0}, 0, (INT_PTR)L"タグ設定"},
+		{STD_REPLACE, ID_TAG_SETTINGS, TBSTATE_ENABLED, BTNS_BUTTON, {0}, 0, (INT_PTR)L"優先タグ"},
+		{0, 0, TBSTATE_ENABLED, BTNS_SEP, {0}, 0, 0},
+		{STD_FILEOPEN, ID_FAVORITES, TBSTATE_ENABLED, BTNS_CHECK, {0}, 0, (INT_PTR)L"お気に入り"},
 	};
 
 	// ツールバーにボタンを追加
@@ -539,6 +544,30 @@ void BooruPrompter::OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify) 
 			ShellExecute(hwnd, L"open", customTagsPath.c_str(), NULL, NULL, SW_SHOWNORMAL);
 		}
 		break;
+	case ID_FAVORITES:
+		// サジェストリストにお気に入りリストを表示/解除
+		m_showingFavorites = !m_showingFavorites;
+		SendMessage(m_hwndToolbar, TB_CHECKBUTTON, ID_FAVORITES, MAKELONG(m_showingFavorites ? TRUE : FALSE, 0));
+
+		if (m_showingFavorites) {
+			// お気に入りをサジェストリストに表示
+			TagList favorites = FavoriteTagsManager::GetFavorites();
+			SuggestionHandler::UpdateSuggestionList(this, favorites);
+			UpdateStatusText(L"お気に入りリストを表示中");
+		} else {
+			// 通常サジェストに戻す
+			std::string currentText = m_promptEditor->GetText();
+			DWORD startPos = m_promptEditor->GetSelectionStart();
+			const auto [start, end] = get_span_at_cursor(currentText, static_cast<int>(startPos));
+			const auto currentWord = trim(currentText.substr(start, end - start));
+			m_suggestionManager.Request(currentWord);
+			if (!currentWord.empty()) {
+				UpdateStatusText(L"サジェスト中： " + utf8_to_unicode(currentWord));
+			} else {
+				UpdateStatusText(L"");
+			}
+		}
+		break;
 	}
 
 	// コンテキストメニューのコマンド処理
@@ -662,6 +691,8 @@ void BooruPrompter::OnContextMenu(HWND hwnd, WPARAM wParam, LPARAM lParam) {
 
 	if (hwndContext == m_hwndTagList) {
 		TagListHandler::OnTagListContextMenu(this, xPos, yPos);
+	} else if (hwndContext == m_hwndSuggestions) {
+		SuggestionHandler::OnSuggestionContextMenu(this, xPos, yPos);
 	}
 }
 
@@ -742,9 +773,14 @@ void BooruPrompter::OnTextChanged(HWND hwnd) {
 	const auto [start, end] = get_span_at_cursor(currentText, startPos);
 	const auto currentWord = trim(currentText.substr(start, end - start));
 
-	// サジェスト開始
-	m_suggestionManager.Request(currentWord);
-	if (!currentWord.empty()) UpdateStatusText(L"サジェスト中： " + utf8_to_unicode(currentWord));
+	// お気に入りリスト表示中は通常サジェストを更新しない
+	if (!m_showingFavorites) {
+		// サジェスト開始
+		m_suggestionManager.Request(currentWord);
+		if (!currentWord.empty()) UpdateStatusText(L"サジェスト中： " + utf8_to_unicode(currentWord));
+	} else {
+		UpdateStatusText(L"お気に入りリストを表示中");
+	}
 
 	// プロンプトが変更されたのでタグリストを更新
 	TagListHandler::SyncTagListFromPrompt(this, currentText);
@@ -1100,6 +1136,7 @@ LRESULT CALLBACK BooruPrompter::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, 
 
 		case WM_DESTROY:
 			pThis->m_suggestionManager.Shutdown();
+			FavoriteTagsManager::Save();
 			pThis->SaveSettings();
 			PostQuitMessage(0);
 			return 0;

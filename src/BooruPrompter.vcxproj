@@ -123,6 +123,7 @@
   <ItemGroup>
     <ClCompile Include="BooruDB.cpp" />
     <ClCompile Include="BooruPrompter.cpp" />
+    <ClCompile Include="FavoriteTagsManager.cpp" />
     <ClCompile Include="ImageInfo.cpp" />
     <ClCompile Include="ImageTagDetector.cpp" />
     <ClCompile Include="PromptEditor.cpp" />
