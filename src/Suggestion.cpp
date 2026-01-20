@@ -60,13 +60,16 @@ void Suggestion::Tag() {
 		// 通常のサジェスト（前方一致→曖昧検索）
 		TagList saggestions;
 		if (!BooruDB::GetInstance().QuickSuggestion(saggestions, input, 8)) return;
+		if (m_currentInput != input) return;
 		if (m_callback) m_callback(saggestions);
 		if (!BooruDB::GetInstance().FuzzySuggestion(saggestions, input, 32)) return;
+		if (m_currentInput != input) return;
 		if (m_callback) m_callback(saggestions);
 	} else {
 		// 日本語を含むので逆引きサジェスト
 		TagList saggestions;
 		if (!BooruDB::GetInstance().ReverseSuggestion(saggestions, input, 40)) return;
+		if (m_currentInput != input) return;
 		if (m_callback) m_callback(saggestions);
 	}
 }
