@@ -1,10 +1,11 @@
-﻿#pragma once
+#pragma once
 
 #include <string>
+#include <vector>
 
 #include "Tag.h"
 
-// カスタムタグファイル名
+// お気に入りタグファイル名
 constexpr const wchar_t* FAVORITE_TAGS_FILENAME = L"favorite_tags.txt";
 
 // お気に入りタグの管理モジュール
@@ -26,10 +27,11 @@ public:
 	static void MoveFavoriteToTop(int index);
 	static void MoveFavoriteToBottom(int index);
 
-	// お気に入りタグ一覧を取得（コピー）
+	// お気に入りタグ一覧を取得
 	static TagList GetFavorites();
 
 private:
-	static TagList s_favorites;
+	// 内部ではタグ名だけを保持する
+	static std::vector<std::string> s_favorites;
 };
 

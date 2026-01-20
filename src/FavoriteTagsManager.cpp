@@ -1,4 +1,4 @@
-﻿#include "framework.h"
+#include "framework.h"
 #include "FavoriteTagsManager.h"
 
 #include <fstream>
@@ -6,8 +6,7 @@
 #include "BooruDB.h"
 #include "TextUtils.h"
 
-TagList FavoriteTagsManager::s_favorites;
-
+std::vector<std::string> FavoriteTagsManager::s_favorites;
 
 void FavoriteTagsManager::Load() {
 	s_favorites.clear();
@@ -21,8 +20,7 @@ void FavoriteTagsManager::Load() {
 	std::string line;
 	while (std::getline(ifs, line)) {
 		if (line.empty()) continue;
-		Tag tag = BooruDB::GetInstance().MakeSuggestion(line);
-		s_favorites.push_back(tag);
+		s_favorites.push_back(line);
 	}
 }
 
@@ -34,20 +32,19 @@ void FavoriteTagsManager::Save() {
 	}
 
 	for (const auto& tag : s_favorites) {
-		ofs << tag.tag << '\n';
+		ofs << tag << '\n';
 	}
 }
 
 bool FavoriteTagsManager::AddFavorite(const Tag& tag) {
 	// 既に存在するかチェック
-	for (const auto& t : s_favorites) {
-		if (t.tag == tag.tag) {
+	for (const auto& name : s_favorites) {
+		if (name == tag.tag) {
 			return false;
 		}
 	}
 
-	Tag sug = BooruDB::GetInstance().MakeSuggestion(tag.tag);
-	s_favorites.push_back(sug);
+	s_favorites.push_back(tag.tag);
 	Save();
 	return true;
 }
@@ -60,7 +57,7 @@ void FavoriteTagsManager::RemoveFavorite(int index) {
 
 void FavoriteTagsManager::MoveFavoriteToTop(int index) {
 	if (index <= 0 || index >= static_cast<int>(s_favorites.size())) return;
-	Tag item = s_favorites[index];
+	auto item = s_favorites[index];
 	s_favorites.erase(s_favorites.begin() + index);
 	s_favorites.insert(s_favorites.begin(), item);
 	Save();
@@ -68,13 +65,22 @@ void FavoriteTagsManager::MoveFavoriteToTop(int index) {
 
 void FavoriteTagsManager::MoveFavoriteToBottom(int index) {
 	if (index < 0 || index >= static_cast<int>(s_favorites.size()) - 1) return;
-	Tag item = s_favorites[index];
+	auto item = s_favorites[index];
 	s_favorites.erase(s_favorites.begin() + index);
 	s_favorites.push_back(item);
 	Save();
 }
 
 TagList FavoriteTagsManager::GetFavorites() {
-	return s_favorites;
+	TagList result;
+	result.reserve(s_favorites.size());
+
+	for (const auto& name : s_favorites) {
+		// ここでまとめてサジェスト形式に変換
+		Tag tag = BooruDB::GetInstance().MakeSuggestion(name);
+		result.push_back(tag);
+	}
+
+	return result;
 }
 
