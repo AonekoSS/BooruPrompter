@@ -116,18 +116,20 @@
     <ClInclude Include="Resource.h" />
     <ClInclude Include="Tag.h" />
     <ClInclude Include="SuggestionHandler.h" />
-    <ClInclude Include="SuggestionManager.h" />
+    <ClInclude Include="Suggestion.h" />
+    <ClInclude Include="FavoriteTags.h" />
     <ClInclude Include="TagListHandler.h" />
     <ClInclude Include="TextUtils.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BooruDB.cpp" />
     <ClCompile Include="BooruPrompter.cpp" />
+    <ClCompile Include="FavoriteTags.cpp" />
     <ClCompile Include="ImageInfo.cpp" />
     <ClCompile Include="ImageTagDetector.cpp" />
     <ClCompile Include="PromptEditor.cpp" />
     <ClCompile Include="SuggestionHandler.cpp" />
-    <ClCompile Include="SuggestionManager.cpp" />
+    <ClCompile Include="Suggestion.cpp" />
     <ClCompile Include="TagListHandler.cpp" />
     <ClCompile Include="TextUtils.cpp" />
   </ItemGroup>

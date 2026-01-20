@@ -48,9 +48,13 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
+    <OutDir>bin</OutDir>
+    <IntDir>obj</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
+    <OutDir>bin</OutDir>
+    <IntDir>obj</IntDir>
   </PropertyGroup>
   <PropertyGroup Label="Vcpkg">
     <VcpkgEnableManifest>true</VcpkgEnableManifest>
@@ -115,15 +119,17 @@
     </ClCompile>
     <ClCompile Include="TextUtilsTest.cpp" />
     <ClCompile Include="BooruDBTest.cpp" />
-    <ClCompile Include="SuggestionManagerTest.cpp" />
+    <ClCompile Include="SuggestionTest.cpp" />
     <ClCompile Include="TagListHandlerTest.cpp" />
+    <ClCompile Include="FavoriteTagsTest.cpp" />
     <!-- メインプロジェクトのソースファイル -->
     <ClCompile Include="..\src\TextUtils.cpp" />
     <ClCompile Include="..\src\BooruDB.cpp" />
-    <ClCompile Include="..\src\SuggestionManager.cpp" />
+    <ClCompile Include="..\src\Suggestion.cpp" />
     <ClCompile Include="..\src\ImageTagDetector.cpp" />
     <ClCompile Include="..\src\TagListHandler.cpp" />
     <ClCompile Include="..\src\SuggestionHandler.cpp" />
+    <ClCompile Include="..\src\FavoriteTags.cpp" />
     <ClCompile Include="..\src\ImageInfo.cpp" />
     <ClCompile Include="..\src\BooruPrompter.cpp" />
   </ItemGroup>
@@ -131,14 +137,15 @@
     <ClInclude Include="pch.h" />
     <ClInclude Include="TextUtilsTest.h" />
     <ClInclude Include="BooruDBTest.h" />
-    <ClInclude Include="SuggestionManagerTest.h" />
+    <ClInclude Include="SuggestionTest.h" />
     <ClInclude Include="SyntaxHighlighterTest.h" />
     <ClInclude Include="TagListHandlerTest.h" />
+    <ClInclude Include="FavoriteTagsTest.h" />
     <!-- メインプロジェクトのヘッダーファイル -->
     <ClInclude Include="..\src\TextUtils.h" />
     <ClInclude Include="..\src\BooruDB.h" />
     <ClInclude Include="..\src\Tag.h" />
-    <ClInclude Include="..\src\SuggestionManager.h" />
+    <ClInclude Include="..\src\Suggestion.h" />
     <ClInclude Include="..\src\ImageTagDetector.h" />
     <ClInclude Include="..\src\SyntaxHighlighter.h" />
     <ClInclude Include="..\src\TagListHandler.h" />

@@ -1,0 +1,75 @@
+﻿#include "framework.h"
+#include <algorithm>
+#include <iterator>
+#include "TextUtils.h"
+#include "Suggestion.h"
+
+Suggestion::Suggestion() : m_SuggestTimer(nullptr) {
+}
+
+Suggestion::~Suggestion() {
+	Shutdown();
+}
+
+// サジェスト処理の開始
+void Suggestion::StartSuggestion(std::function<void(const TagList&)> callback) {
+	m_callback = callback;
+	BooruDB::GetInstance().LoadDictionary();
+}
+
+// リクエスト
+void Suggestion::Request(const std::string& input) {
+	if (!m_callback) return;
+	if (m_currentInput == input) return;
+	m_callback({});
+	CancelTimer();
+	m_currentInput = input;
+	CreateTimerQueueTimer(&m_SuggestTimer, nullptr, SuggestTimerProc, this, SUGGEST_DELAY_MS, 0, 0);
+}
+
+// シャットダウン
+void Suggestion::Shutdown() {
+	m_callback = nullptr;
+	CancelTimer();
+	BooruDB::GetInstance().Cancel();
+}
+
+void Suggestion::CancelTimer() {
+	if (m_SuggestTimer) {
+		DeleteTimerQueueTimer(nullptr, m_SuggestTimer, nullptr);
+		m_SuggestTimer = nullptr;
+	}
+}
+
+void CALLBACK Suggestion::SuggestTimerProc(PVOID lpParameter, BOOLEAN TimerOrWaitFired) {
+	auto* instance = static_cast<Suggestion*>(lpParameter);
+	if (instance) {
+		instance->Tag();
+	}
+}
+
+void Suggestion::Tag() {
+	if (!m_callback) return;
+	auto input = m_currentInput;
+	if (input.empty()) {
+		m_callback({});
+		return;
+	}
+	bool has_multibyte = utf8_has_multibyte(input);
+	if (!has_multibyte) {
+		// 通常のサジェスト（前方一致→曖昧検索）
+		TagList saggestions;
+		if (!BooruDB::GetInstance().QuickSuggestion(saggestions, input, 8)) return;
+		if (m_currentInput != input) return;
+		if (m_callback) m_callback(saggestions);
+		if (!BooruDB::GetInstance().FuzzySuggestion(saggestions, input, 32)) return;
+		if (m_currentInput != input) return;
+		if (m_callback) m_callback(saggestions);
+	} else {
+		// 日本語を含むので逆引きサジェスト
+		TagList saggestions;
+		if (!BooruDB::GetInstance().ReverseSuggestion(saggestions, input, 40)) return;
+		if (m_currentInput != input) return;
+		if (m_callback) m_callback(saggestions);
+	}
+}

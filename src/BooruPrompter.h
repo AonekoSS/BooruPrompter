@@ -8,9 +8,10 @@
 #include "ImageTagDetector.h"
 #include "Tag.h"
 #include "SuggestionHandler.h"
-#include "SuggestionManager.h"
+#include "Suggestion.h"
 #include "TagListHandler.h"
 #include "PromptEditor.h"
+#include "FavoriteTags.h"
 
 // スプリッター関連の定数
 constexpr int SPLITTER_TYPE_NONE = 0;
@@ -61,7 +62,7 @@ private:
 	void HandleSplitterMouse(int x, int y, bool isDown, bool isUp);
 	void UpdateSplitterCursor(int x, int y);
 	std::pair<int, int> GetToolbarAndStatusHeight();
-	
+
 	// タグリストの幅を取得（カラム幅の合計 + マージン）
 	int GetTagListWidth() const;
 
@@ -85,9 +86,12 @@ private:
 	HWND m_hwndToolbar;    // ツールバーのハンドル
 	HWND m_hwndStatusBar;  // ステータスバーのハンドル
 	HWND m_hwndProgressBar; // プログレスバーのハンドル
-	SuggestionManager m_suggestionManager;
+	Suggestion m_suggestionManager;
 	TagList m_currentSuggestions;
 	ImageTagDetector m_imageTagDetector; // 画像タグ検出機能
+
+	// サジェストリストのお気に入り表示モード
+	bool m_showingFavorites = false;
 
 	// スプリッター関連
 	struct Splitter {

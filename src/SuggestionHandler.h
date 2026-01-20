@@ -8,4 +8,5 @@ class SuggestionHandler {
 public:
 	static void UpdateSuggestionList(BooruPrompter* pThis, const TagList& suggestions);
 	static void OnSuggestionSelected(BooruPrompter* pThis, int index);
+	static void OnSuggestionContextMenu(BooruPrompter* pThis, int x, int y);
 };

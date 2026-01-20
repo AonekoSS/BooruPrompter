@@ -74,9 +74,6 @@ bool BooruDB::LoadDictionary() {
 			std::string tag, metadata;
 			if (std::getline(iss, tag, ',')) {
 				tag = booru_to_image_tag(tag);
-				if (customTagsSet.find(tag) == customTagsSet.end()) {
-					dictionary_.push_back(tag);
-				}
 				if (std::getline(iss, metadata)) {
 					metadata_[tag] = utf8_to_unicode(metadata);
 				}
@@ -101,15 +98,16 @@ bool BooruDB::LoadDictionary() {
 			std::string tag, category;
 			if (std::getline(iss, tag, ',')) {
 				tag = booru_to_image_tag(tag);
-				if (std::getline(iss, category, ',')) {
-					category_[tag] = std::stoi(category);
+				if (customTagsSet.find(tag) != customTagsSet.end()) {
+					// カスタムタグはレーティング用タグ扱いでカテゴリを上書き
+					category_[tag] = 9;
+				} else {
+					dictionary_.push_back(tag);
+					if (std::getline(iss, category, ',')) {
+						category_[tag] = std::stoi(category);
+					}
 				}
 			}
-		}
-
-		// カスタムタグはレーティング用タグ扱いでカテゴリを上書き
-		for (const auto& tag : customTags) {
-			category_[tag] = 9;
 		}
 	}
 

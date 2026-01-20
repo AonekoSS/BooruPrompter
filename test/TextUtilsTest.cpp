@@ -122,51 +122,52 @@ void TextUtilsTest::TestUtf8HasMultibyteJapanese() {
 void TextUtilsTest::TestGetSpanAtCursor() {
 	// 基本的なワード範囲取得のテスト
 	std::string text = "oh, Hello World, xxx";
-	auto result = get_span_at_cursor(text, 10);
-	size_t start = std::get<0>(result);
-	size_t end = std::get<1>(result);
-	Assert::AreEqual(3, (int)start);
-	Assert::AreEqual(15, (int)end);
+	Assert::IsTrue(std::make_tuple(3, 15) == get_span_at_cursor(text, 10));
 }
 
 void TextUtilsTest::TestGetSpanAtCursorEmpty() {
 	// 空文字列のテスト
 	std::string text = "";
-	auto result = get_span_at_cursor(text, 0);
-	size_t start = std::get<0>(result);
-	size_t end = std::get<1>(result);
-	Assert::AreEqual(0, (int)start);
-	Assert::AreEqual(0, (int)end);
+	Assert::IsTrue(std::make_tuple(0, 0) == get_span_at_cursor(text, 0));
 }
 
 void TextUtilsTest::TestGetSpanAtCursorBoundary() {
 	// 境界値のテスト
 	std::string text = "Hello";
-	auto result = get_span_at_cursor(text, 0);
-	size_t start = std::get<0>(result);
-	size_t end = std::get<1>(result);
-	Assert::AreEqual(0, (int)start);
-	Assert::AreEqual(5, (int)end);
+	Assert::IsTrue(std::make_tuple(0, 5) == get_span_at_cursor(text, 0));
 }
 
 void TextUtilsTest::TestGetSpanAtCursorWithNewlines() {
 	// 改行区切りのワード範囲取得テスト
 	std::string text = "tag1\ntag2\ntag3";
-	auto result = get_span_at_cursor(text, 7); // "tag2"の"g"の位置
-	size_t start = std::get<0>(result);
-	size_t end = std::get<1>(result);
-	Assert::AreEqual(5, (int)start); // "tag2"の開始位置
-	Assert::AreEqual(9, (int)end);   // "tag2"の終了位置
+	Assert::IsTrue(std::make_tuple(5, 9) == get_span_at_cursor(text, 7)); // "tag2"の"g"の位置
+	Assert::IsTrue(std::make_tuple(5, 9) == get_span_at_cursor(text, 5)); // "tag2"の"t"の位置
+	Assert::IsTrue(std::make_tuple(5, 9) == get_span_at_cursor(text, 8)); // "tag2"の"2"の位置
 }
 
 void TextUtilsTest::TestGetSpanAtCursorMixedDelimiters() {
 	// カンマと改行が混在するワード範囲取得テスト
 	std::string text = "tag1,tag2\ntag3,tag4";
-	auto result = get_span_at_cursor(text, 7); // "tag2"の"g"の位置
-	size_t start = std::get<0>(result);
-	size_t end = std::get<1>(result);
-	Assert::AreEqual(5, (int)start); // "tag2"の開始位置
-	Assert::AreEqual(9, (int)end);  // "tag2"の終了位置
+	Assert::IsTrue(std::make_tuple(5, 9) == get_span_at_cursor(text, 7));
+}
+
+void TextUtilsTest::TestGetSpanAtCursorOnComma() {
+	// カーソルがカンマを指している場合のテスト
+	std::string text = "tag1,tag2,tag3,";
+
+	// 最初のカンマ（位置4）を指している場合
+	Assert::IsTrue(std::make_tuple(5, 5) == get_span_at_cursor(text, 4));
+
+	// 2番目のカンマ（位置9）を指している場合
+	Assert::IsTrue(std::make_tuple(10, 10) == get_span_at_cursor(text, 9));
+
+	// カンマのみの文字列で、カンマを指している場合
+	std::string text2 = ",";
+	Assert::IsTrue(std::make_tuple(1, 1) == get_span_at_cursor(text2, 0));
+
+	// 連続するカンマの間を指している場合
+	std::string text3 = "tag1,,tag2";
+	Assert::IsTrue(std::make_tuple(6, 6) == get_span_at_cursor(text3, 5)); // 2つ目のカンマ（位置5）を指している
 }
 
 void TextUtilsTest::TestExtractTagsFromText() {
