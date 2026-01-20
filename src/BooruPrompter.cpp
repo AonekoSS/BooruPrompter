@@ -44,17 +44,17 @@ enum {
 };
 
 // リストビューの配色定数
-constexpr COLORREF LISTVIEW_BK_COLOR = RGB(16,16,16);
-constexpr COLORREF LISTVIEW_ALT_COLOR = RGB(32,32,32);
-constexpr COLORREF LISTVIEW_TEXT_COLOR = RGB(255,255,255);
+constexpr COLORREF LISTVIEW_BK_COLOR = RGB(16, 16, 16);
+constexpr COLORREF LISTVIEW_ALT_COLOR = RGB(32, 32, 32);
+constexpr COLORREF LISTVIEW_TEXT_COLOR = RGB(255, 255, 255);
 
 // カテゴリーから色を取得
 static COLORREF GetCategoryColor(int category) {
 	switch (category) {
-		case 1: return RGB(255, 255, 0); // Artist
-		case 3: return RGB(0, 255, 90); // Copyright
-		case 4: return RGB(0, 160, 255); // Character
-		case 5: return RGB(255, 90, 255); // Metadata
+	case 1: return RGB(255, 255, 0); // Artist
+	case 3: return RGB(0, 255, 90); // Copyright
+	case 4: return RGB(0, 160, 255); // Character
+	case 5: return RGB(255, 90, 255); // Metadata
 	default:
 		return LISTVIEW_TEXT_COLOR;
 	}
@@ -214,9 +214,9 @@ void BooruPrompter::OnCreate(HWND hwnd) {
 	// ImageTagDetectorに進捗コールバックを設定
 	m_imageTagDetector.SetProgressCallback([this](int progress, const std::wstring& status) {
 		UpdateProgress(progress, status);
-	});
+		});
 
-		// シンタックスハイライト付きエディターの作成
+	// シンタックスハイライト付きエディターの作成
 	m_promptEditor = std::make_unique<PromptEditor>();
 	if (!m_promptEditor->Initialize(hwnd, 0, 0, 0, 0, (HMENU)ID_EDIT)) {
 		return;
@@ -225,7 +225,7 @@ void BooruPrompter::OnCreate(HWND hwnd) {
 	// テキスト変更コールバックを設定
 	m_promptEditor->SetTextChangeCallback([this]() {
 		OnTextChanged(m_hwnd);
-	});
+		});
 
 	// サジェスト表示用リストビューの作成
 	std::vector<std::pair<std::wstring, int>> suggestionColumns = {
@@ -236,8 +236,10 @@ void BooruPrompter::OnCreate(HWND hwnd) {
 
 	// サジェスト開始
 	m_suggestionManager.StartSuggestion([this](const TagList& suggestions) {
-		SuggestionHandler::UpdateSuggestionList(this, suggestions);
-	});
+		if (!m_showingFavorites) {
+			SuggestionHandler::UpdateSuggestionList(this, suggestions);
+		}
+		});
 
 	// タグリストの初期化
 	std::vector<std::pair<std::wstring, int>> tagColumns = {
@@ -324,44 +326,44 @@ void BooruPrompter::AddListViewItem(HWND hwndListView, int index, const std::vec
 	}
 }
 
-void BooruPrompter::RefreshTagList(HWND hwndListView, const TagList& tagItems){
-    SendMessage(hwndListView, WM_SETREDRAW, FALSE, 0);
-    int oldCount = ListView_GetItemCount(hwndListView);
-    int newCount = (int)tagItems.size();
+void BooruPrompter::RefreshTagList(HWND hwndListView, const TagList& tagItems) {
+	SendMessage(hwndListView, WM_SETREDRAW, FALSE, 0);
+	int oldCount = ListView_GetItemCount(hwndListView);
+	int newCount = (int)tagItems.size();
 
-    // 既存アイテムの内容を更新
+	// 既存アイテムの内容を更新
 	auto minCount = std::min(oldCount, newCount);
-    for (int i = 0; i < minCount; ++i) {
-        const auto& item = tagItems[i];
-        const auto tag = utf8_to_unicode(item.tag);
-        LVITEM lvi{};
-        lvi.mask = LVIF_TEXT;
-        lvi.iItem = i;
-        // 1カラム目
-        lvi.iSubItem = 0;
-        lvi.pszText = (LPWSTR)tag.c_str();
-        ListView_SetItem(hwndListView, &lvi);
-        // 2カラム目
-        lvi.iSubItem = 1;
-        lvi.pszText = (LPWSTR)item.description.c_str();
-        ListView_SetItem(hwndListView, &lvi);
-    }
+	for (int i = 0; i < minCount; ++i) {
+		const auto& item = tagItems[i];
+		const auto tag = utf8_to_unicode(item.tag);
+		LVITEM lvi{};
+		lvi.mask = LVIF_TEXT;
+		lvi.iItem = i;
+		// 1カラム目
+		lvi.iSubItem = 0;
+		lvi.pszText = (LPWSTR)tag.c_str();
+		ListView_SetItem(hwndListView, &lvi);
+		// 2カラム目
+		lvi.iSubItem = 1;
+		lvi.pszText = (LPWSTR)item.description.c_str();
+		ListView_SetItem(hwndListView, &lvi);
+	}
 
-    // 余分なアイテムを削除
-    for (int i = oldCount - 1; i >= newCount; --i) {
-        ListView_DeleteItem(hwndListView, i);
-    }
+	// 余分なアイテムを削除
+	for (int i = oldCount - 1; i >= newCount; --i) {
+		ListView_DeleteItem(hwndListView, i);
+	}
 
-    // 新規アイテムを追加
-    for (int i = oldCount; i < newCount; ++i) {
-        const auto& item = tagItems[i];
-        const auto tag = utf8_to_unicode(item.tag);
-        std::vector<std::wstring> texts = { tag, item.description };
-        AddListViewItem(hwndListView, i, texts);
-    }
+	// 新規アイテムを追加
+	for (int i = oldCount; i < newCount; ++i) {
+		const auto& item = tagItems[i];
+		const auto tag = utf8_to_unicode(item.tag);
+		std::vector<std::wstring> texts = { tag, item.description };
+		AddListViewItem(hwndListView, i, texts);
+	}
 
-    SendMessage(hwndListView, WM_SETREDRAW, TRUE, 0);
-    InvalidateRect(hwndListView, NULL, TRUE);
+	SendMessage(hwndListView, WM_SETREDRAW, TRUE, 0);
+	InvalidateRect(hwndListView, NULL, TRUE);
 }
 
 void BooruPrompter::OnSize(HWND hwnd) {
@@ -515,58 +517,43 @@ void BooruPrompter::OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify) 
 		break;
 	case ID_PASTE:
 		// テキストをクリップボードから貼り付け
-		{
-			std::wstring text = GetFromClipboard();
-			if (!text.empty()) {
-				SetPrompt(text);
-				TagListHandler::SyncTagListFromPrompt(this, unicode_to_utf8(text.c_str()));
-				m_suggestionManager.Request({});
-			}
+	{
+		std::wstring text = GetFromClipboard();
+		if (!text.empty()) {
+			SetPrompt(text);
+			TagListHandler::SyncTagListFromPrompt(this, unicode_to_utf8(text.c_str()));
+			m_suggestionManager.Request({});
 		}
-		break;
+	}
+	break;
 	case ID_COPY:
 		// コピー処理
-		{
-			std::wstring text = GetPrompt();
-			if (CopyToClipboard(text)) {
-				UpdateProgress(100, L"プロンプトをクリップボードにコピー");
-			}
+	{
+		std::wstring text = GetPrompt();
+		if (CopyToClipboard(text)) {
+			UpdateProgress(100, L"プロンプトをクリップボードにコピー");
 		}
-		break;
+	}
+	break;
 	case ID_SORT_TAGS_CUSTOM:
 		// タグ整理
 		TagListHandler::SortTags(this);
 		break;
 	case ID_TAG_SETTINGS:
 		// タグ設定ファイルを開く
-		{
-			std::wstring customTagsPath = fullpath(CUSTOM_TAGS_FILENAME);
-			ShellExecute(hwnd, L"open", customTagsPath.c_str(), NULL, NULL, SW_SHOWNORMAL);
-		}
-		break;
+	{
+		std::wstring customTagsPath = fullpath(CUSTOM_TAGS_FILENAME);
+		ShellExecute(hwnd, L"open", customTagsPath.c_str(), NULL, NULL, SW_SHOWNORMAL);
+	}
+	break;
 	case ID_FAVORITES:
-		// サジェストリストにお気に入りリストを表示/解除
-		m_showingFavorites = !m_showingFavorites;
-		SendMessage(m_hwndToolbar, TB_CHECKBUTTON, ID_FAVORITES, MAKELONG(m_showingFavorites ? TRUE : FALSE, 0));
-
-		if (m_showingFavorites) {
-			// お気に入りをサジェストリストに表示
-			TagList favorites = FavoriteTags::GetFavorites();
-			SuggestionHandler::UpdateSuggestionList(this, favorites);
-			UpdateStatusText(L"お気に入りリストを表示中");
-		} else {
-			// 通常サジェストに戻す
-			std::string currentText = m_promptEditor->GetText();
-			DWORD startPos = m_promptEditor->GetSelectionStart();
-			const auto [start, end] = get_span_at_cursor(currentText, static_cast<int>(startPos));
-			const auto currentWord = trim(currentText.substr(start, end - start));
-			m_suggestionManager.Request(currentWord);
-			if (!currentWord.empty()) {
-				UpdateStatusText(L"サジェスト中： " + utf8_to_unicode(currentWord));
-			} else {
-				UpdateStatusText(L"");
-			}
-		}
+		// サジェストリストにお気に入りリストを表示
+		m_showingFavorites = true;
+		SendMessage(m_hwndToolbar, TB_CHECKBUTTON, ID_FAVORITES, MAKELONG(TRUE, 0));
+		m_suggestionManager.Request({});
+		TagList favorites = FavoriteTags::GetFavorites();
+		SuggestionHandler::UpdateSuggestionList(this, favorites);
+		UpdateStatusText(L"お気に入りリストを表示中");
 		break;
 	}
 
@@ -583,8 +570,7 @@ void BooruPrompter::OnNotifyMessage(HWND hwnd, WPARAM wParam, LPARAM lParam) {
 		// ダブルクリックでタグを挿入
 		LPNMITEMACTIVATE pnmia = reinterpret_cast<LPNMITEMACTIVATE>(lParam);
 		SuggestionHandler::OnSuggestionSelected(this, pnmia->iItem);
-	}
-	else if (pnmh->idFrom == ID_TAG_LIST) {
+	} else if (pnmh->idFrom == ID_TAG_LIST) {
 		if (pnmh->code == LVN_BEGINDRAG) {
 			// ドラッグ開始
 			LPNMLISTVIEW pnmlv = reinterpret_cast<LPNMLISTVIEW>(lParam);
@@ -636,12 +622,13 @@ void BooruPrompter::ProcessImageFileAsync(const std::wstring& filePath) {
 			} else {
 				return ImageProcessingResult(IMAGE_PROCESSING_INIT_FAILED);
 			}
-		} catch (const std::exception&) {
+		}
+		catch (const std::exception&) {
 			// エラー処理 - ステータスバーに表示
 			UpdateProgress(0, L"画像処理中にエラーが発生しました");
 			return ImageProcessingResult(IMAGE_PROCESSING_INIT_FAILED);
 		}
-	});
+		});
 }
 
 void BooruPrompter::OnImageProcessingComplete(const ImageProcessingResult& result) {
@@ -752,8 +739,7 @@ void BooruPrompter::OnLButtonUp(HWND hwnd, LPARAM lParam) {
 		}
 		TagListHandler::OnTagListDragEnd(this);
 		ReleaseCapture();
-	}
-	else if (m_splitter.isDragging) {
+	} else if (m_splitter.isDragging) {
 		HandleSplitterMouse(0, 0, false, true);
 	}
 }
@@ -773,13 +759,18 @@ void BooruPrompter::OnTextChanged(HWND hwnd) {
 	const auto [start, end] = get_span_at_cursor(currentText, startPos);
 	const auto currentWord = trim(currentText.substr(start, end - start));
 
-	// お気に入りリスト表示中は通常サジェストを更新しない
-	if (!m_showingFavorites) {
-		// サジェスト開始
-		m_suggestionManager.Request(currentWord);
-		if (!currentWord.empty()) UpdateStatusText(L"サジェスト中： " + utf8_to_unicode(currentWord));
+	// お気に入りリスト表示を解除
+	if (m_showingFavorites) {
+		m_showingFavorites = false;
+		SendMessage(m_hwndToolbar, TB_CHECKBUTTON, ID_FAVORITES, MAKELONG(FALSE, 0));
+	}
+
+	// サジェストリクエスト
+	m_suggestionManager.Request(currentWord);
+	if (!currentWord.empty()) {
+		UpdateStatusText(L"サジェスト中： " + utf8_to_unicode(currentWord));
 	} else {
-		UpdateStatusText(L"お気に入りリストを表示中");
+		UpdateStatusText(L"");
 	}
 
 	// プロンプトが変更されたのでタグリストを更新
@@ -848,7 +839,7 @@ void BooruPrompter::HandleSplitterMouse(int x, int y, bool isDown, bool isUp) {
 		// 水平スプリッターのみ判定（左側の領域内で、水平スプリッターの上下にマウスがある場合）
 		bool inHorizontal = (y >= actualSplitterY - SPLITTER_HIT_AREA && y <= actualSplitterY + SPLITTER_HIT_AREA && x <= actualSplitterX);
 		return inHorizontal;
-	};
+		};
 
 	if (isDown) {
 		if (!isInSplitterArea(x, y)) return;
@@ -866,8 +857,7 @@ void BooruPrompter::HandleSplitterMouse(int x, int y, bool isDown, bool isUp) {
 			m_splitter.draggingType = SPLITTER_TYPE_NONE;
 			ReleaseCapture();
 		}
-	}
-	else if (m_splitter.isDragging) {
+	} else if (m_splitter.isDragging) {
 		// マウス移動処理
 		RECT rc;
 		GetClientRect(m_hwnd, &rc);
@@ -949,7 +939,7 @@ std::pair<int, int> BooruPrompter::GetToolbarAndStatusHeight() {
 	GetWindowRect(m_hwndStatusBar, &rc);
 	const int statusHeight = rc.bottom - rc.top;
 
-	return {toolbarHeight, statusHeight};
+	return { toolbarHeight, statusHeight };
 }
 
 void BooruPrompter::UpdateProgress(int progress, const std::wstring& statusText) {

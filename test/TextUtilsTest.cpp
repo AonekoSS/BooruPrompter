@@ -169,6 +169,41 @@ void TextUtilsTest::TestGetSpanAtCursorMixedDelimiters() {
 	Assert::AreEqual(9, (int)end);  // "tag2"の終了位置
 }
 
+void TextUtilsTest::TestGetSpanAtCursorOnComma() {
+	// カーソルがカンマを指している場合のテスト
+	std::string text = "tag1,tag2,tag3";
+
+	// 最初のカンマ（位置4）を指している場合
+	auto result1 = get_span_at_cursor(text, 4);
+	size_t start1 = std::get<0>(result1);
+	size_t end1 = std::get<1>(result1);
+	Assert::AreEqual(5, (int)start1); // "tag2"の開始位置
+	Assert::AreEqual(9, (int)end1);   // 次のカンマの位置
+
+	// 2番目のカンマ（位置9）を指している場合
+	auto result2 = get_span_at_cursor(text, 9);
+	size_t start2 = std::get<0>(result2);
+	size_t end2 = std::get<1>(result2);
+	Assert::AreEqual(10, (int)start2); // "tag3"の開始位置
+	Assert::AreEqual(14, (int)end2);    // 文字列の終端
+
+	// カンマのみの文字列で、カンマを指している場合
+	std::string text2 = ",";
+	auto result3 = get_span_at_cursor(text2, 0);
+	size_t start3 = std::get<0>(result3);
+	size_t end3 = std::get<1>(result3);
+	Assert::AreEqual(1, (int)start3); // カンマの次の位置
+	Assert::AreEqual(1, (int)end3);   // 文字列の終端
+
+	// 連続するカンマの間を指している場合
+	std::string text3 = "tag1,,tag2";
+	auto result4 = get_span_at_cursor(text3, 5); // 2つ目のカンマ（位置5）を指している
+	size_t start4 = std::get<0>(result4);
+	size_t end4 = std::get<1>(result4);
+	Assert::AreEqual(6, (int)start4); // 2つ目のカンマの次の位置
+	Assert::AreEqual(10, (int)end4);  // "tag2"の終端
+}
+
 void TextUtilsTest::TestExtractTagsFromText() {
 	// 基本的なタグ抽出のテスト
 	std::string text = "tag1, tag2, tag3";

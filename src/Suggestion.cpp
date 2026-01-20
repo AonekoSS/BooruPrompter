@@ -19,7 +19,9 @@ void Suggestion::StartSuggestion(std::function<void(const TagList&)> callback) {
 
 // リクエスト
 void Suggestion::Request(const std::string& input) {
+	if (!m_callback) return;
 	if (m_currentInput == input) return;
+	m_callback({});
 	CancelTimer();
 	m_currentInput = input;
 	CreateTimerQueueTimer(&m_SuggestTimer, nullptr, SuggestTimerProc, this, SUGGEST_DELAY_MS, 0, 0);

@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "CppUnitTest.h"
 #include "../src/TextUtils.h"
@@ -32,6 +32,7 @@ public:
 	TEST_METHOD(TestGetSpanAtCursorBoundary);
 	TEST_METHOD(TestGetSpanAtCursorWithNewlines);
 	TEST_METHOD(TestGetSpanAtCursorMixedDelimiters);
+	TEST_METHOD(TestGetSpanAtCursorOnComma);
 
 	// タグ抽出のテスト
 	TEST_METHOD(TestExtractTagsFromText);
