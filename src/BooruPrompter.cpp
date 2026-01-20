@@ -137,7 +137,7 @@ bool BooruPrompter::Initialize(HINSTANCE hInstance) {
 
 void BooruPrompter::OnCreate(HWND hwnd) {
 	// お気に入りタグを読み込み
-	FavoriteTagsManager::Load();
+	FavoriteTags::Load();
 	// ツールバーの作成
 	m_hwndToolbar = CreateWindowEx(
 		0,
@@ -551,7 +551,7 @@ void BooruPrompter::OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify) 
 
 		if (m_showingFavorites) {
 			// お気に入りをサジェストリストに表示
-			TagList favorites = FavoriteTagsManager::GetFavorites();
+			TagList favorites = FavoriteTags::GetFavorites();
 			SuggestionHandler::UpdateSuggestionList(this, favorites);
 			UpdateStatusText(L"お気に入りリストを表示中");
 		} else {
@@ -1136,7 +1136,7 @@ LRESULT CALLBACK BooruPrompter::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, 
 
 		case WM_DESTROY:
 			pThis->m_suggestionManager.Shutdown();
-			FavoriteTagsManager::Save();
+			FavoriteTags::Save();
 			pThis->SaveSettings();
 			PostQuitMessage(0);
 			return 0;

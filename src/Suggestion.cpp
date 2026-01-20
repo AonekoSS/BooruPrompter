@@ -2,23 +2,23 @@
 #include <algorithm>
 #include <iterator>
 #include "TextUtils.h"
-#include "SuggestionManager.h"
+#include "Suggestion.h"
 
-SuggestionManager::SuggestionManager() : m_SuggestTimer(nullptr) {
+Suggestion::Suggestion() : m_SuggestTimer(nullptr) {
 }
 
-SuggestionManager::~SuggestionManager() {
+Suggestion::~Suggestion() {
 	Shutdown();
 }
 
 // サジェスト処理の開始
-void SuggestionManager::StartSuggestion(std::function<void(const TagList&)> callback) {
+void Suggestion::StartSuggestion(std::function<void(const TagList&)> callback) {
 	m_callback = callback;
 	BooruDB::GetInstance().LoadDictionary();
 }
 
 // リクエスト
-void SuggestionManager::Request(const std::string& input) {
+void Suggestion::Request(const std::string& input) {
 	if (m_currentInput == input) return;
 	CancelTimer();
 	m_currentInput = input;
@@ -26,27 +26,27 @@ void SuggestionManager::Request(const std::string& input) {
 }
 
 // シャットダウン
-void SuggestionManager::Shutdown() {
+void Suggestion::Shutdown() {
 	m_callback = nullptr;
 	CancelTimer();
 	BooruDB::GetInstance().Cancel();
 }
 
-void SuggestionManager::CancelTimer() {
+void Suggestion::CancelTimer() {
 	if (m_SuggestTimer) {
 		DeleteTimerQueueTimer(nullptr, m_SuggestTimer, nullptr);
 		m_SuggestTimer = nullptr;
 	}
 }
 
-void CALLBACK SuggestionManager::SuggestTimerProc(PVOID lpParameter, BOOLEAN TimerOrWaitFired) {
-	auto* instance = static_cast<SuggestionManager*>(lpParameter);
+void CALLBACK Suggestion::SuggestTimerProc(PVOID lpParameter, BOOLEAN TimerOrWaitFired) {
+	auto* instance = static_cast<Suggestion*>(lpParameter);
 	if (instance) {
 		instance->Tag();
 	}
 }
 
-void SuggestionManager::Tag() {
+void Suggestion::Tag() {
 	if (!m_callback) return;
 	auto input = m_currentInput;
 	if (input.empty()) {

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <string>
 #include <vector>
@@ -9,7 +9,7 @@
 constexpr const wchar_t* FAVORITE_TAGS_FILENAME = L"favorite_tags.txt";
 
 // お気に入りタグの管理モジュール
-class FavoriteTagsManager {
+class FavoriteTags {
 public:
 	// ファイルからお気に入りリストを読み込み
 	static void Load();
@@ -34,4 +34,3 @@ private:
 	// 内部ではタグ名だけを保持する
 	static std::vector<std::string> s_favorites;
 };
-

@@ -3,7 +3,7 @@
 #include "BooruPrompter.h"
 #include "TextUtils.h"
 #include "TagListHandler.h"
-#include "FavoriteTagsManager.h"
+#include "FavoriteTags.h"
 
 void SuggestionHandler::UpdateSuggestionList(BooruPrompter* pThis, const TagList& suggestions) {
 	pThis->m_currentSuggestions = suggestions;
@@ -82,7 +82,7 @@ void SuggestionHandler::OnSuggestionContextMenu(BooruPrompter* pThis, int x, int
 
 	if (!pThis->m_showingFavorites && commandId == ID_CONTEXT_ADD_FAVORITE) {
 		const auto& tag = pThis->m_currentSuggestions[itemIndex];
-		if (FavoriteTagsManager::AddFavorite(tag)) {
+		if (FavoriteTags::AddFavorite(tag)) {
 			pThis->UpdateStatusText(L"お気に入りに追加: " + utf8_to_unicode(tag.tag));
 		} else {
 			pThis->UpdateStatusText(L"既にお気に入りに登録されています: " + utf8_to_unicode(tag.tag));
@@ -94,20 +94,20 @@ void SuggestionHandler::OnSuggestionContextMenu(BooruPrompter* pThis, int x, int
 		// お気に入りリストの編集
 		switch (commandId) {
 		case ID_CONTEXT_MOVE_TO_TOP:
-			FavoriteTagsManager::MoveFavoriteToTop(itemIndex);
+			FavoriteTags::MoveFavoriteToTop(itemIndex);
 			break;
 		case ID_CONTEXT_MOVE_TO_BOTTOM:
-			FavoriteTagsManager::MoveFavoriteToBottom(itemIndex);
+			FavoriteTags::MoveFavoriteToBottom(itemIndex);
 			break;
 		case ID_CONTEXT_DELETE:
-			FavoriteTagsManager::RemoveFavorite(itemIndex);
+			FavoriteTags::RemoveFavorite(itemIndex);
 			break;
 		default:
 			return;
 		}
 
 		// 編集後の内容でサジェストリストを更新
-		TagList favorites = FavoriteTagsManager::GetFavorites();
+		TagList favorites = FavoriteTags::GetFavorites();
 		UpdateSuggestionList(pThis, favorites);
 	}
 }

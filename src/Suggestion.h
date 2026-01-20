@@ -7,10 +7,10 @@
 #include "BooruDB.h"
 #include "Tag.h"
 
-class SuggestionManager {
+class Suggestion {
 public:
-	SuggestionManager();
-	~SuggestionManager();
+	Suggestion();
+	~Suggestion();
 
 	// サジェスト処理の開始
 	void StartSuggestion(std::function<void(const TagList&)> callback);

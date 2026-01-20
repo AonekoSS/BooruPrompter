@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <Filter Include="ソース ファイル">
@@ -36,7 +36,10 @@
     <ClInclude Include="SuggestionHandler.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="SuggestionManager.h">
+    <ClInclude Include="Suggestion.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="FavoriteTags.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="TagListHandler.h">
@@ -53,7 +56,7 @@
     <ClCompile Include="BooruPrompter.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="SuggestionManager.cpp">
+    <ClCompile Include="Suggestion.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
     <ClCompile Include="BooruDB.cpp">
@@ -77,7 +80,7 @@
     <ClCompile Include="PromptEditor.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="FavoriteTagsManager.cpp">
+    <ClCompile Include="FavoriteTags.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
   </ItemGroup>

@@ -1,14 +1,14 @@
-#include "framework.h"
-#include "FavoriteTagsManager.h"
+﻿#include "framework.h"
+#include "FavoriteTags.h"
 
 #include <fstream>
 
 #include "BooruDB.h"
 #include "TextUtils.h"
 
-std::vector<std::string> FavoriteTagsManager::s_favorites;
+std::vector<std::string> FavoriteTags::s_favorites;
 
-void FavoriteTagsManager::Load() {
+void FavoriteTags::Load() {
 	s_favorites.clear();
 
 	std::wstring path = fullpath(FAVORITE_TAGS_FILENAME);
@@ -24,7 +24,7 @@ void FavoriteTagsManager::Load() {
 	}
 }
 
-void FavoriteTagsManager::Save() {
+void FavoriteTags::Save() {
 	std::wstring path = fullpath(FAVORITE_TAGS_FILENAME);
 	std::ofstream ofs(path, std::ios::trunc);
 	if (!ofs) {
@@ -36,7 +36,7 @@ void FavoriteTagsManager::Save() {
 	}
 }
 
-bool FavoriteTagsManager::AddFavorite(const Tag& tag) {
+bool FavoriteTags::AddFavorite(const Tag& tag) {
 	// 既に存在するかチェック
 	for (const auto& name : s_favorites) {
 		if (name == tag.tag) {
@@ -49,13 +49,13 @@ bool FavoriteTagsManager::AddFavorite(const Tag& tag) {
 	return true;
 }
 
-void FavoriteTagsManager::RemoveFavorite(int index) {
+void FavoriteTags::RemoveFavorite(int index) {
 	if (index < 0 || index >= static_cast<int>(s_favorites.size())) return;
 	s_favorites.erase(s_favorites.begin() + index);
 	Save();
 }
 
-void FavoriteTagsManager::MoveFavoriteToTop(int index) {
+void FavoriteTags::MoveFavoriteToTop(int index) {
 	if (index <= 0 || index >= static_cast<int>(s_favorites.size())) return;
 	auto item = s_favorites[index];
 	s_favorites.erase(s_favorites.begin() + index);
@@ -63,7 +63,7 @@ void FavoriteTagsManager::MoveFavoriteToTop(int index) {
 	Save();
 }
 
-void FavoriteTagsManager::MoveFavoriteToBottom(int index) {
+void FavoriteTags::MoveFavoriteToBottom(int index) {
 	if (index < 0 || index >= static_cast<int>(s_favorites.size()) - 1) return;
 	auto item = s_favorites[index];
 	s_favorites.erase(s_favorites.begin() + index);
@@ -71,7 +71,7 @@ void FavoriteTagsManager::MoveFavoriteToBottom(int index) {
 	Save();
 }
 
-TagList FavoriteTagsManager::GetFavorites() {
+TagList FavoriteTags::GetFavorites() {
 	TagList result;
 	result.reserve(s_favorites.size());
 
@@ -83,4 +83,3 @@ TagList FavoriteTagsManager::GetFavorites() {
 
 	return result;
 }
-
