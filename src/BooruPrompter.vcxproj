@@ -103,7 +103,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>../external/onnxruntime/lib/onnxruntime.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>../external/onnxruntime/lib/onnxruntime_static.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>../external/onnxruntime/lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
@@ -147,11 +147,6 @@
   </ItemGroup>
   <ItemGroup>
     <CopyFileToFolders Include="..\external\danbooru.csv">
-      <FileType>Document</FileType>
-    </CopyFileToFolders>
-  </ItemGroup>
-  <ItemGroup>
-    <CopyFileToFolders Include="..\external\onnxruntime\lib\onnxruntime.dll">
       <FileType>Document</FileType>
     </CopyFileToFolders>
   </ItemGroup>
