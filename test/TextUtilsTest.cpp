@@ -339,16 +339,18 @@ void TextUtilsTest::TestExtractTagsFromTextWithMultipleBrackets() {
 }
 
 void TextUtilsTest::TestExtractTagsFromTextUnclosedBracket() {
-	// 閉じ括弧がないケース（括弧内のタグが失われる可能性）
+	// 閉じ括弧がないケースでも括弧内タグを保持する
 	std::string text = "tag1, (tag2, tag3";
 	TagList tags = extract_tags_from_text(text);
 	std::vector<std::string> tagNames;
 	tagNames.reserve(tags.size());
 	for (const auto& tag : tags) tagNames.push_back(tag.tag);
 	Logger::WriteMessage((std::string("tags: ") + join(tagNames, ",") + std::string("\n")).c_str());
-	Assert::AreEqual(2, (int)tags.size());
+	Assert::AreEqual(4, (int)tags.size());
 	AssertTagEquals(tags[0], "tag1", 0, 4);
 	AssertTagEquals(tags[1], "(", 6, 7);
+	AssertTagEquals(tags[2], "tag2", 7, 11);
+	AssertTagEquals(tags[3], "tag3", 13, 17);
 }
 
 void TextUtilsTest::TestExtractTagsFromTextBracketWithTrailingComma() {

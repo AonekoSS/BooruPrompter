@@ -108,7 +108,7 @@ std::string BuildPromptFromTags(const std::vector<std::string>& tags) {
 	std::ostringstream oss;
 	bool isFirst = true;
 	for (const auto& tag : tags) {
-		if (!isFirst && tag.back() != ')') oss << ", ";
+		if (!isFirst && tag != "\n" && tag.back() != ')') oss << ", ";
 		isFirst = (tag == "\n") || (tag == "(");
 		oss << tag;
 	}
