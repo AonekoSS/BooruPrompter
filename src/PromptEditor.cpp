@@ -61,6 +61,7 @@ bool PromptEditor::Initialize(HWND hwndParent, int x, int y, int width, int heig
 
 void PromptEditor::SetText(const std::string& text) {
 	SendMessage(m_hwnd, SCI_SETTEXT, 0, (LPARAM)text.c_str());
+	m_lastText = text;
 	ApplySyntaxHighlighting(text);
 }
 
@@ -169,8 +170,12 @@ void PromptEditor::OnTextChanged() {
 LRESULT CALLBACK PromptEditor::ScintillaProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 	PromptEditor* self = (PromptEditor*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
 	if (!self) return CallWindowProc(DefWindowProc, hwnd, uMsg, wParam, lParam);
-	if (uMsg == WM_CHAR || uMsg == WM_PASTE || uMsg == WM_CUT || uMsg == WM_CLEAR || uMsg == WM_KEYDOWN) {
+
+	const bool mayChangeText =
+		uMsg == WM_CHAR || uMsg == WM_PASTE || uMsg == WM_CUT || uMsg == WM_CLEAR || uMsg == WM_KEYDOWN;
+	const LRESULT result = CallWindowProc(self->m_originalProc, hwnd, uMsg, wParam, lParam);
+	if (mayChangeText) {
 		self->OnTextChanged();
 	}
-	return CallWindowProc(self->m_originalProc, hwnd, uMsg, wParam, lParam);
+	return result;
 }
