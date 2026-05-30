@@ -21,15 +21,9 @@ public:
     void SetSelection(DWORD start, DWORD end);
     void SetFocus();
     HWND GetHandle() const { return m_hwnd; }
-    void SetTextChangeCallback(std::function<void()> callback);
 
 private:
     HWND m_hwnd;
-    std::function<void()> m_textChangeCallback;
-    std::string m_lastText;
 
     void SetupStyles();
-	void OnTextChanged();
-    static LRESULT CALLBACK ScintillaProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
-    WNDPROC m_originalProc;
 };

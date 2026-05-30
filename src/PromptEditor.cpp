@@ -29,7 +29,7 @@ const int STYLE_BRACKET = 10;
 const COLORREF BRACKET_BACKGROUND_COLOR = RGB(0, 60, 100);
 const COLORREF BRACKET_TEXT_COLOR = RGB(255, 255, 255);
 
-PromptEditor::PromptEditor() : m_hwnd(nullptr), m_originalProc(nullptr) {}
+PromptEditor::PromptEditor() : m_hwnd(nullptr) {}
 
 PromptEditor::~PromptEditor() {}
 
@@ -50,19 +50,12 @@ bool PromptEditor::Initialize(HWND hwndParent, int x, int y, int width, int heig
 	);
 	if (!m_hwnd) return false;
 
-	// サブクラス化
-	m_originalProc = (WNDPROC)SetWindowLongPtr(m_hwnd, GWLP_WNDPROC, (LONG_PTR)ScintillaProc);
-	SetWindowLongPtr(m_hwnd, GWLP_USERDATA, (LONG_PTR)this);
-
-	// 基本的なScintilla設定
 	SetupStyles();
 	return true;
 }
 
 void PromptEditor::SetText(const std::string& text) {
 	SendMessage(m_hwnd, SCI_SETTEXT, 0, (LPARAM)text.c_str());
-	m_lastText = text;
-	ApplySyntaxHighlighting(text);
 }
 
 std::string PromptEditor::GetText() const {
@@ -108,10 +101,6 @@ void PromptEditor::SetFocus() {
 	::SetFocus(m_hwnd);
 }
 
-void PromptEditor::SetTextChangeCallback(std::function<void()> callback) {
-	m_textChangeCallback = callback;
-}
-
 void PromptEditor::SetupStyles() {
 	// フォントサイズ
 	SendMessage(m_hwnd, SCI_STYLESETSIZE, 0, FONT_SIZE);
@@ -154,28 +143,4 @@ void PromptEditor::SetupStyles() {
 	SendMessage(m_hwnd, SCI_SETHSCROLLBAR, FALSE, 0);
 	SendMessage(m_hwnd, SCI_SETVIEWEOL, FALSE, 0);
 	SendMessage(m_hwnd, SCI_SETVIEWWS, SCWS_INVISIBLE, 0);
-}
-
-void PromptEditor::OnTextChanged() {
-	std::string currentText = GetText();
-	if (currentText != m_lastText) {
-		m_lastText = currentText;
-		ApplySyntaxHighlighting(currentText);
-		if (m_textChangeCallback) {
-			m_textChangeCallback();
-		}
-	}
-}
-
-LRESULT CALLBACK PromptEditor::ScintillaProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
-	PromptEditor* self = (PromptEditor*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
-	if (!self) return CallWindowProc(DefWindowProc, hwnd, uMsg, wParam, lParam);
-
-	const bool mayChangeText =
-		uMsg == WM_CHAR || uMsg == WM_PASTE || uMsg == WM_CUT || uMsg == WM_CLEAR || uMsg == WM_KEYDOWN;
-	const LRESULT result = CallWindowProc(self->m_originalProc, hwnd, uMsg, wParam, lParam);
-	if (mayChangeText) {
-		self->OnTextChanged();
-	}
-	return result;
 }

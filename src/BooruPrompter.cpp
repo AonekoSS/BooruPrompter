@@ -222,11 +222,6 @@ void BooruPrompter::OnCreate(HWND hwnd) {
 		return;
 	}
 
-	// テキスト変更コールバックを設定
-	m_promptEditor->SetTextChangeCallback([this]() {
-		OnTextChanged(m_hwnd);
-		});
-
 	// サジェスト表示用リストビューの作成
 	std::vector<std::pair<std::wstring, int>> suggestionColumns = {
 		{L"タグ（サジェスト）", 150},
@@ -775,6 +770,9 @@ void BooruPrompter::OnTextChanged(HWND hwnd) {
 
 	// プロンプトが変更されたのでタグリストを更新
 	TagListHandler::SyncTagListFromPrompt(this, currentText);
+
+	// テキスト確定後にシンタックスハイライトを適用
+	m_promptEditor->ApplySyntaxHighlighting(currentText);
 }
 
 int BooruPrompter::Run() {
