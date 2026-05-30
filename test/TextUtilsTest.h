@@ -51,6 +51,8 @@ public:
 	TEST_METHOD(TestExtractTagsFromTextWithEscapedBrackets);
 	TEST_METHOD(TestExtractTagsFromTextWithEmptyBrackets);
 	TEST_METHOD(TestExtractTagsFromTextWithMultipleBrackets);
+	TEST_METHOD(TestExtractTagsFromTextUnclosedBracket);
+	TEST_METHOD(TestExtractTagsFromTextBracketWithTrailingComma);
 
 	// 括弧タグ判定のテスト
 	TEST_METHOD(TestIsBracketTag);

@@ -10,10 +10,10 @@ using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 // MockSyntaxHighlighterの定義
 class MockSyntaxHighlighter {
 public:
-	void SetText(const std::wstring& text) {
-		lastText = text;
+	void SetText(const std::string& text) {
+		lastPrompt = text;
 	}
-	std::wstring lastText;
+	std::string lastPrompt;
 };
 
 // MockBooruPrompterの定義
@@ -85,6 +85,18 @@ public:
 	// タグソートのテスト
 	TEST_METHOD(TestSortTags);
 	TEST_METHOD(TestSortTagsEmpty);
+
+	// タグ整理後のプロンプト復元（カンマ消失バグの再現用）
+	TEST_METHOD(TestUpdatePromptFromTagListRoundTripBasic);
+	TEST_METHOD(TestUpdatePromptFromTagListRoundTripBracketsWithWeight);
+	TEST_METHOD(TestUpdatePromptFromTagListRoundTripBracketsWithoutColon);
+	TEST_METHOD(TestUpdatePromptFromTagListRoundTripMultiline);
+	TEST_METHOD(TestUpdatePromptFromTagListRoundTripWeightBeforeNewline);
+	TEST_METHOD(TestUpdatePromptFromTagListRoundTripClosingParenBeforeNewline);
+	TEST_METHOD(TestSortTagsPreservesBracketsWithWeight);
+	TEST_METHOD(TestSortTagsPreservesMultilinePrompt);
+	TEST_METHOD(TestSortTagsPreservesBracketsWithoutColon);
+	TEST_METHOD(TestSortTagsUnclosedBracketLosesTags);
 
 
 private:

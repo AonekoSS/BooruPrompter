@@ -338,6 +338,32 @@ void TextUtilsTest::TestExtractTagsFromTextWithMultipleBrackets() {
 	AssertTagEquals(tags[6], "tag3", 20, 24);
 }
 
+void TextUtilsTest::TestExtractTagsFromTextUnclosedBracket() {
+	// 閉じ括弧がないケースでも括弧内タグを保持する
+	std::string text = "tag1, (tag2, tag3";
+	TagList tags = extract_tags_from_text(text);
+	std::vector<std::string> tagNames;
+	tagNames.reserve(tags.size());
+	for (const auto& tag : tags) tagNames.push_back(tag.tag);
+	Logger::WriteMessage((std::string("tags: ") + join(tagNames, ",") + std::string("\n")).c_str());
+	Assert::AreEqual(4, (int)tags.size());
+	AssertTagEquals(tags[0], "tag1", 0, 4);
+	AssertTagEquals(tags[1], "(", 6, 7);
+	AssertTagEquals(tags[2], "tag2", 7, 11);
+	AssertTagEquals(tags[3], "tag3", 13, 17);
+}
+
+void TextUtilsTest::TestExtractTagsFromTextBracketWithTrailingComma() {
+	// 括弧内末尾にカンマがあるケース
+	std::string text = "(tag1, tag2,)";
+	TagList tags = extract_tags_from_text(text);
+	Assert::AreEqual(4, (int)tags.size());
+	AssertTagEquals(tags[0], "(", 0, 1);
+	AssertTagEquals(tags[1], "tag1", 1, 5);
+	AssertTagEquals(tags[2], "tag2", 7, 11);
+	AssertTagEquals(tags[3], ")", 12, 13);
+}
+
 void TextUtilsTest::TestIsBracketTag() {
 	// 基本的な括弧タグ判定のテスト
 	Assert::IsTrue(is_bracket_tag("("));
