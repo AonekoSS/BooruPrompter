@@ -103,6 +103,35 @@ void AssertTagList(const std::vector<std::string>& expectedTags) {
 	}
 }
 
+// UpdatePromptFromTagList と同じプロンプト組み立てロジック
+std::string BuildPromptFromTags(const std::vector<std::string>& tags) {
+	std::ostringstream oss;
+	bool isFirst = true;
+	for (const auto& tag : tags) {
+		if (!isFirst && tag.back() != ')') oss << ", ";
+		isFirst = (tag == "\n") || (tag == "(");
+		oss << tag;
+	}
+	return oss.str();
+}
+
+void AssertPromptPreserved(const std::string& expectedPrompt) {
+	const std::string actualPrompt = BuildPromptFromTags(TagListHandler::GetTags());
+	Logger::WriteMessage((std::string("expectedPrompt: ") + expectedPrompt + std::string("\n")).c_str());
+	Logger::WriteMessage((std::string("actualPrompt:   ") + actualPrompt + std::string("\n")).c_str());
+	Assert::AreEqual(expectedPrompt, actualPrompt);
+}
+
+void SyncFromPromptAndSort(MockBooruPrompter* mockPrompter, const std::string& prompt) {
+	TagListHandler::SyncTagListFromPrompt(reinterpret_cast<BooruPrompter*>(mockPrompter), prompt);
+	TagListHandler::SortTags(reinterpret_cast<BooruPrompter*>(mockPrompter));
+}
+
+void SyncFromPromptAndUpdate(MockBooruPrompter* mockPrompter, const std::string& prompt) {
+	TagListHandler::SyncTagListFromPrompt(reinterpret_cast<BooruPrompter*>(mockPrompter), prompt);
+	TagListHandler::UpdatePromptFromTagList(reinterpret_cast<BooruPrompter*>(mockPrompter));
+}
+
 void TagListHandlerTest::TestRefreshTagList() {
 	// RefreshTagListがクラッシュしないことを確認
 	TagListHandler::RefreshTagList(reinterpret_cast<BooruPrompter*>(m_mockPrompter));
@@ -423,6 +452,69 @@ void TagListHandlerTest::TestSortTagsEmpty() {
 	TagListHandler::SyncTagList(reinterpret_cast<BooruPrompter*>(m_mockPrompter), emptyTags);
 	TagListHandler::SortTags(reinterpret_cast<BooruPrompter*>(m_mockPrompter));
 	AssertTagList(emptyTags);
+}
+
+void TagListHandlerTest::TestUpdatePromptFromTagListRoundTripBasic() {
+	const std::string prompt = "1girl, solo, long hair";
+	SyncFromPromptAndUpdate(m_mockPrompter, prompt);
+	AssertPromptPreserved(prompt);
+}
+
+void TagListHandlerTest::TestUpdatePromptFromTagListRoundTripBracketsWithWeight() {
+	const std::string prompt = "long hair, (smile:1.2), 1girl";
+	SyncFromPromptAndUpdate(m_mockPrompter, prompt);
+	AssertPromptPreserved(prompt);
+}
+
+void TagListHandlerTest::TestUpdatePromptFromTagListRoundTripBracketsWithoutColon() {
+	const std::string prompt = "1girl, (smile, open mouth), solo";
+	SyncFromPromptAndUpdate(m_mockPrompter, prompt);
+	AssertPromptPreserved(prompt);
+}
+
+void TagListHandlerTest::TestUpdatePromptFromTagListRoundTripMultiline() {
+	const std::string prompt = "1girl, solo\nlong hair, dress";
+	SyncFromPromptAndUpdate(m_mockPrompter, prompt);
+	AssertPromptPreserved(prompt);
+}
+
+void TagListHandlerTest::TestUpdatePromptFromTagListRoundTripWeightBeforeNewline() {
+	// 重み付き括弧の直後に改行があるケース
+	const std::string prompt = "1girl, (smile:1.2)\nsolo";
+	SyncFromPromptAndUpdate(m_mockPrompter, prompt);
+	AssertPromptPreserved(prompt);
+}
+
+void TagListHandlerTest::TestUpdatePromptFromTagListRoundTripClosingParenBeforeNewline() {
+	// 括弧（コロンなし）の直後に改行があるケース
+	const std::string prompt = "1girl, (smile, open mouth)\nsolo";
+	SyncFromPromptAndUpdate(m_mockPrompter, prompt);
+	AssertPromptPreserved(prompt);
+}
+
+void TagListHandlerTest::TestSortTagsPreservesBracketsWithWeight() {
+	const std::string prompt = "long hair, (smile:1.2), 1girl";
+	SyncFromPromptAndSort(m_mockPrompter, prompt);
+	AssertPromptPreserved(prompt);
+}
+
+void TagListHandlerTest::TestSortTagsPreservesMultilinePrompt() {
+	const std::string prompt = "1girl, solo\nlong hair, dress";
+	SyncFromPromptAndSort(m_mockPrompter, prompt);
+	AssertPromptPreserved(prompt);
+}
+
+void TagListHandlerTest::TestSortTagsPreservesBracketsWithoutColon() {
+	const std::string prompt = "1girl, (smile, open mouth), solo";
+	SyncFromPromptAndSort(m_mockPrompter, prompt);
+	AssertPromptPreserved(prompt);
+}
+
+void TagListHandlerTest::TestSortTagsUnclosedBracketLosesTags() {
+	// 閉じ括弧がない場合、括弧内タグが失われる
+	const std::string prompt = "tag1, (tag2, tag3";
+	SyncFromPromptAndSort(m_mockPrompter, prompt);
+	AssertPromptPreserved(prompt);
 }
 
 
