@@ -124,6 +124,7 @@
     <ClCompile Include="SuggestionTest.cpp" />
     <ClCompile Include="TagListHandlerTest.cpp" />
     <ClCompile Include="FavoriteTagsTest.cpp" />
+    <ClCompile Include="TranslationMergeTest.cpp" />
     <!-- メインプロジェクトのソースファイル -->
     <ClCompile Include="..\src\TextUtils.cpp" />
     <ClCompile Include="..\src\BooruDB.cpp" />
@@ -143,6 +144,7 @@
     <ClInclude Include="SyntaxHighlighterTest.h" />
     <ClInclude Include="TagListHandlerTest.h" />
     <ClInclude Include="FavoriteTagsTest.h" />
+    <ClInclude Include="TranslationMergeTest.h" />
     <!-- メインプロジェクトのヘッダーファイル -->
     <ClInclude Include="..\src\TextUtils.h" />
     <ClInclude Include="..\src\BooruDB.h" />
