@@ -143,11 +143,6 @@
     <Image Include="small.ico" />
   </ItemGroup>
   <ItemGroup>
-    <CopyFileToFolders Include="..\external\booru-japanese-tag\danbooru-machine-jp.csv">
-      <FileType>Document</FileType>
-    </CopyFileToFolders>
-  </ItemGroup>
-  <ItemGroup>
     <CopyFileToFolders Include="..\external\danbooru.csv">
       <FileType>Document</FileType>
     </CopyFileToFolders>
@@ -157,7 +152,20 @@
       <FileType>Document</FileType>
     </CopyFileToFolders>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="translation_overrides.csv">
+      <DeploymentContent>false</DeploymentContent>
+    </None>
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <Target Name="BuildMergeTranslationTool" BeforeTargets="PreBuildEvent">
+    <Message Text="Building translation merge tool..." Importance="high" />
+    <MSBuild Projects="tools\merge_translation.vcxproj" Properties="Configuration=$(Configuration);Platform=$(Platform)" Targets="Build" />
+  </Target>
+  <Target Name="MergeTranslationTable" AfterTargets="BuildMergeTranslationTool" BeforeTargets="PreBuildEvent">
+    <Message Text="Merging translation tables..." Importance="high" />
+    <Exec Command="&quot;$(SolutionDir)..\bin\tools\merge_translation.exe&quot; &quot;$(SolutionDir)..\external\booru-japanese-tag\danbooru-machine-jp.csv&quot; &quot;$(SolutionDir)translation_overrides.csv&quot; &quot;$(SolutionDir)..\bin\danbooru-machine-jp.csv&quot;" />
+  </Target>
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
 </Project>

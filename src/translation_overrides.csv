@@ -1,0 +1,14 @@
+﻿# Translation Overrides
+# =====================
+# このファイルに独自の翻訳修正を追加する。
+# 形式: タグ名,日本語訳
+#
+# 例:
+# 1girl,一人の女の子
+# blue_eyes,青い瞳
+
+solo,独り
+
+black-framed_eyewear,黒縁メガネ
+gold-framed_eyewear,金縁メガネ
+silver-framed_eyewear,銀縁メガネ
