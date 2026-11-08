@@ -1,4 +1,4 @@
-// Translation CSV Merge Tool
+﻿// Translation CSV Merge Tool
 // Merges base translation CSV with override CSV
 
 #include <iostream>
@@ -74,6 +74,39 @@ bool parseCsvLine(const std::string& line, std::string& tag, std::string& transl
 	}
 
 	return true;
+}
+
+// 文字列内の全出現を置換
+std::string replaceAll(std::string text, const std::string& from, const std::string& to) {
+	if (from.empty()) {
+		return text;
+	}
+	size_t pos = 0;
+	while ((pos = text.find(from, pos)) != std::string::npos) {
+		text.replace(pos, from.size(), to);
+		pos += to.size();
+	}
+	return text;
+}
+
+// 出力前の決め打ち訳語置換
+int applyTranslationFixes(std::map<std::string, TranslationEntry>& entries) {
+	static const std::pair<const char*, const char*> kFixes[] = {
+		{ "アイウェア", "メガネ" },
+	};
+
+	int replaceCount = 0;
+	for (auto& [tag, entry] : entries) {
+		std::string fixed = entry.translation;
+		for (const auto& [from, to] : kFixes) {
+			fixed = replaceAll(fixed, from, to);
+		}
+		if (fixed != entry.translation) {
+			entry.translation = std::move(fixed);
+			replaceCount++;
+		}
+	}
+	return replaceCount;
 }
 
 // CSVフィールドをエスケープ（必要に応じて引用符で囲む）
@@ -216,6 +249,10 @@ int main(int argc, char* argv[]) {
 	std::cout << "  - Overwrites:      " << overwriteCount << std::endl;
 	std::cout << "  - New additions:   " << addCount << std::endl;
 	std::cout << "  Total entries:     " << mergedEntries.size() << std::endl;
+
+	// 出力前の決め打ち訳語置換
+	int fixCount = applyTranslationFixes(mergedEntries);
+	std::cout << "  Translation fixes: " << fixCount << std::endl;
 	std::cout << std::endl;
 
 	// 出力先ディレクトリが存在しない場合は作成

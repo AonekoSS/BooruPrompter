@@ -204,4 +204,19 @@ void TranslationMergeTest::TestSortedOutput() {
 	Assert::IsTrue(applePos < bananaPos && bananaPos < zebraPos, L"Output should be sorted");
 }
 
+void TranslationMergeTest::TestTranslationFixEyewear() {
+	std::wstring baseFile = CreateTempFile("base.csv", "eyewear,アイウェア\nsunglasses,サングラス（アイウェア）\n");
+	std::wstring overrideFile = CreateTempFile("override.csv", "");
+	std::wstring outputFile = tempDir + L"\\output.csv";
+
+	int result = RunMergeTool(baseFile, overrideFile, outputFile);
+
+	Assert::AreEqual(0, result, L"Merge tool should succeed");
+
+	std::string output = ReadFile(outputFile);
+	Assert::IsTrue(output.find("eyewear,メガネ") != std::string::npos, L"Should replace アイウェア with メガネ");
+	Assert::IsTrue(output.find("sunglasses,サングラス（メガネ）") != std::string::npos, L"Should replace substring アイウェア");
+	Assert::IsTrue(output.find("アイウェア") == std::string::npos, L"Should not contain アイウェア");
+}
+
 }

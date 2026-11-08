@@ -19,6 +19,7 @@ public:
 	TEST_METHOD(TestDuplicateInOverride);
 	TEST_METHOD(TestEmptyOverride);
 	TEST_METHOD(TestSortedOutput);
+	TEST_METHOD(TestTranslationFixEyewear);
 
 private:
 	std::wstring tempDir;
