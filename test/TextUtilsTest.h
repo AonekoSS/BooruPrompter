@@ -20,6 +20,7 @@ public:
 	TEST_METHOD(TestBooruToImageTag);
 	TEST_METHOD(TestBooruToImageTagWithUnderscore);
 	TEST_METHOD(TestBooruToImageTagWithSpace);
+	TEST_METHOD(TestBooruToImageTagEscapesParentheses);
 
 	// マルチバイト文字判定のテスト
 	TEST_METHOD(TestUtf8HasMultibyte);
@@ -53,6 +54,16 @@ public:
 	TEST_METHOD(TestExtractTagsFromTextWithMultipleBrackets);
 	TEST_METHOD(TestExtractTagsFromTextUnclosedBracket);
 	TEST_METHOD(TestExtractTagsFromTextBracketWithTrailingComma);
+	// エスケープされた括弧（\( \) \[ \] \{ \}）。分割は保ち、整理側の不具合とは分ける
+	TEST_METHOD(TestExtractTagsFromTextEscapedCharacterTag);
+	TEST_METHOD(TestExtractTagsFromTextMultipleEscapedCharacterTags);
+	TEST_METHOD(TestExtractTagsFromTextEscapedTagInsideWeight);
+	TEST_METHOD(TestExtractTagsFromTextEscapedTagInsideWeightWithSibling);
+	TEST_METHOD(TestExtractTagsFromTextMixedEscapedAndUnescapedBrackets);
+	TEST_METHOD(TestExtractTagsFromTextEscapedSquareAndCurlyBrackets);
+	TEST_METHOD(TestExtractTagsFromTextTrailingBackslash);
+	TEST_METHOD(TestExtractTagsFromTextDoubleBackslashBeforeParen);
+	TEST_METHOD(TestExtractTagsFromTextIssue43CharacterTagStaysSeparate);
 
 	// 括弧タグ判定のテスト
 	TEST_METHOD(TestIsBracketTag);
@@ -61,6 +72,8 @@ public:
 	TEST_METHOD(TestIsBracketTagWithCloseBracket);
 	TEST_METHOD(TestIsBracketTagWithEscapedCloseBracket);
 	TEST_METHOD(TestIsBracketTagWithColon);
+	TEST_METHOD(TestIsBracketTagEscapedCharacterAndOtherBrackets);
+	TEST_METHOD(TestIsDelimiterTagIgnoresEscapedBrackets);
 
 	// 文字列分割のテスト
 	TEST_METHOD(TestSplitString);
