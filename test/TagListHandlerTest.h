@@ -98,6 +98,24 @@ public:
 	TEST_METHOD(TestSortTagsPreservesBracketsWithoutColon);
 	TEST_METHOD(TestSortTagsUnclosedBracketLosesTags);
 
+	// エスケープ括弧を含むタグ整理（#43）。EXPECTED_FAIL は正しい結果を断言しており、現状は失敗する
+	TEST_METHOD(TestUpdatePromptFromTagListRoundTripEscapedTagFirst);
+	TEST_METHOD(TestUpdatePromptFromTagListRoundTripEscapedTagNotFirst);
+	TEST_METHOD(TestUpdatePromptFromTagListRoundTripMultipleEscapedTags);
+	TEST_METHOD(TestUpdatePromptFromTagListRoundTripEscapedInsideParens);
+	TEST_METHOD(TestUpdatePromptFromTagListRoundTripMixedWeightAndEscaped);
+	TEST_METHOD(TestSortTagsEscapedCharacterSortsToFront);
+	TEST_METHOD(TestSortTagsIssue43PlainTagsBeforeCharacter);
+	TEST_METHOD(TestSortTagsIssue43SeveralEscapedCharactersMerge);
+	TEST_METHOD(TestSortTagsEscapedTagInsideWeightWhenSortedFirst);
+	TEST_METHOD(TestSortTagsEscapedTagInsideWeightLosesComma);
+	TEST_METHOD(TestSortTagsDedupKeepsEscapedCharacter);
+	TEST_METHOD(TestSortTagsPreservesEscapedSquareAndCurlyBrackets);
+	TEST_METHOD(TestSortTagsPreservesTrailingBackslash);
+	TEST_METHOD(TestSortTagsDoubleBackslashBeforeParenLosesComma);
+	TEST_METHOD(TestSortTagsEscapedTagAfterNewlineLosesComma);
+	TEST_METHOD(TestSortTagsPreservesNonEscapedBrackets);
+
 
 private:
 	MockBooruPrompter* m_mockPrompter;

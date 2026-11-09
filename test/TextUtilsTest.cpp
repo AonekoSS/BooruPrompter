@@ -553,4 +553,132 @@ void TextUtilsTest::TestUnescapeNewlinesNoEscape() {
 	std::wstring result = unescape_newlines(text);
 	Assert::AreEqual(L"Hello World", result.c_str());
 }
+
+void TextUtilsTest::TestBooruToImageTagEscapesParentheses() {
+	// Danbooru表記の括弧は画像生成用にエスケープされる。角括弧・波括弧はそのまま
+	Assert::AreEqual("ganyu \\(genshin impact\\)", booru_to_image_tag("ganyu_(genshin_impact)").c_str());
+	Assert::AreEqual("smile", booru_to_image_tag("smile").c_str());
+	Assert::AreEqual("foo [bar]", booru_to_image_tag("foo_[bar]").c_str());
+	Assert::AreEqual("foo {bar}", booru_to_image_tag("foo_{bar}").c_str());
+}
+
+void TextUtilsTest::TestExtractTagsFromTextEscapedCharacterTag() {
+	// 版権キャラタグはエスケープごと1タグ。重み括弧には分割しない
+	std::string text = "ganyu \\(genshin impact\\)";
+	TagList tags = extract_tags_from_text(text);
+	Assert::AreEqual(1, (int)tags.size());
+	AssertTagEquals(tags[0], "ganyu \\(genshin impact\\)", 0, 24);
+}
+
+void TextUtilsTest::TestExtractTagsFromTextMultipleEscapedCharacterTags() {
+	std::string text = "ganyu \\(genshin impact\\), hutao \\(genshin impact\\)";
+	TagList tags = extract_tags_from_text(text);
+	Assert::AreEqual(2, (int)tags.size());
+	AssertTagEquals(tags[0], "ganyu \\(genshin impact\\)", 0, 24);
+	AssertTagEquals(tags[1], "hutao \\(genshin impact\\)", 26, 50);
+}
+
+void TextUtilsTest::TestExtractTagsFromTextEscapedTagInsideWeight() {
+	// 重み構文の中身がエスケープ済みキャラタグだけのとき
+	std::string text = "(ganyu \\(genshin impact\\):1.2)";
+	TagList tags = extract_tags_from_text(text);
+	Assert::AreEqual(3, (int)tags.size());
+	AssertTagEquals(tags[0], "(", 0, 1);
+	AssertTagEquals(tags[1], "ganyu \\(genshin impact\\)", 1, 25);
+	AssertTagEquals(tags[2], ":1.2)", 25, 30);
+}
+
+void TextUtilsTest::TestExtractTagsFromTextEscapedTagInsideWeightWithSibling() {
+	std::string text = "(smile, ganyu \\(genshin impact\\):1.2)";
+	TagList tags = extract_tags_from_text(text);
+	Assert::AreEqual(4, (int)tags.size());
+	AssertTagEquals(tags[0], "(", 0, 1);
+	AssertTagEquals(tags[1], "smile", 1, 6);
+	AssertTagEquals(tags[2], "ganyu \\(genshin impact\\)", 8, 32);
+	AssertTagEquals(tags[3], ":1.2)", 32, 37);
+}
+
+void TextUtilsTest::TestExtractTagsFromTextMixedEscapedAndUnescapedBrackets() {
+	// 素の重み括弧と、エスケープ済みキャラタグが混在する
+	std::string text = "1girl, (smile:1.2), ganyu \\(genshin impact\\)";
+	TagList tags = extract_tags_from_text(text);
+	Assert::AreEqual(5, (int)tags.size());
+	AssertTagEquals(tags[0], "1girl", 0, 5);
+	AssertTagEquals(tags[1], "(", 7, 8);
+	AssertTagEquals(tags[2], "smile", 8, 13);
+	AssertTagEquals(tags[3], ":1.2)", 13, 18);
+	AssertTagEquals(tags[4], "ganyu \\(genshin impact\\)", 20, 44);
+
+	std::string plain = "1girl, (smile, ganyu \\(genshin impact\\))";
+	TagList plainTags = extract_tags_from_text(plain);
+	Assert::AreEqual(5, (int)plainTags.size());
+	AssertTagEquals(plainTags[0], "1girl", 0, 5);
+	AssertTagEquals(plainTags[1], "(", 7, 8);
+	AssertTagEquals(plainTags[2], "smile", 8, 13);
+	AssertTagEquals(plainTags[3], "ganyu \\(genshin impact\\)", 15, 39);
+	AssertTagEquals(plainTags[4], ")", 39, 40);
+}
+
+void TextUtilsTest::TestExtractTagsFromTextEscapedSquareAndCurlyBrackets() {
+	std::string square = "ganyu \\[genshin impact\\]";
+	TagList squareTags = extract_tags_from_text(square);
+	Assert::AreEqual(1, (int)squareTags.size());
+	AssertTagEquals(squareTags[0], "ganyu \\[genshin impact\\]", 0, 24);
+
+	std::string curly = "ganyu \\{genshin impact\\}";
+	TagList curlyTags = extract_tags_from_text(curly);
+	Assert::AreEqual(1, (int)curlyTags.size());
+	AssertTagEquals(curlyTags[0], "ganyu \\{genshin impact\\}", 0, 24);
+}
+
+void TextUtilsTest::TestExtractTagsFromTextTrailingBackslash() {
+	// 末尾の単体バックスラッシュは次の文字が無いのでエスケープにならない
+	std::string text = "1girl, smile\\";
+	TagList tags = extract_tags_from_text(text);
+	Assert::AreEqual(2, (int)tags.size());
+	AssertTagEquals(tags[0], "1girl", 0, 5);
+	AssertTagEquals(tags[1], "smile\\", 7, 13);
+}
+
+void TextUtilsTest::TestExtractTagsFromTextDoubleBackslashBeforeParen() {
+	// 括弧の外では \\) の ')' は閉じ括弧として扱わず、タグに含める
+	std::string text = "1girl, smile\\\\)";
+	TagList tags = extract_tags_from_text(text);
+	Assert::AreEqual(2, (int)tags.size());
+	AssertTagEquals(tags[0], "1girl", 0, 5);
+	AssertTagEquals(tags[1], "smile\\\\)", 7, 15);
+}
+
+void TextUtilsTest::TestExtractTagsFromTextIssue43CharacterTagStaysSeparate() {
+	// #43: 整理前の分割では、一般タグとキャラタグは別タグのまま
+	std::string text = "smile, long hair, red eyes, 1girl, solo, ganyu \\(genshin impact\\)";
+	TagList tags = extract_tags_from_text(text);
+	Assert::AreEqual(6, (int)tags.size());
+	AssertTagEquals(tags[0], "smile", 0, 5);
+	AssertTagEquals(tags[1], "long hair", 7, 16);
+	AssertTagEquals(tags[2], "red eyes", 18, 26);
+	AssertTagEquals(tags[3], "1girl", 28, 33);
+	AssertTagEquals(tags[4], "solo", 35, 39);
+	AssertTagEquals(tags[5], "ganyu \\(genshin impact\\)", 41, 65);
+}
+
+void TextUtilsTest::TestIsBracketTagEscapedCharacterAndOtherBrackets() {
+	Assert::IsFalse(is_bracket_tag("ganyu \\(genshin impact\\)"));
+	Assert::IsFalse(is_bracket_tag("ganyu \\[genshin impact\\]"));
+	Assert::IsFalse(is_bracket_tag("ganyu \\{genshin impact\\}"));
+	Assert::IsFalse(is_bracket_tag("smile\\\\)"));
+	Assert::IsTrue(is_bracket_tag(":1.2)"));
+	Assert::IsTrue(is_bracket_tag(")"));
+}
+
+void TextUtilsTest::TestIsDelimiterTagIgnoresEscapedBrackets() {
+	Assert::IsTrue(is_delimiter_tag("("));
+	Assert::IsTrue(is_delimiter_tag(")"));
+	Assert::IsTrue(is_delimiter_tag("\n"));
+	Assert::IsTrue(is_delimiter_tag(":1.2)"));
+	Assert::IsFalse(is_delimiter_tag("ganyu \\(genshin impact\\)"));
+	Assert::IsFalse(is_delimiter_tag("ganyu \\[genshin impact\\]"));
+	Assert::IsFalse(is_delimiter_tag("ganyu \\{genshin impact\\}"));
+	Assert::IsFalse(is_delimiter_tag("smile"));
+}
 }

@@ -49,6 +49,12 @@ void BooruDBTestHelper::SetupTestData(BooruDB& db) {
 		{ "fruit", 0 },
 		{ "black hair", 0 },
 		{ "black dress", 0 },
+		// 版権キャラ（カテゴリ4）と版権（カテゴリ3）。既存タグの相対順は変えない
+		{ "ganyu \\(genshin impact\\)", 4 },
+		{ "hutao \\(genshin impact\\)", 4 },
+		{ "keqing \\(genshin impact\\)", 4 },
+		{ "raiden shogun \\(genshin impact\\)", 4 },
+		{ "genshin impact", 3 },
 	};
 
 	int index = 0;
@@ -515,6 +521,151 @@ void TagListHandlerTest::TestSortTagsUnclosedBracketLosesTags() {
 	const std::string prompt = "tag1, (tag2, tag3";
 	SyncFromPromptAndSort(m_mockPrompter, prompt);
 	AssertPromptPreserved(prompt);
+}
+
+// エスケープ括弧の整理。EXPECTED_FAIL は期待する正しいプロンプトを断言する。
+// 失敗してもコンパイルは通る（MSTest のアサーション失敗）。
+// Windows ではテストエクスプローラー、または vstest.console.exe test\bin\test.dll で実行する。
+
+void TagListHandlerTest::TestUpdatePromptFromTagListRoundTripEscapedTagFirst() {
+	// エスケープ済みタグが先頭なら、次の普通のタグとのカンマは残る
+	const std::string prompt = "ganyu \\(genshin impact\\), long hair";
+	SyncFromPromptAndUpdate(m_mockPrompter, prompt);
+	AssertPromptPreserved(prompt);
+}
+
+void TagListHandlerTest::TestUpdatePromptFromTagListRoundTripEscapedTagNotFirst() {
+	// EXPECTED_FAIL: '\)' で終わるタグの直前カンマを、重み閉じ括弧と同様に付けない
+	const std::string prompt = "long hair, ganyu \\(genshin impact\\)";
+	SyncFromPromptAndUpdate(m_mockPrompter, prompt);
+	AssertPromptPreserved(prompt);
+	Assert::AreEqual(static_cast<size_t>(2), TagListHandler::GetTagCount());
+}
+
+void TagListHandlerTest::TestUpdatePromptFromTagListRoundTripMultipleEscapedTags() {
+	// EXPECTED_FAIL: エスケープ済みタグが連続すると、その間のカンマも落ちて1タグになる
+	const std::string prompt = "ganyu \\(genshin impact\\), hutao \\(genshin impact\\)";
+	SyncFromPromptAndUpdate(m_mockPrompter, prompt);
+	AssertPromptPreserved(prompt);
+	Assert::AreEqual(static_cast<size_t>(2), TagListHandler::GetTagCount());
+}
+
+void TagListHandlerTest::TestUpdatePromptFromTagListRoundTripEscapedInsideParens() {
+	// EXPECTED_FAIL: 強調括弧の中でも、エスケープ済みタグの直前カンマが落ちる
+	const std::string prompt = "1girl, (smile, ganyu \\(genshin impact\\)), solo";
+	SyncFromPromptAndUpdate(m_mockPrompter, prompt);
+	AssertPromptPreserved(prompt);
+}
+
+void TagListHandlerTest::TestUpdatePromptFromTagListRoundTripMixedWeightAndEscaped() {
+	// EXPECTED_FAIL: 素の重み括弧の直後にあるエスケープ済みタグとのカンマが落ちる
+	const std::string prompt = "1girl, (smile:1.2), ganyu \\(genshin impact\\)";
+	SyncFromPromptAndUpdate(m_mockPrompter, prompt);
+	AssertPromptPreserved(prompt);
+}
+
+void TagListHandlerTest::TestSortTagsEscapedCharacterSortsToFront() {
+	// 一般タグだけの並びでキャラタグが先頭に来る場合、カンマは落ちない
+	const std::string prompt = "smile, long hair, red eyes, looking at viewer, ganyu \\(genshin impact\\)";
+	SyncFromPromptAndSort(m_mockPrompter, prompt);
+	AssertPromptPreserved("ganyu \\(genshin impact\\), smile, red eyes, long hair, looking at viewer");
+	Assert::AreEqual(static_cast<size_t>(5), TagListHandler::GetTagCount());
+}
+
+void TagListHandlerTest::TestSortTagsIssue43PlainTagsBeforeCharacter() {
+	// EXPECTED_FAIL (#43)
+	// 一般タグが数個並んだあとに版権キャラタグがある。整理すると 1girl / solo が
+	// キャラタグより前に並び、'\)' 直前のカンマが落ちて solo とキャラタグが結合する。
+	// 期待はタグ数7・カンマとエスケープの維持。
+	const std::string prompt =
+		"smile, long hair, red eyes, looking at viewer, 1girl, solo, ganyu \\(genshin impact\\)";
+	SyncFromPromptAndSort(m_mockPrompter, prompt);
+	Logger::WriteMessage((std::string("tags: ") + join(TagListHandler::GetTags(), " | ") + "\n").c_str());
+	Assert::AreEqual(static_cast<size_t>(7), TagListHandler::GetTagCount());
+	AssertPromptPreserved(
+		"1girl, solo, ganyu \\(genshin impact\\), smile, red eyes, long hair, looking at viewer");
+}
+
+void TagListHandlerTest::TestSortTagsIssue43SeveralEscapedCharactersMerge() {
+	// EXPECTED_FAIL (#43)
+	// 報告の「手前3,4個が結合」に対応する並び。カテゴリ順で手前に来る
+	// rating と '\)' 終わりのキャラタグが、カンマ無しで1タグに繋がる。
+	// '\)' を含まない版権タグ genshin impact は分かれたままであるべき。
+	const std::string prompt =
+		"smile, long hair, red eyes, dress, rating:safe, "
+		"ganyu \\(genshin impact\\), hutao \\(genshin impact\\), "
+		"keqing \\(genshin impact\\), raiden shogun \\(genshin impact\\), genshin impact";
+	SyncFromPromptAndSort(m_mockPrompter, prompt);
+	Logger::WriteMessage((std::string("tags: ") + join(TagListHandler::GetTags(), " | ") + "\n").c_str());
+	Assert::AreEqual(static_cast<size_t>(10), TagListHandler::GetTagCount());
+	AssertPromptPreserved(
+		"rating:safe, ganyu \\(genshin impact\\), hutao \\(genshin impact\\), "
+		"keqing \\(genshin impact\\), raiden shogun \\(genshin impact\\), "
+		"genshin impact, smile, red eyes, long hair, dress");
+}
+
+void TagListHandlerTest::TestSortTagsEscapedTagInsideWeightWhenSortedFirst() {
+	// 重みの中でキャラタグが先頭にソートされる場合、エスケープとカンマは残る
+	const std::string prompt = "(smile, ganyu \\(genshin impact\\):1.2)";
+	SyncFromPromptAndSort(m_mockPrompter, prompt);
+	AssertPromptPreserved("(ganyu \\(genshin impact\\), smile:1.2)");
+}
+
+void TagListHandlerTest::TestSortTagsEscapedTagInsideWeightLosesComma() {
+	// EXPECTED_FAIL: 辞書に無いエスケープ済みタグは smile の後ろに残り、直前カンマが落ちる
+	const std::string prompt = "(smile, albedo \\(genshin impact\\):1.2), 1girl";
+	SyncFromPromptAndSort(m_mockPrompter, prompt);
+	AssertPromptPreserved("(smile, albedo \\(genshin impact\\):1.2), 1girl");
+}
+
+void TagListHandlerTest::TestSortTagsDedupKeepsEscapedCharacter() {
+	// EXPECTED_FAIL: 重複除去後もエスケープと、手前のタグとのカンマは残る
+	const std::string prompt =
+		"ganyu \\(genshin impact\\), 1girl, ganyu \\(genshin impact\\)";
+	SyncFromPromptAndSort(m_mockPrompter, prompt);
+	Assert::AreEqual(static_cast<size_t>(2), TagListHandler::GetTagCount());
+	AssertPromptPreserved("1girl, ganyu \\(genshin impact\\)");
+}
+
+void TagListHandlerTest::TestSortTagsPreservesEscapedSquareAndCurlyBrackets() {
+	// \[ \] \{ \} は重み構文として扱われず、整理後もエスケープとカンマが残る
+	SyncFromPromptAndSort(m_mockPrompter, "smile, 1girl, ganyu \\[genshin impact\\]");
+	AssertPromptPreserved("1girl, smile, ganyu \\[genshin impact\\]");
+	Assert::AreEqual(static_cast<size_t>(3), TagListHandler::GetTagCount());
+
+	SyncFromPromptAndSort(m_mockPrompter, "smile, 1girl, ganyu \\{genshin impact\\}");
+	AssertPromptPreserved("1girl, smile, ganyu \\{genshin impact\\}");
+	Assert::AreEqual(static_cast<size_t>(3), TagListHandler::GetTagCount());
+}
+
+void TagListHandlerTest::TestSortTagsPreservesTrailingBackslash() {
+	const std::string prompt = "1girl, smile\\";
+	SyncFromPromptAndSort(m_mockPrompter, prompt);
+	AssertPromptPreserved(prompt);
+	Assert::AreEqual(static_cast<size_t>(2), TagListHandler::GetTagCount());
+}
+
+void TagListHandlerTest::TestSortTagsDoubleBackslashBeforeParenLosesComma() {
+	// EXPECTED_FAIL: 末尾が ')' だと、直前が '\\' でもカンマを付けない
+	const std::string prompt = "1girl, smile\\\\)";
+	SyncFromPromptAndSort(m_mockPrompter, prompt);
+	AssertPromptPreserved(prompt);
+	Assert::AreEqual(static_cast<size_t>(2), TagListHandler::GetTagCount());
+}
+
+void TagListHandlerTest::TestSortTagsEscapedTagAfterNewlineLosesComma() {
+	// EXPECTED_FAIL: 改行の次のグループでも、エスケープ済みタグの直前カンマが落ちる
+	const std::string prompt = "1girl\nsmile, albedo \\(genshin impact\\)";
+	SyncFromPromptAndSort(m_mockPrompter, prompt);
+	AssertPromptPreserved(prompt);
+}
+
+void TagListHandlerTest::TestSortTagsPreservesNonEscapedBrackets() {
+	// エスケープしていない括弧は、従来どおりソートしてもカンマが残る
+	const std::string prompt = "solo, (long hair, smile), 1girl";
+	SyncFromPromptAndSort(m_mockPrompter, prompt);
+	AssertPromptPreserved("solo, (smile, long hair), 1girl");
+	Assert::AreEqual(static_cast<size_t>(6), TagListHandler::GetTagCount());
 }
 
 
