@@ -57,7 +57,7 @@ void TagListHandler::UpdatePromptFromTagList(BooruPrompter* pThis) {
 	std::ostringstream oss;
 	bool isFirst = true;
 	for (auto& tag : s_tagItems) {
-		if (!isFirst && tag.tag != "\n" && tag.tag.back() != ')') oss << ", ";
+		if (!isFirst && tag.tag != "\n" && !is_closing_bracket_tag(tag.tag)) oss << ", ";
 		isFirst = (tag.tag == "\n") || (tag.tag == "(");
 		oss << tag.tag;
 	}

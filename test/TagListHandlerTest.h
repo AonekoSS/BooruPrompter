@@ -98,7 +98,7 @@ public:
 	TEST_METHOD(TestSortTagsPreservesBracketsWithoutColon);
 	TEST_METHOD(TestSortTagsUnclosedBracketLosesTags);
 
-	// エスケープ括弧を含むタグ整理（#43）。EXPECTED_FAIL は正しい結果を断言しており、現状は失敗する
+	// エスケープ括弧を含むタグ整理（#43）
 	TEST_METHOD(TestUpdatePromptFromTagListRoundTripEscapedTagFirst);
 	TEST_METHOD(TestUpdatePromptFromTagListRoundTripEscapedTagNotFirst);
 	TEST_METHOD(TestUpdatePromptFromTagListRoundTripMultipleEscapedTags);

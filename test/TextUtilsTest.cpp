@@ -669,6 +669,12 @@ void TextUtilsTest::TestIsBracketTagEscapedCharacterAndOtherBrackets() {
 	Assert::IsFalse(is_bracket_tag("smile\\\\)"));
 	Assert::IsTrue(is_bracket_tag(":1.2)"));
 	Assert::IsTrue(is_bracket_tag(")"));
+
+	Assert::IsFalse(is_closing_bracket_tag("ganyu \\(genshin impact\\)"));
+	Assert::IsFalse(is_closing_bracket_tag("("));
+	Assert::IsFalse(is_closing_bracket_tag("smile\\\\)"));
+	Assert::IsTrue(is_closing_bracket_tag(":1.2)"));
+	Assert::IsTrue(is_closing_bracket_tag(")"));
 }
 
 void TextUtilsTest::TestIsDelimiterTagIgnoresEscapedBrackets() {

@@ -269,6 +269,11 @@ bool is_bracket_tag(const std::string& tag) {
 	return false;
 }
 
+// プロンプトへ戻すとき、このタグの直前にはカンマを付けない
+bool is_closing_bracket_tag(const std::string& tag) {
+	return tag != "(" && is_bracket_tag(tag);
+}
+
 
 namespace {
 
