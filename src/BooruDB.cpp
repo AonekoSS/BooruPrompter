@@ -3,6 +3,7 @@
 #include <sstream>
 #include <algorithm>
 #include <iostream>
+#include <string_view>
 #include <unordered_set>
 #include "BooruDB.h"
 #include "rapidfuzz/fuzz.hpp"
@@ -58,6 +59,9 @@ bool BooruDB::LoadDictionary() {
 	// カスタムタグのセット（重複排除用）
 	std::unordered_set<std::string> customTagsSet(customTags.begin(), customTags.end());
 
+	// 翻訳辞書のタグ順。カテゴリ辞書に無いものだけ後でサジェストリストへ足す
+	std::vector<std::string> translationTags;
+
 	// 辞書ファイル（日本語）
 	{
 		metadata_.clear();
@@ -68,6 +72,7 @@ bool BooruDB::LoadDictionary() {
 			return false;
 		}
 
+		translationTags.reserve(100000);
 		std::string line;
 		while (std::getline(file, line, '\n')) {
 			std::istringstream iss(line);
@@ -76,6 +81,7 @@ bool BooruDB::LoadDictionary() {
 				tag = booru_to_image_tag(tag);
 				if (std::getline(iss, metadata)) {
 					metadata_[tag] = utf8_to_unicode(metadata);
+					translationTags.push_back(std::move(tag));
 				}
 			}
 		}
@@ -109,6 +115,30 @@ bool BooruDB::LoadDictionary() {
 				}
 			}
 		}
+	}
+
+	// カスタムタグ → 翻訳辞書にしか無いタグ → カテゴリ辞書
+	// 既に辞書へ入っているタグは重複させない。
+	if (!translationTags.empty()) {
+		std::vector<std::string> translationOnly;
+		std::unordered_set<std::string> addedTags;
+		{
+			std::unordered_set<std::string_view> knownTags;
+			knownTags.reserve(dictionary_.size());
+			for (const auto& tag : dictionary_) {
+				knownTags.emplace(tag);
+			}
+
+			for (const auto& tag : translationTags) {
+				if (tag.empty()) continue;
+				if (knownTags.find(std::string_view(tag)) != knownTags.end()) continue;
+				if (!addedTags.insert(tag).second) continue;
+				translationOnly.push_back(tag);
+			}
+		}
+
+		const auto insertAt = dictionary_.begin() + static_cast<std::ptrdiff_t>(customTags.size());
+		dictionary_.insert(insertAt, translationOnly.begin(), translationOnly.end());
 	}
 
 	if (dictionary_.empty()) {
@@ -202,10 +232,10 @@ std::wstring BooruDB::GetMetadata(const std::string& tag) {
 // カテゴリー名
 static std::wstring GetCategoryName(int category) {
 	switch (category) {
-		case 1: return L" - [Artist]";
-		case 3: return L" - [Copyright]";
-		case 4: return L" - [Character]";
-		case 5: return L" - [Metadata]";
+	case 1: return L" - [Artist]";
+	case 3: return L" - [Copyright]";
+	case 4: return L" - [Character]";
+	case 5: return L" - [Metadata]";
 	default:
 		return L"";
 	}

@@ -83,6 +83,15 @@ void TranslationMergeTest::TestNormalMerge() {
 	Assert::AreEqual(0, result, L"Merge tool should succeed");
 	Assert::IsTrue(std::filesystem::exists(outputFile), L"Output file should exist");
 
+	{
+		std::ifstream raw(outputFile, std::ios::binary);
+		unsigned char head[3] = {};
+		raw.read(reinterpret_cast<char*>(head), 3);
+		bool hasBom = raw.gcount() >= 3
+			&& head[0] == 0xEF && head[1] == 0xBB && head[2] == 0xBF;
+		Assert::IsFalse(hasBom, L"Output should not start with UTF-8 BOM");
+	}
+
 	std::string output = ReadFile(outputFile);
 	Assert::IsTrue(output.find("tag1,訳1") != std::string::npos, L"Should contain tag1");
 	Assert::IsTrue(output.find("tag2,訳2") != std::string::npos, L"Should contain tag2");
