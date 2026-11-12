@@ -1,10 +1,9 @@
-﻿#pragma once
+#pragma once
 
 #include <functional>
 #include <string>
 #include <vector>
 
-#include "BooruDB.h"
 #include "Tag.h"
 
 class Suggestion {

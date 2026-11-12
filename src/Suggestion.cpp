@@ -1,8 +1,7 @@
-﻿#include "framework.h"
-#include <algorithm>
-#include <iterator>
+#include "framework.h"
 #include "TextUtils.h"
 #include "Suggestion.h"
+#include "BooruDB.h"
 
 Suggestion::Suggestion() : m_SuggestTimer(nullptr) {
 }

@@ -1,4 +1,4 @@
-﻿#include "framework.h"
+#include "framework.h"
 #include <vector>
 #include <fstream>
 #include <algorithm>
@@ -281,10 +281,8 @@ static std::wstring ReadWebpInfo(const std::wstring& filePath) {
 		return std::wstring();  // WebPファイルではない
 	}
 
-	// ファイルサイズを読み込む
-	uint32_t fileSize;
-	file.read(reinterpret_cast<char*>(&fileSize), 4);
-	fileSize = _byteswap_ulong(fileSize);  // リトルエンディアンから変換
+	// RIFFのサイズフィールドは使わないので読み飛ばす
+	file.seekg(4, std::ios::cur);
 
 	// WebPシグネチャを確認
 	char webp_header[4];

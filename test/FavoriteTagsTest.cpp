@@ -1,4 +1,4 @@
-﻿#include "pch.h"
+#include "pch.h"
 #include <fstream>
 #include "FavoriteTagsTest.h"
 #include "../src/TextUtils.h"

@@ -1,9 +1,7 @@
-﻿#pragma once
+#pragma once
 #include <string>
 #include <vector>
-#include <memory>
 #include <functional>
-#include <urlmon.h>
 #include "onnxruntime_cxx_api.h"
 
 class ImageTagDetector {
@@ -29,10 +27,6 @@ public:
     // モデルファイルの存在確認
     bool IsModelFileExists() const;
 
-    // モデルファイルのパスを取得
-    std::wstring GetModelFilePath() const;
-    std::wstring GetTagListFilePath() const;
-
 private:
     // ONNXランタイム関連
     Ort::Env m_ortEnv;
@@ -52,7 +46,6 @@ private:
 
     // タグ検出関連のメソッド
     bool LoadLabelData(std::vector<class TaggerLabel>& master,
-                      std::vector<const class TaggerLabel*>& ratings,
                       std::vector<const class TaggerLabel*>& generals,
                       std::vector<const class TaggerLabel*>& charas);
     bool PreprocessImage(const std::wstring& imagePath,

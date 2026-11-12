@@ -1,4 +1,5 @@
-﻿#include "framework.h"
+#include "framework.h"
+#include <algorithm>
 #include <filesystem>
 #include <sstream>
 
@@ -233,25 +234,54 @@ TagReplaceResult replace_tag_at_cursor(const std::string& text, size_t cursor, c
 	return result;
 }
 
-// トリミング
-std::wstring trim(const std::wstring& text) {
+namespace {
+
+template<class String, class CharT>
+String trim_text(const String& text, const CharT* spaces) {
 	if (text.empty()) {
-		return std::wstring();
+		return String();
 	}
-	size_t first = text.find_first_not_of(L" \t\n\r");
-	if (first == std::wstring::npos) return L"";
-	size_t last = text.find_last_not_of(L" \t\n\r");
+	const size_t first = text.find_first_not_of(spaces);
+	if (first == String::npos) return String();
+	const size_t last = text.find_last_not_of(spaces);
 	return text.substr(first, last - first + 1);
 }
 
-std::string trim(const std::string& text) {
-	if (text.empty()) {
-		return std::string();
+template<class String>
+String unescape_text(const String& text) {
+	using CharT = typename String::value_type;
+	String result;
+	const CharT backslash = static_cast<CharT>('\\');
+	const CharT nchar = static_cast<CharT>('n');
+	const CharT newline = static_cast<CharT>('\n');
+	for (size_t i = 0; i < text.length(); ++i) {
+		if (text[i] == backslash && i + 1 < text.length()) {
+			const CharT next = text[i + 1];
+			if (next == backslash) {
+				result += backslash;
+				++i;
+			} else if (next == nchar) {
+				result += newline;
+				++i;
+			} else {
+				result += next;
+			}
+		} else {
+			result += text[i];
+		}
 	}
-	size_t first = text.find_first_not_of(" \t\n\r");
-	if (first == std::string::npos) return "";
-	size_t last = text.find_last_not_of(" \t\n\r");
-	return text.substr(first, last - first + 1);
+	return result;
+}
+
+} // namespace
+
+// トリミング
+std::wstring trim(const std::wstring& text) {
+	return trim_text(text, L" \t\n\r");
+}
+
+std::string trim(const std::string& text) {
+	return trim_text(text, " \t\n\r");
 }
 
 // 文字列を指定した区切り文字で分割
@@ -338,49 +368,11 @@ std::wstring escape_newlines(const std::wstring& text) {
 
 // 改行コードのアンエスケープ
 std::wstring unescape_newlines(const std::wstring& text) {
-	std::wstring result;
-	for (size_t i = 0; i < text.length(); ++i) {
-		if (text[i] == L'\\' && i + 1 < text.length()) {
-			switch (text[i + 1]) {
-			case L'\\':
-				result += L'\\';
-				++i;
-				break;
-			case L'n':
-				result += L"\n";
-				++i;
-				break;
-			default:
-				result += text[i + 1];
-			}
-		} else {
-			result += text[i];
-		}
-	}
-	return result;
+	return unescape_text(text);
 }
 
 std::string unescape_newlines(const std::string& text) {
-	std::string result;
-	for (size_t i = 0; i < text.length(); ++i) {
-		if (text[i] == '\\' && i + 1 < text.length()) {
-			switch (text[i + 1]) {
-			case '\\':
-				result += '\\';
-				++i;
-				break;
-			case 'n':
-				result += "\n";
-				++i;
-				break;
-			default:
-				result += text[i + 1];
-			}
-		} else {
-			result += text[i];
-		}
-	}
-	return result;
+	return unescape_text(text);
 }
 
 // 区切りタグかどうかを判定
@@ -414,6 +406,26 @@ bool is_closing_bracket_tag(const std::string& tag) {
 
 namespace {
 
+void push_tag(TagList& result, const std::string& tag, size_t start, size_t end) {
+	Tag tagObj;
+	tagObj.tag = tag;
+	tagObj.category = 0;
+	tagObj.start = start;
+	tagObj.end = end;
+	result.push_back(tagObj);
+}
+
+// trim は \r も除くが、範囲は従来どおり空白・タブ・改行だけを見て決める
+void push_trimmed_tag(TagList& result, const std::string& segment, size_t base) {
+	const std::string trimmed = trim(segment);
+	if (trimmed.empty()) {
+		return;
+	}
+	const size_t first = segment.find_first_not_of(" \t\n");
+	const size_t last = segment.find_last_not_of(" \t\n");
+	push_tag(result, trimmed, base + first, base + last + 1);
+}
+
 // 括弧内のタグを抽出（閉じ括弧あり/なし両対応）
 void extract_bracket_inner_tags(
 	TagList& result,
@@ -424,12 +436,7 @@ void extract_bracket_inner_tags(
 {
 	if (closePos <= segmentStart) {
 		if (addClosingBracket) {
-			Tag closeBracket;
-			closeBracket.tag = ")";
-			closeBracket.category = 0;
-			closeBracket.start = closePos;
-			closeBracket.end = closePos + 1;
-			result.push_back(closeBracket);
+			push_tag(result, ")", closePos, closePos + 1);
 		}
 		return;
 	}
@@ -460,21 +467,10 @@ void extract_bracket_inner_tags(
 
 			if (beforeLastComma[beforePos] == ',') {
 				if (beforePos > beforeStart) {
-					std::string tag = beforeLastComma.substr(beforeStart, beforePos - beforeStart);
-					std::string trimmed = trim(tag);
-					if (!trimmed.empty()) {
-						size_t first = tag.find_first_not_of(" \t\n");
-						size_t last = tag.find_last_not_of(" \t\n");
-						size_t trimmedStart = segmentStart + beforeStart + first;
-						size_t trimmedEnd = segmentStart + beforeStart + last + 1;
-
-						Tag tagObj;
-						tagObj.tag = trimmed;
-						tagObj.category = 0;
-						tagObj.start = trimmedStart;
-						tagObj.end = trimmedEnd;
-						result.push_back(tagObj);
-					}
+					push_trimmed_tag(
+						result,
+						beforeLastComma.substr(beforeStart, beforePos - beforeStart),
+						segmentStart + beforeStart);
 				}
 				beforeStart = beforePos + 1;
 			}
@@ -482,21 +478,10 @@ void extract_bracket_inner_tags(
 		}
 
 		if (beforePos > beforeStart) {
-			std::string tag = beforeLastComma.substr(beforeStart, beforePos - beforeStart);
-			std::string trimmed = trim(tag);
-			if (!trimmed.empty()) {
-				size_t first = tag.find_first_not_of(" \t\n");
-				size_t last = tag.find_last_not_of(" \t\n");
-				size_t trimmedStart = segmentStart + beforeStart + first;
-				size_t trimmedEnd = segmentStart + beforeStart + last + 1;
-
-				Tag tagObj;
-				tagObj.tag = trimmed;
-				tagObj.category = 0;
-				tagObj.start = trimmedStart;
-				tagObj.end = trimmedEnd;
-				result.push_back(tagObj);
-			}
+			push_trimmed_tag(
+				result,
+				beforeLastComma.substr(beforeStart, beforePos - beforeStart),
+				segmentStart + beforeStart);
 		}
 	}
 
@@ -514,13 +499,7 @@ void extract_bracket_inner_tags(
 				size_t first = lastSegment.find_first_not_of(" \t\n");
 				size_t beforeColonStartPos = segmentStart + lastSegmentStart + first;
 				size_t beforeColonEndPos = segmentStart + lastSegmentStart + first + colonPos;
-
-				Tag beforeTagObj;
-				beforeTagObj.tag = beforeColonTrimmed;
-				beforeTagObj.category = 0;
-				beforeTagObj.start = beforeColonStartPos;
-				beforeTagObj.end = beforeColonEndPos;
-				result.push_back(beforeTagObj);
+				push_tag(result, beforeColonTrimmed, beforeColonStartPos, beforeColonEndPos);
 			}
 		}
 
@@ -528,41 +507,14 @@ void extract_bracket_inner_tags(
 		size_t first = lastSegment.find_first_not_of(" \t\n");
 		size_t colonStartInOriginal = segmentStart + lastSegmentStart + first + colonPos;
 		size_t trimmedEnd = addClosingBracket ? closePos + 1 : closePos;
-
-		Tag tagObj;
-		tagObj.tag = addClosingBracket ? colonPart + ")" : colonPart;
-		tagObj.category = 0;
-		tagObj.start = colonStartInOriginal;
-		tagObj.end = trimmedEnd;
-		result.push_back(tagObj);
+		push_tag(result, addClosingBracket ? colonPart + ")" : colonPart, colonStartInOriginal, trimmedEnd);
 	} else if (!trimmed.empty()) {
-		size_t first = lastSegment.find_first_not_of(" \t\n");
-		size_t last = lastSegment.find_last_not_of(" \t\n");
-		size_t trimmedStart = segmentStart + lastSegmentStart + first;
-		size_t trimmedEnd = segmentStart + lastSegmentStart + last + 1;
-
-		Tag tagObj;
-		tagObj.tag = trimmed;
-		tagObj.category = 0;
-		tagObj.start = trimmedStart;
-		tagObj.end = trimmedEnd;
-		result.push_back(tagObj);
-
+		push_trimmed_tag(result, lastSegment, segmentStart + lastSegmentStart);
 		if (addClosingBracket) {
-			Tag closeBracket;
-			closeBracket.tag = ")";
-			closeBracket.category = 0;
-			closeBracket.start = closePos;
-			closeBracket.end = closePos + 1;
-			result.push_back(closeBracket);
+			push_tag(result, ")", closePos, closePos + 1);
 		}
 	} else if (addClosingBracket) {
-		Tag closeBracket;
-		closeBracket.tag = ")";
-		closeBracket.category = 0;
-		closeBracket.start = closePos;
-		closeBracket.end = closePos + 1;
-		result.push_back(closeBracket);
+		push_tag(result, ")", closePos, closePos + 1);
 	}
 }
 
@@ -592,30 +544,11 @@ TagList extract_tags_from_text(const std::string& text) {
 		if (text[pos] == '(' && !inBracket) {
 			// 開き括弧の前の部分を処理
 			if (pos > segmentStart) {
-				std::string segment = text.substr(segmentStart, pos - segmentStart);
-				std::string trimmed = trim(segment);
-				if (!trimmed.empty()) {
-					size_t first = segment.find_first_not_of(" \t\n");
-					size_t last = segment.find_last_not_of(" \t\n");
-					size_t trimmedStart = segmentStart + first;
-					size_t trimmedEnd = segmentStart + last + 1;
-
-					Tag tag;
-					tag.tag = trimmed;
-					tag.category = 0;
-					tag.start = trimmedStart;
-					tag.end = trimmedEnd;
-					result.push_back(tag);
-				}
+				push_trimmed_tag(result, text.substr(segmentStart, pos - segmentStart), segmentStart);
 			}
 
 			// 開き括弧自体をタグとして追加
-			Tag openBracket;
-			openBracket.tag = "(";
-			openBracket.category = 0;
-			openBracket.start = pos;
-			openBracket.end = pos + 1;
-			result.push_back(openBracket);
+			push_tag(result, "(", pos, pos + 1);
 
 			segmentStart = pos + 1;
 			inBracket = true;
@@ -634,33 +567,13 @@ TagList extract_tags_from_text(const std::string& text) {
 		// カンマまたは改行の処理（括弧の外のみ）
 		if (!inBracket) {
 			if (text[pos] == ',' || text[pos] == '\n') {
-				// セグメントを処理
 				if (pos > segmentStart) {
-					std::string segment = text.substr(segmentStart, pos - segmentStart);
-					std::string trimmed = trim(segment);
-					if (!trimmed.empty()) {
-						size_t first = segment.find_first_not_of(" \t\n");
-						size_t last = segment.find_last_not_of(" \t\n");
-						size_t trimmedStart = segmentStart + first;
-						size_t trimmedEnd = segmentStart + last + 1;
-
-						Tag tag;
-						tag.tag = trimmed;
-						tag.category = 0;
-						tag.start = trimmedStart;
-						tag.end = trimmedEnd;
-						result.push_back(tag);
-					}
+					push_trimmed_tag(result, text.substr(segmentStart, pos - segmentStart), segmentStart);
 				}
 
 				// 改行コードの場合、改行コード自体もタグとして追加
 				if (text[pos] == '\n') {
-					Tag newlineTag;
-					newlineTag.tag = "\n";
-					newlineTag.category = 0;
-					newlineTag.start = pos;
-					newlineTag.end = pos + 1;
-					result.push_back(newlineTag);
+					push_tag(result, "\n", pos, pos + 1);
 				}
 
 				segmentStart = pos + 1;
@@ -674,21 +587,7 @@ TagList extract_tags_from_text(const std::string& text) {
 	if (inBracket && pos > segmentStart) {
 		extract_bracket_inner_tags(result, text, segmentStart, pos, false);
 	} else if (pos > segmentStart && !inBracket) {
-		std::string segment = text.substr(segmentStart, pos - segmentStart);
-		std::string trimmed = trim(segment);
-		if (!trimmed.empty()) {
-			size_t first = segment.find_first_not_of(" \t\n");
-			size_t last = segment.find_last_not_of(" \t\n");
-			size_t trimmedStart = segmentStart + first;
-			size_t trimmedEnd = segmentStart + last + 1;
-
-			Tag tag;
-			tag.tag = trimmed;
-			tag.category = 0;
-			tag.start = trimmedStart;
-			tag.end = trimmedEnd;
-			result.push_back(tag);
-		}
+		push_trimmed_tag(result, text.substr(segmentStart, pos - segmentStart), segmentStart);
 	}
 
 	return result;

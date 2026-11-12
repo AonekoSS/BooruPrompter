@@ -1,4 +1,4 @@
-﻿#include "pch.h"
+#include "pch.h"
 #include "SuggestionTest.h"
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;

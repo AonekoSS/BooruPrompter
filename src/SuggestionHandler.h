@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "Tag.h"
 
 class BooruPrompter;

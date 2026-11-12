@@ -1,7 +1,6 @@
-﻿#include "framework.h"
+#include "framework.h"
 #include <fstream>
 #include <filesystem>
-#include <sstream>
 #include <algorithm>
 
 #include "ImageTagDetector.h"
@@ -17,7 +16,6 @@
 // タグファイルに書かれているカテゴリーの意味
 #define WD_TAG_CATEGORY_GENERAL	0				// 一般タグ
 #define WD_TAG_CATEGORY_CHARA	4				// キャラクター用タグ
-#define WD_TAG_CATEGORY_RATING	9				// レーティング用タグ
 
 // ラベル一つを表すためのクラス
 class TaggerLabel
@@ -39,15 +37,9 @@ typedef std::vector<TaggerLabel>			TaggerLabelVec;
 typedef std::vector<const TaggerLabel*>		TaggerLabelPtrVec;
 
 ImageTagDetector::ImageTagDetector() : m_initialized(false) {
-    // 実行ファイルのパスを取得
-    wchar_t exePath[MAX_PATH];
-    GetModuleFileName(NULL, exePath, MAX_PATH);
-    std::wstring exePathStr(exePath);
-    std::filesystem::path exeDir = std::filesystem::path(exePathStr).parent_path();
-
     // モデルファイルのパスを設定（実行ファイルと同じ場所）
-    m_modelFilePath = (exeDir / MODEL_FILENAME).wstring();
-    m_tagListFilePath = (exeDir / TAGLIST_FILENAME).wstring();
+    m_modelFilePath = fullpath(MODEL_FILENAME);
+    m_tagListFilePath = fullpath(TAGLIST_FILENAME);
 
     // モデルファイルのダウンロードURL
     m_modelDownloadUrl = MODEL_DOWNLOAD_URL;
@@ -123,8 +115,8 @@ std::vector<std::string> ImageTagDetector::DetectTags(const std::wstring& imageP
 
     // ラベルデータの読み込み
     TaggerLabelVec master;
-    TaggerLabelPtrVec ratings, generals, charas;
-    if (!LoadLabelData(master, ratings, generals, charas)) {
+    TaggerLabelPtrVec generals, charas;
+    if (!LoadLabelData(master, generals, charas)) {
         NotifyProgress(100, L"タグリストの読み込みに失敗");
         return {};
     }
@@ -158,7 +150,7 @@ std::vector<std::string> ImageTagDetector::DetectTags(const std::wstring& imageP
     return result;
 }
 
-bool ImageTagDetector::LoadLabelData(TaggerLabelVec& master, TaggerLabelPtrVec& ratings,
+bool ImageTagDetector::LoadLabelData(TaggerLabelVec& master,
                                    TaggerLabelPtrVec& generals, TaggerLabelPtrVec& charas) {
     std::ifstream labelfile(m_tagListFilePath);
     if (!labelfile) {
@@ -179,9 +171,6 @@ bool ImageTagDetector::LoadLabelData(TaggerLabelVec& master, TaggerLabelPtrVec& 
     // カテゴリにしたがって割り振る
     for (const auto& tag : master) {
         switch (tag.category) {
-        case WD_TAG_CATEGORY_RATING:
-            ratings.push_back(&tag);
-            break;
         case WD_TAG_CATEGORY_CHARA:
             charas.push_back(&tag);
             break;
@@ -411,14 +400,6 @@ bool ImageTagDetector::IsModelFileExists() const {
     return std::filesystem::exists(m_modelFilePath) && std::filesystem::exists(m_tagListFilePath);
 }
 
-std::wstring ImageTagDetector::GetModelFilePath() const {
-    return m_modelFilePath;
-}
-
-std::wstring ImageTagDetector::GetTagListFilePath() const {
-    return m_tagListFilePath;
-}
-
 void ImageTagDetector::SetProgressCallback(std::function<void(int progress, const std::wstring& status)> callback) {
     m_progressCallback = callback;
 }
@@ -433,7 +414,7 @@ void ImageTagDetector::NotifyProgress(int progress, const std::wstring& status) 
 class DownloadCallback : public IBindStatusCallback {
 public:
     DownloadCallback(std::function<void(int progress, const std::wstring& status)> progressCallback, int progressStart = 0, int progressEnd = 100)
-        : m_refCount(1), m_progressCallback(progressCallback), m_totalSize(0), m_isComplete(false), m_lastResult(S_OK),
+        : m_refCount(1), m_progressCallback(progressCallback), m_isComplete(false), m_lastResult(S_OK),
           m_progressStart(progressStart), m_progressEnd(progressEnd) {}
 
     ~DownloadCallback() = default;
@@ -501,7 +482,6 @@ public:
 private:
     LONG m_refCount;
     std::function<void(int progress, const std::wstring& status)> m_progressCallback;
-    ULONG m_totalSize;
     bool m_isComplete;
     HRESULT m_lastResult;
     int m_progressStart;

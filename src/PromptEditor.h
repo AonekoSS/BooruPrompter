@@ -1,9 +1,5 @@
-﻿#pragma once
+#pragma once
 #include <string>
-#include <functional>
-#include <memory>
-#include <vector>
-#include "Tag.h"
 
 class PromptEditor {
 public:
@@ -17,7 +13,6 @@ public:
 
 	void ApplySyntaxHighlighting(const std::string& text);
     DWORD GetSelectionStart() const;
-    DWORD GetSelectionEnd() const;
     DWORD GetCurrentPos() const;
     void SetSelection(DWORD start, DWORD end);
     void ScrollCaretIntoView();

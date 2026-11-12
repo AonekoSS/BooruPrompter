@@ -1,4 +1,4 @@
-﻿#include "framework.h"
+#include "framework.h"
 #include <algorithm>
 #include "SuggestionHandler.h"
 #include "BooruPrompter.h"
@@ -88,7 +88,6 @@ void SuggestionHandler::OnSuggestionSelected(BooruPrompter* pThis, int index) {
 
 	// 現在のカーソル位置を取得
 	DWORD startPos = pThis->m_promptEditor->GetSelectionStart();
-	DWORD endPos = pThis->m_promptEditor->GetSelectionEnd();
 
 	// 現在のテキストを取得
 	auto currentText = pThis->m_promptEditor->GetText();
@@ -152,11 +151,7 @@ void SuggestionHandler::OnSuggestionContextMenu(BooruPrompter* pThis, int x, int
 
 	if (!pThis->m_showingFavorites && commandId == ID_CONTEXT_ADD_FAVORITE) {
 		const auto& tag = pThis->m_currentSuggestions[itemIndex];
-		if (FavoriteTags::AddFavorite(tag.tag)) {
-			pThis->UpdateStatusText(L"お気に入りに追加: " + utf8_to_unicode(tag.tag));
-		} else {
-			pThis->UpdateStatusText(L"既にお気に入りに登録されています: " + utf8_to_unicode(tag.tag));
-		}
+		pThis->AddTagToFavorites(tag.tag);
 		return;
 	}
 

@@ -1,7 +1,6 @@
-﻿#include "framework.h"
+#include "framework.h"
 #include "PromptEditor.h"
 #include <Scintilla.h>
-#include <windowsx.h>
 #include <vector>
 #include "TextUtils.h"
 
@@ -86,10 +85,6 @@ void PromptEditor::ApplySyntaxHighlighting(const std::string& text) {
 
 DWORD PromptEditor::GetSelectionStart() const {
 	return (DWORD)SendMessage(m_hwnd, SCI_GETSELECTIONSTART, 0, 0);
-}
-
-DWORD PromptEditor::GetSelectionEnd() const {
-	return (DWORD)SendMessage(m_hwnd, SCI_GETSELECTIONEND, 0, 0);
 }
 
 DWORD PromptEditor::GetCurrentPos() const {
