@@ -159,7 +159,7 @@
   </Target>
   <Target Name="MergeTranslationTable" AfterTargets="BuildMergeTranslationTool" BeforeTargets="PreBuildEvent">
     <Message Text="Merging translation tables..." Importance="high" />
-    <Exec Command="&quot;$(SolutionDir)..\bin\tools\merge_translation.exe&quot; &quot;$(SolutionDir)..\external\booru-japanese-tag\danbooru-jp.csv&quot; &quot;$(SolutionDir)translation_overrides.csv&quot; &quot;$(SolutionDir)..\bin\danbooru-jp.csv&quot;" />
+    <Exec Command="&quot;$(SolutionDir)..\bin\tools\merge_translation.exe&quot; &quot;$(SolutionDir)..\external\booru-japanese-tag\danbooru-machine-jp.csv&quot; &quot;$(SolutionDir)translation_overrides.csv&quot; &quot;$(SolutionDir)..\bin\danbooru-jp.csv&quot;" />
   </Target>
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
