@@ -1,13 +1,102 @@
 ﻿#include "framework.h"
+#include <algorithm>
 #include "SuggestionHandler.h"
 #include "BooruPrompter.h"
 #include "TextUtils.h"
 #include "TagListHandler.h"
 #include "FavoriteTags.h"
 
+void SuggestionHandler::ApplySuggestionSelection(BooruPrompter* pThis) {
+	HWND lv = pThis->m_hwndSuggestions;
+	if (!lv) return;
+
+	const int count = ListView_GetItemCount(lv);
+	const int selected = pThis->m_selectedSuggestion;
+	for (int i = 0; i < count; ++i) {
+		// フォーカスはエディタに残す。選択状態だけ付けて、描画側で色を付ける
+		const UINT state = (i == selected) ? LVIS_SELECTED : 0;
+		ListView_SetItemState(lv, i, state, LVIS_SELECTED | LVIS_FOCUSED);
+	}
+	if (selected >= 0 && selected < count) {
+		ListView_EnsureVisible(lv, selected, FALSE);
+	}
+	InvalidateRect(lv, nullptr, TRUE);
+}
+
+void SuggestionHandler::ClearSuggestionSelection(BooruPrompter* pThis) {
+	if (pThis->m_selectedSuggestion < 0) return;
+	pThis->m_selectedSuggestion = -1;
+	ApplySuggestionSelection(pThis);
+}
+
 void SuggestionHandler::UpdateSuggestionList(BooruPrompter* pThis, const TagList& suggestions) {
 	pThis->m_currentSuggestions = suggestions;
+	// 一覧が差し替わった直後はどれも選ばない
+	pThis->m_selectedSuggestion = -1;
 	pThis->RefreshTagList(pThis->m_hwndSuggestions, suggestions);
+	ApplySuggestionSelection(pThis);
+}
+
+void SuggestionHandler::MoveSuggestionSelection(BooruPrompter* pThis, int delta) {
+	const int count = static_cast<int>(pThis->m_currentSuggestions.size());
+	if (count <= 0 || delta == 0) return;
+
+	int next;
+	if (pThis->m_selectedSuggestion < 0) {
+		next = delta > 0 ? 0 : count - 1;
+	} else {
+		next = std::clamp(pThis->m_selectedSuggestion + delta, 0, count - 1);
+	}
+	if (next == pThis->m_selectedSuggestion) return;
+
+	pThis->m_selectedSuggestion = next;
+	ApplySuggestionSelection(pThis);
+	if (pThis->m_promptEditor) pThis->m_promptEditor->SetFocus();
+}
+
+void SuggestionHandler::MoveCaretToNextTag(BooruPrompter* pThis) {
+	if (!pThis->m_promptEditor) return;
+	const std::string text = pThis->m_promptEditor->GetText();
+	size_t cursor = pThis->m_promptEditor->GetCurrentPos();
+	if (cursor > text.size()) cursor = text.size();
+	const size_t next = next_tag_position(text, cursor);
+	pThis->m_promptEditor->SetSelection(static_cast<DWORD>(next), static_cast<DWORD>(next));
+	pThis->m_promptEditor->ScrollCaretIntoView();
+	pThis->m_promptEditor->SetFocus();
+	ClearSuggestionSelection(pThis);
+	pThis->RequestSuggestionAtCaret();
+}
+
+void SuggestionHandler::AcceptSuggestion(BooruPrompter* pThis, int index) {
+	if (!pThis->m_promptEditor) return;
+	if (index < 0 || index >= static_cast<int>(pThis->m_currentSuggestions.size())) {
+		MoveCaretToNextTag(pThis);
+		return;
+	}
+
+	const std::string selectedTag = pThis->m_currentSuggestions[index].tag;
+	const std::string currentText = pThis->m_promptEditor->GetText();
+	size_t cursor = pThis->m_promptEditor->GetCurrentPos();
+	if (cursor > currentText.size()) cursor = currentText.size();
+
+	const TagReplaceResult replaced = replace_tag_at_cursor(currentText, cursor, selectedTag);
+	pThis->m_promptEditor->SetText(replaced.text);
+	pThis->m_promptEditor->SetSelection(static_cast<DWORD>(replaced.caret), static_cast<DWORD>(replaced.caret));
+	pThis->m_promptEditor->ScrollCaretIntoView();
+	pThis->m_promptEditor->SetFocus();
+	TagListHandler::SyncTagListFromPrompt(pThis, replaced.text);
+	ClearSuggestionSelection(pThis);
+	pThis->RequestSuggestionAtCaret();
+}
+
+void SuggestionHandler::OnSuggestionTab(BooruPrompter* pThis) {
+	const int index = pThis->m_selectedSuggestion;
+	const int count = static_cast<int>(pThis->m_currentSuggestions.size());
+	if (index >= 0 && index < count) {
+		AcceptSuggestion(pThis, index);
+	} else {
+		MoveCaretToNextTag(pThis);
+	}
 }
 
 void SuggestionHandler::OnSuggestionSelected(BooruPrompter* pThis, int index) {

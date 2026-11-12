@@ -21,6 +21,18 @@ bool utf8_has_multibyte(const std::string& str);
 // カーソル位置のワード範囲取得
 std::tuple<size_t, size_t> get_span_at_cursor(const std::string& text, int pos);
 
+// 次のコンテンツタグの先頭。改行・括弧・重みの閉じは飛ばす。
+// 分割は extract_tags_from_text と同じで、エスケープされた括弧はタグの一部。
+// 次が無ければ text.size()。
+size_t next_tag_position(const std::string& text, size_t cursor);
+
+// カーソル位置のタグを newTag で置き換え、次のコンテンツタグへ進めた位置を返す。
+struct TagReplaceResult {
+	std::string text;
+	size_t caret;
+};
+TagReplaceResult replace_tag_at_cursor(const std::string& text, size_t cursor, const std::string& newTag);
+
 // 文字列を指定した区切り文字で分割
 std::vector<std::string> split_string(const std::string& str, char delimiter);
 

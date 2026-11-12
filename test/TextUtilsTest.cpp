@@ -677,6 +677,155 @@ void TextUtilsTest::TestIsBracketTagEscapedCharacterAndOtherBrackets() {
 	Assert::IsTrue(is_closing_bracket_tag(")"));
 }
 
+void TextUtilsTest::TestNextTagSkipsEscapedParentheses() {
+	std::string text = "ganyu \\(genshin impact\\), hutao \\(genshin impact\\)";
+	TagList tags = extract_tags_from_text(text);
+	Assert::AreEqual(2, (int)tags.size());
+	for (size_t p = tags[0].start; p <= tags[0].end; ++p) {
+		Assert::AreEqual(tags[1].start, next_tag_position(text, p));
+	}
+	Assert::AreEqual(tags[1].start, next_tag_position(text, tags[0].end + 1));
+	Assert::AreEqual(text.size(), next_tag_position(text, tags[1].start));
+	Assert::AreEqual(text.size(), next_tag_position(text, text.size()));
+}
+
+void TextUtilsTest::TestNextTagSkipsBracketsAndNewlines() {
+	std::string bracketed = "tag1, (tag2, tag3), tag4";
+	TagList tags = extract_tags_from_text(bracketed);
+	size_t tag2 = 0, tag3 = 0, tag4 = 0;
+	for (const auto& tag : tags) {
+		if (tag.tag == "tag2") tag2 = tag.start;
+		if (tag.tag == "tag3") tag3 = tag.start;
+		if (tag.tag == "tag4") tag4 = tag.start;
+	}
+	Assert::AreEqual(tag2, next_tag_position(bracketed, 0));
+	Assert::AreEqual(tag3, next_tag_position(bracketed, tag2));
+	Assert::AreEqual(tag4, next_tag_position(bracketed, tag3));
+	Assert::AreEqual(bracketed.size(), next_tag_position(bracketed, tag4));
+
+	std::string lines = "tag1\ntag2\ntag3";
+	TagList lineTags = extract_tags_from_text(lines);
+	Assert::AreEqual(lineTags[2].start, next_tag_position(lines, 0));
+	Assert::AreEqual(lineTags[4].start, next_tag_position(lines, lineTags[2].start));
+	Assert::AreEqual(lines.size(), next_tag_position(lines, lineTags[4].end));
+}
+
+void TextUtilsTest::TestNextTagWalksIssue43Prompt() {
+	std::string text = "smile, long hair, red eyes, 1girl, solo, ganyu \\(genshin impact\\)";
+	TagList tags = extract_tags_from_text(text);
+	Assert::AreEqual(6, (int)tags.size());
+	size_t pos = 0;
+	for (int i = 0; i < 5; ++i) {
+		pos = next_tag_position(text, pos);
+		Assert::AreEqual(tags[i + 1].start, pos);
+	}
+	Assert::AreEqual("ganyu \\(genshin impact\\)", tags.back().tag.c_str());
+	size_t mid = (tags.back().start + tags.back().end) / 2;
+	Assert::AreEqual(text.size(), next_tag_position(text, mid));
+	Assert::AreEqual(text.size(), next_tag_position(text, pos));
+}
+
+void TextUtilsTest::TestReplaceTagAtCursorBasic() {
+	auto endReplace = replace_tag_at_cursor("smil", 4, "smile");
+	Assert::AreEqual("smile, ", endReplace.text.c_str());
+	Assert::AreEqual(endReplace.text.size(), endReplace.caret);
+
+	auto middle = replace_tag_at_cursor("smil, long hair", 4, "smile");
+	Assert::AreEqual("smile, long hair", middle.text.c_str());
+	TagList middleTags = extract_tags_from_text(middle.text);
+	Assert::AreEqual("long hair", middleTags[1].tag.c_str());
+	Assert::AreEqual(middleTags[1].start, middle.caret);
+
+	auto spaced = replace_tag_at_cursor("hello, smil", 11, "smile");
+	Assert::AreEqual("hello, smile, ", spaced.text.c_str());
+	auto tight = replace_tag_at_cursor("hello,smil", 10, "smile");
+	Assert::AreEqual("hello, smile, ", tight.text.c_str());
+
+	auto emptySlot = replace_tag_at_cursor("tag1, ", 6, "smile");
+	Assert::AreEqual("tag1, smile, ", emptySlot.text.c_str());
+	Assert::AreEqual(emptySlot.text.size(), emptySlot.caret);
+
+	auto moveOnly = replace_tag_at_cursor("a, b", 0, "");
+	Assert::AreEqual("a, b", moveOnly.text.c_str());
+	Assert::AreEqual((size_t)3, moveOnly.caret);
+}
+
+void TextUtilsTest::TestReplaceTagKeepsEscapedParentheses() {
+	auto partial = replace_tag_at_cursor("smile, ga \\(gen", std::string("smile, ga \\(gen").size(), "ganyu \\(genshin impact\\)");
+	Assert::AreEqual("smile, ganyu \\(genshin impact\\), ", partial.text.c_str());
+	TagList partialTags = extract_tags_from_text(partial.text);
+	Assert::AreEqual(2, (int)partialTags.size());
+	Assert::AreEqual("smile", partialTags[0].tag.c_str());
+	Assert::AreEqual("ganyu \\(genshin impact\\)", partialTags[1].tag.c_str());
+	Assert::AreEqual(partial.text.size(), partial.caret);
+
+	auto neighbor = replace_tag_at_cursor("smil, ganyu \\(genshin impact\\)", 4, "smile");
+	Assert::AreEqual("smile, ganyu \\(genshin impact\\)", neighbor.text.c_str());
+	TagList neighborTags = extract_tags_from_text(neighbor.text);
+	Assert::AreEqual(2, (int)neighborTags.size());
+	Assert::AreEqual("ganyu \\(genshin impact\\)", neighborTags[1].tag.c_str());
+	Assert::AreEqual(neighborTags[1].start, neighbor.caret);
+}
+
+void TextUtilsTest::TestReplaceTagInsideWeightKeepsBrackets() {
+	auto simple = replace_tag_at_cursor("(smi:1.2)", 2, "smile");
+	Assert::AreEqual("(smile:1.2)", simple.text.c_str());
+
+	std::string text = "(ganyu \\(genshin impact\\):1.2), other";
+	TagList tags = extract_tags_from_text(text);
+	size_t cursor = 0;
+	for (const auto& tag : tags) {
+		if (tag.tag.find("ganyu") != std::string::npos) cursor = tag.start + 1;
+	}
+	auto replaced = replace_tag_at_cursor(text, cursor, "hutao \\(genshin impact\\)");
+	Assert::AreEqual("(hutao \\(genshin impact\\):1.2), other", replaced.text.c_str());
+	TagList after = extract_tags_from_text(replaced.text);
+	bool foundOther = false;
+	for (const auto& tag : after) {
+		if (tag.tag.find("hutao") != std::string::npos) {
+			Assert::AreEqual("hutao \\(genshin impact\\)", tag.tag.c_str());
+		}
+		if (tag.tag == "other") {
+			foundOther = true;
+			Assert::AreEqual(tag.start, replaced.caret);
+		}
+	}
+	Assert::IsTrue(foundOther);
+}
+
+void TextUtilsTest::TestReplaceTagBeforeNewlineKeepsNewline() {
+	auto lf = replace_tag_at_cursor("smil\ntag2", 4, "smile");
+	Assert::AreEqual("smile\ntag2", lf.text.c_str());
+	TagList lfTags = extract_tags_from_text(lf.text);
+	Assert::AreEqual(lfTags[2].start, lf.caret);
+	Assert::AreEqual("tag2", lfTags[2].tag.c_str());
+
+	auto crlf = replace_tag_at_cursor("smil\r\ntag2", 4, "smile");
+	Assert::AreEqual("smile\r\ntag2", crlf.text.c_str());
+}
+
+void TextUtilsTest::TestReplaceTagInsertsIntoEmptyParens() {
+	auto inserted = replace_tag_at_cursor("()", 1, "smile");
+	Assert::AreEqual("(smile)", inserted.text.c_str());
+	TagList tags = extract_tags_from_text(inserted.text);
+	Assert::AreEqual(3, (int)tags.size());
+	Assert::AreEqual("(", tags[0].tag.c_str());
+	Assert::AreEqual("smile", tags[1].tag.c_str());
+	Assert::AreEqual(")", tags[2].tag.c_str());
+}
+
+void TextUtilsTest::TestReplaceInsideDelimiterDoesNotCorrupt() {
+	std::string text = "(smile:1.2), other";
+	TagList tags = extract_tags_from_text(text);
+	size_t mid = 0;
+	for (const auto& tag : tags) {
+		if (!tag.tag.empty() && tag.tag.front() == ':') mid = tag.start + 1;
+	}
+	Assert::IsTrue(mid > 0);
+	auto replaced = replace_tag_at_cursor(text, mid, "ignored");
+	Assert::AreEqual(text.c_str(), replaced.text.c_str());
+}
+
 void TextUtilsTest::TestIsDelimiterTagIgnoresEscapedBrackets() {
 	Assert::IsTrue(is_delimiter_tag("("));
 	Assert::IsTrue(is_delimiter_tag(")"));

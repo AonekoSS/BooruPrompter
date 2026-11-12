@@ -75,6 +75,17 @@ public:
 	TEST_METHOD(TestIsBracketTagEscapedCharacterAndOtherBrackets);
 	TEST_METHOD(TestIsDelimiterTagIgnoresEscapedBrackets);
 
+	// キーボードの「次のタグ」と候補確定時の置換
+	TEST_METHOD(TestNextTagSkipsEscapedParentheses);
+	TEST_METHOD(TestNextTagSkipsBracketsAndNewlines);
+	TEST_METHOD(TestNextTagWalksIssue43Prompt);
+	TEST_METHOD(TestReplaceTagAtCursorBasic);
+	TEST_METHOD(TestReplaceTagKeepsEscapedParentheses);
+	TEST_METHOD(TestReplaceTagInsideWeightKeepsBrackets);
+	TEST_METHOD(TestReplaceTagBeforeNewlineKeepsNewline);
+	TEST_METHOD(TestReplaceTagInsertsIntoEmptyParens);
+	TEST_METHOD(TestReplaceInsideDelimiterDoesNotCorrupt);
+
 	// 文字列分割のテスト
 	TEST_METHOD(TestSplitString);
 	TEST_METHOD(TestSplitStringEmpty);

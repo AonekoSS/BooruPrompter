@@ -56,6 +56,11 @@ private:
 	void OnLButtonDown(HWND hwnd, LPARAM lParam);
 	void OnLButtonUp(HWND hwnd, LPARAM lParam);
 	void OnTextChanged(HWND hwnd);
+	void HookPromptEditor();
+	void RequestSuggestionAtCaret();
+	bool HandleEditorKeyboard(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
+	static LRESULT CALLBACK EditorSubclassProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
+	static WNDPROC s_originalEditorProc;
 
 	// スプリッター関連のメソッド
 	void UpdateLayout();
@@ -88,6 +93,8 @@ private:
 	HWND m_hwndProgressBar; // プログレスバーのハンドル
 	Suggestion m_suggestionManager;
 	TagList m_currentSuggestions;
+	// キーボードで選んでいるサジェスト。-1 は未選択
+	int m_selectedSuggestion = -1;
 	ImageTagDetector m_imageTagDetector; // 画像タグ検出機能
 
 	// サジェストリストのお気に入り表示モード

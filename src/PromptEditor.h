@@ -18,7 +18,9 @@ public:
 	void ApplySyntaxHighlighting(const std::string& text);
     DWORD GetSelectionStart() const;
     DWORD GetSelectionEnd() const;
+    DWORD GetCurrentPos() const;
     void SetSelection(DWORD start, DWORD end);
+    void ScrollCaretIntoView();
     void SetFocus();
     HWND GetHandle() const { return m_hwnd; }
 
