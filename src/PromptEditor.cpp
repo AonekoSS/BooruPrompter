@@ -1,4 +1,4 @@
-﻿#include "framework.h"
+#include "framework.h"
 #include "PromptEditor.h"
 #include <Scintilla.h>
 #include <vector>

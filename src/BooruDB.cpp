@@ -1,4 +1,4 @@
-﻿#include "framework.h"
+#include "framework.h"
 #include <fstream>
 #include <sstream>
 #include <algorithm>

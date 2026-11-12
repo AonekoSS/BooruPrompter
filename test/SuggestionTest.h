@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "CppUnitTest.h"
 #include "../src/Suggestion.h"

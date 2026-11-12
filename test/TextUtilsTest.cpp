@@ -1,4 +1,4 @@
-﻿#include "pch.h"
+#include "pch.h"
 #include <sstream>
 #include <iomanip>
 #include "TextUtilsTest.h"

@@ -1,4 +1,4 @@
-﻿#include "framework.h"
+#include "framework.h"
 #include "TextUtils.h"
 #include "Suggestion.h"
 #include "BooruDB.h"

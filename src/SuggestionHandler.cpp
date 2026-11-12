@@ -1,4 +1,4 @@
-﻿#include "framework.h"
+#include "framework.h"
 #include <algorithm>
 #include "SuggestionHandler.h"
 #include "BooruPrompter.h"

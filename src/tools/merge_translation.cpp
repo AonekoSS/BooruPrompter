@@ -1,4 +1,4 @@
-﻿// Translation CSV Merge Tool
+// Translation CSV Merge Tool
 // Merges base translation CSV with override CSV
 
 #include <iostream>

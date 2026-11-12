@@ -1,4 +1,4 @@
-﻿#include "framework.h"
+#include "framework.h"
 #include <sstream>
 #include <algorithm>
 #include <unordered_map>
