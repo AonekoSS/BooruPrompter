@@ -11,52 +11,6 @@
 
 #include "TextUtils.h"
 
-namespace {
-
-void StripUtf8Bom(std::string& line) {
-	if (line.size() >= 3
-		&& static_cast<unsigned char>(line[0]) == 0xEF
-		&& static_cast<unsigned char>(line[1]) == 0xBB
-		&& static_cast<unsigned char>(line[2]) == 0xBF) {
-		line.erase(0, 3);
-	}
-}
-
-// 翻訳辞書にしか無いタグを、既存リストの末尾へファイル順で追加する。
-// 既に辞書へ入っているタグは重複させない。末尾追加なので前方一致の既存候補順は変わらない。
-void AppendTranslationOnlyTags(std::vector<std::string>& dictionary, const std::vector<std::string>& translationTags) {
-	if (translationTags.empty()) {
-		return;
-	}
-
-	std::vector<std::string> translationOnly;
-	std::unordered_set<std::string> addedTags;
-	{
-		std::unordered_set<std::string_view> knownTags;
-		knownTags.reserve(dictionary.size());
-		for (const auto& tag : dictionary) {
-			knownTags.emplace(tag);
-		}
-
-		for (const auto& tag : translationTags) {
-			if (tag.empty()) {
-				continue;
-			}
-			if (knownTags.find(std::string_view(tag)) != knownTags.end()) {
-				continue;
-			}
-			if (!addedTags.insert(tag).second) {
-				continue;
-			}
-			translationOnly.push_back(tag);
-		}
-	}
-
-	dictionary.insert(dictionary.end(), translationOnly.begin(), translationOnly.end());
-}
-
-}
-
 // Singletonインスタンスを取得
 BooruDB& BooruDB::GetInstance() {
 	static BooruDB instance;
@@ -120,12 +74,7 @@ bool BooruDB::LoadDictionary() {
 
 		translationTags.reserve(100000);
 		std::string line;
-		bool firstLine = true;
 		while (std::getline(file, line, '\n')) {
-			if (firstLine) {
-				firstLine = false;
-				StripUtf8Bom(line);
-			}
 			std::istringstream iss(line);
 			std::string tag, metadata;
 			if (std::getline(iss, tag, ',')) {
@@ -168,7 +117,28 @@ bool BooruDB::LoadDictionary() {
 		}
 	}
 
-	AppendTranslationOnlyTags(dictionary_, translationTags);
+	// カスタムタグ → 翻訳辞書にしか無いタグ → カテゴリ辞書
+	// 既に辞書へ入っているタグは重複させない。
+	if (!translationTags.empty()) {
+		std::vector<std::string> translationOnly;
+		std::unordered_set<std::string> addedTags;
+		{
+			std::unordered_set<std::string_view> knownTags;
+			knownTags.reserve(dictionary_.size());
+			for (const auto& tag : dictionary_) {
+				knownTags.emplace(tag);
+			}
+
+			for (const auto& tag : translationTags) {
+				if (tag.empty()) continue;
+				if (knownTags.find(std::string_view(tag)) != knownTags.end()) continue;
+				if (!addedTags.insert(tag).second) continue;
+				translationOnly.push_back(tag);
+			}
+		}
+
+		dictionary_.insert(dictionary_.begin() + static_cast<std::ptrdiff_t>(customTags.size()), translationOnly.begin(), translationOnly.end());
+	}
 
 	if (dictionary_.empty()) {
 		OutputDebugString(L"dictionary is empty\n");
@@ -261,10 +231,10 @@ std::wstring BooruDB::GetMetadata(const std::string& tag) {
 // カテゴリー名
 static std::wstring GetCategoryName(int category) {
 	switch (category) {
-		case 1: return L" - [Artist]";
-		case 3: return L" - [Copyright]";
-		case 4: return L" - [Character]";
-		case 5: return L" - [Metadata]";
+	case 1: return L" - [Artist]";
+	case 3: return L" - [Copyright]";
+	case 4: return L" - [Character]";
+	case 5: return L" - [Metadata]";
 	default:
 		return L"";
 	}
