@@ -74,7 +74,18 @@ bool BooruDB::LoadDictionary() {
 
 		translationTags.reserve(100000);
 		std::string line;
+		bool firstLine = true;
 		while (std::getline(file, line, '\n')) {
+			// 結合CSVの先頭BOMを外す。残すと先頭タグが別タグになり重複登録される
+			if (firstLine) {
+				firstLine = false;
+				if (line.size() >= 3
+					&& static_cast<unsigned char>(line[0]) == 0xEF
+					&& static_cast<unsigned char>(line[1]) == 0xBB
+					&& static_cast<unsigned char>(line[2]) == 0xBF) {
+					line.erase(0, 3);
+				}
+			}
 			std::istringstream iss(line);
 			std::string tag, metadata;
 			if (std::getline(iss, tag, ',')) {
@@ -137,7 +148,8 @@ bool BooruDB::LoadDictionary() {
 			}
 		}
 
-		dictionary_.insert(dictionary_.begin() + static_cast<std::ptrdiff_t>(customTags.size()), translationOnly.begin(), translationOnly.end());
+		const auto insertAt = dictionary_.begin() + static_cast<std::ptrdiff_t>(customTags.size());
+		dictionary_.insert(insertAt, translationOnly.begin(), translationOnly.end());
 	}
 
 	if (dictionary_.empty()) {
