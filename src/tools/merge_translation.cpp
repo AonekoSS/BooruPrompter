@@ -10,9 +10,6 @@
 #include <algorithm>
 #include <filesystem>
 
-// UTF-8 BOM
-constexpr unsigned char UTF8_BOM[] = { 0xEF, 0xBB, 0xBF };
-
 struct TranslationEntry {
 	std::string tag;
 	std::string translation;
@@ -269,9 +266,6 @@ int main(int argc, char* argv[]) {
 			std::cerr << "ERROR: Cannot create output file: " << tempFile << std::endl;
 			return 1;
 		}
-
-		// UTF-8 BOMを書き込み
-		file.write(reinterpret_cast<const char*>(UTF8_BOM), sizeof(UTF8_BOM));
 
 		// エントリをソート（再現可能な出力順）
 		std::vector<std::pair<std::string, TranslationEntry>> sortedEntries(
