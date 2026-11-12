@@ -2,11 +2,8 @@
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
-#include <winbase.h>
 #include <windowsx.h>
 #include <shellapi.h>
-#include <shlobj.h>
-#include <dlgs.h>
 #include <commctrl.h>
 #include <urlmon.h>
 #include <gdiplus.h>

@@ -2,7 +2,6 @@
 // Microsoft Visual C++ で生成されたインクルード ファイル。
 // BooruPrompter.rc で使用
 //
-#define IDC_MYICON                      2
 #define IDI_BOORUPROMPTER               107
 #define IDI_SMALL                       108
 

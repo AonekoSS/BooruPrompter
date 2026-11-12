@@ -1,7 +1,5 @@
 ﻿#include "framework.h"
 #include <algorithm>
-#include <fstream>
-#include <array>
 #include <future>
 
 #include "Resource.h"
@@ -153,6 +151,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	_In_ int       nCmdShow) {
 	UNREFERENCED_PARAMETER(hPrevInstance);
 	UNREFERENCED_PARAMETER(lpCmdLine);
+	UNREFERENCED_PARAMETER(nCmdShow);
 
 	// コモンコントロールの初期化
 	INITCOMMONCONTROLSEX icex{
@@ -334,12 +333,6 @@ void BooruPrompter::OnCreate(HWND hwnd) {
 	if (!m_savedPrompt.empty()) {
 		SetPrompt(m_savedPrompt);
 		TagListHandler::SyncTagListFromPrompt(this, unicode_to_utf8(m_savedPrompt.c_str()));
-	}
-
-	// 初期状態のステータスバーパーツを設定（プログレスバーあり）
-	{
-		int statusParts[] = { 200, 300, -1 };
-		SendMessage(m_hwndStatusBar, SB_SETPARTS, 3, (LPARAM)statusParts);
 	}
 
 	// 進捗表示をクリア
@@ -589,7 +582,7 @@ void BooruPrompter::OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify) 
 	switch (id) {
 	case ID_EDIT:
 		if (codeNotify == EN_CHANGE) {
-			OnTextChanged(hwnd);
+			OnTextChanged();
 		}
 		break;
 	case ID_CLEAR:
@@ -656,7 +649,7 @@ void BooruPrompter::OnNotifyMessage(HWND hwnd, WPARAM wParam, LPARAM lParam) {
 		if (pnmh->code == LVN_BEGINDRAG) {
 			// ドラッグ開始
 			LPNMLISTVIEW pnmlv = reinterpret_cast<LPNMLISTVIEW>(lParam);
-			TagListHandler::OnTagListDragStart(this, pnmlv->iItem);
+			TagListHandler::OnTagListDragStart(pnmlv->iItem);
 			SetCapture(hwnd);
 		} else if (pnmh->code == LVN_ITEMCHANGED) {
 			LPNMLISTVIEW pnmlv = reinterpret_cast<LPNMLISTVIEW>(lParam);
@@ -826,13 +819,12 @@ void BooruPrompter::OnLButtonUp(HWND hwnd, LPARAM lParam) {
 	}
 }
 
-void BooruPrompter::OnTextChanged(HWND hwnd) {
+void BooruPrompter::OnTextChanged() {
 	// 進捗表示をクリア
 	ClearProgress();
 
 	// 現在のカーソル位置を取得
 	DWORD startPos = m_promptEditor->GetSelectionStart();
-	DWORD endPos = m_promptEditor->GetSelectionEnd();
 
 	// 現在のテキストを取得
 	std::string currentText = m_promptEditor->GetText();
@@ -893,8 +885,7 @@ void BooruPrompter::UpdateLayout() {
 	OnSize(m_hwnd);
 }
 
-void BooruPrompter::HandleSplitterMouse(int x, int y, bool isDown, bool isUp) {
-	// 現在のウィンドウサイズから実際のスプリッター位置を計算
+std::pair<int, int> BooruPrompter::GetHorizontalSplitterHit() {
 	RECT rc;
 	GetClientRect(m_hwnd, &rc);
 	const int clientWidth = rc.right - rc.left;
@@ -903,14 +894,12 @@ void BooruPrompter::HandleSplitterMouse(int x, int y, bool isDown, bool isUp) {
 	auto [toolbarHeight, statusHeight] = GetToolbarAndStatusHeight();
 	int tagListWidth = GetTagListWidth();
 
-	// 実際のスプリッター位置を計算
 	int actualSplitterX = clientWidth - tagListWidth;
 	const int minLeftWidth = DEFAULT_MIN_LEFT_WIDTH;
 	if (actualSplitterX < minLeftWidth) {
 		actualSplitterX = minLeftWidth;
 	}
 
-	// 実際の水平スプリッター位置（m_splitter.yから計算、マージンを考慮）
 	int actualSplitterY = m_splitter.y;
 	if (actualSplitterY == 0) {
 		actualSplitterY = (clientHeight - toolbarHeight - statusHeight) / 3 + LAYOUT_MARGIN;
@@ -921,23 +910,23 @@ void BooruPrompter::HandleSplitterMouse(int x, int y, bool isDown, bool isUp) {
 		maxSplitterY = minSplitterY;
 	}
 	actualSplitterY = std::clamp(actualSplitterY, minSplitterY, maxSplitterY);
+	return { actualSplitterX, actualSplitterY };
+}
 
-	// スプリッター領域の判定（垂直スプリッターは固定されているため、水平スプリッターのみ）
-	auto isInSplitterArea = [actualSplitterX, actualSplitterY](int x, int y) {
-		// 水平スプリッターのみ判定（左側の領域内で、水平スプリッターの上下にマウスがある場合）
-		bool inHorizontal = (y >= actualSplitterY - SPLITTER_HIT_AREA && y <= actualSplitterY + SPLITTER_HIT_AREA && x <= actualSplitterX);
-		return inHorizontal;
-		};
+void BooruPrompter::HandleSplitterMouse(int x, int y, bool isDown, bool isUp) {
+	const auto [actualSplitterX, actualSplitterY] = GetHorizontalSplitterHit();
+	const bool inHorizontal =
+		y >= actualSplitterY - SPLITTER_HIT_AREA &&
+		y <= actualSplitterY + SPLITTER_HIT_AREA &&
+		x <= actualSplitterX;
 
 	if (isDown) {
-		if (!isInSplitterArea(x, y)) return;
+		if (!inHorizontal) return;
 
 		// 水平スプリッター（上下分割）のみ有効
-		if (y >= actualSplitterY - SPLITTER_HIT_AREA && y <= actualSplitterY + SPLITTER_HIT_AREA && x <= actualSplitterX) {
-			m_splitter.draggingType = SPLITTER_TYPE_HORIZONTAL;
-			m_splitter.isDragging = true;
-			SetCapture(m_hwnd);
-		}
+		m_splitter.draggingType = SPLITTER_TYPE_HORIZONTAL;
+		m_splitter.isDragging = true;
+		SetCapture(m_hwnd);
 	}
 	else if (isUp) {
 		if (m_splitter.isDragging) {
@@ -946,10 +935,8 @@ void BooruPrompter::HandleSplitterMouse(int x, int y, bool isDown, bool isUp) {
 			ReleaseCapture();
 		}
 	} else if (m_splitter.isDragging) {
-		// マウス移動処理
 		RECT rc;
 		GetClientRect(m_hwnd, &rc);
-		const int clientWidth = rc.right - rc.left;
 		const int clientHeight = rc.bottom - rc.top;
 
 		auto [toolbarHeight, statusHeight] = GetToolbarAndStatusHeight();
@@ -961,7 +948,6 @@ void BooruPrompter::HandleSplitterMouse(int x, int y, bool isDown, bool isUp) {
 
 		// 垂直スプリッター（左右分割）は固定されているため、ドラッグを無効化
 
-		// 水平スプリッター（上下分割）
 		if (m_splitter.draggingType == SPLITTER_TYPE_HORIZONTAL) {
 			int newSplitterY = std::clamp(y, minSplitterY, maxSplitterY);
 			if (newSplitterY != m_splitter.y) {
@@ -979,33 +965,7 @@ void BooruPrompter::HandleSplitterMouse(int x, int y, bool isDown, bool isUp) {
 void BooruPrompter::UpdateSplitterCursor(int x, int y) {
 	if (TagListHandler::IsDragging() || m_splitter.isDragging) return;
 
-	// 現在のウィンドウサイズから実際のスプリッター位置を計算
-	RECT rc;
-	GetClientRect(m_hwnd, &rc);
-	const int clientWidth = rc.right - rc.left;
-	const int clientHeight = rc.bottom - rc.top;
-
-	auto [toolbarHeight, statusHeight] = GetToolbarAndStatusHeight();
-	int tagListWidth = GetTagListWidth();
-
-	// 実際のスプリッター位置を計算
-	int actualSplitterX = clientWidth - tagListWidth;
-	const int minLeftWidth = DEFAULT_MIN_LEFT_WIDTH;
-	if (actualSplitterX < minLeftWidth) {
-		actualSplitterX = minLeftWidth;
-	}
-
-	// 実際の水平スプリッター位置（m_splitter.yから計算、マージンを考慮）
-	int actualSplitterY = m_splitter.y;
-	if (actualSplitterY == 0) {
-		actualSplitterY = (clientHeight - toolbarHeight - statusHeight) / 3 + LAYOUT_MARGIN;
-	}
-	int maxSplitterY = clientHeight - statusHeight - DEFAULT_MIN_BOTTOM_HEIGHT - LAYOUT_MARGIN;
-	const int minSplitterY = toolbarHeight + DEFAULT_MIN_TOP_HEIGHT + LAYOUT_MARGIN;
-	if (maxSplitterY < minSplitterY) {
-		maxSplitterY = minSplitterY;
-	}
-	actualSplitterY = std::clamp(actualSplitterY, minSplitterY, maxSplitterY);
+	const auto [actualSplitterX, actualSplitterY] = GetHorizontalSplitterHit();
 
 	// 垂直スプリッターは固定されているため、水平スプリッターのみカーソルを変更
 	if (y >= actualSplitterY - SPLITTER_HIT_AREA && y <= actualSplitterY + SPLITTER_HIT_AREA && x <= actualSplitterX) {
@@ -1037,6 +997,14 @@ void BooruPrompter::UpdateProgress(int progress, const std::wstring& statusText)
 
 void BooruPrompter::UpdateStatusText(const std::wstring& text) {
 	SendMessage(m_hwndStatusBar, SB_SETTEXT, 0, (LPARAM)text.c_str());
+}
+
+void BooruPrompter::AddTagToFavorites(const std::string& tag) {
+	if (FavoriteTags::AddFavorite(tag)) {
+		UpdateStatusText(L"お気に入りに追加: " + utf8_to_unicode(tag));
+	} else {
+		UpdateStatusText(L"既にお気に入りに登録されています: " + utf8_to_unicode(tag));
+	}
 }
 
 void BooruPrompter::ClearProgress() {
@@ -1083,17 +1051,7 @@ std::wstring BooruPrompter::GetFromClipboard() {
 
 // 設定の保存・復帰機能
 std::wstring BooruPrompter::GetIniFilePath() {
-	wchar_t exePath[MAX_PATH];
-	GetModuleFileName(NULL, exePath, MAX_PATH);
-
-	// 実行ファイルのパスからディレクトリを取得
-	std::wstring exePathStr(exePath);
-	size_t lastSlash = exePathStr.find_last_of(L"\\/");
-	if (lastSlash != std::wstring::npos) {
-		exePathStr = exePathStr.substr(0, lastSlash + 1);
-	}
-
-	return exePathStr + L"BooruPrompter.ini";
+	return fullpath(L"BooruPrompter.ini");
 }
 
 void BooruPrompter::SaveSettings() {

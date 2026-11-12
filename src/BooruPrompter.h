@@ -4,7 +4,6 @@
 #include <string>
 #include <vector>
 
-#include "BooruDB.h"
 #include "ImageTagDetector.h"
 #include "Tag.h"
 #include "SuggestionHandler.h"
@@ -15,7 +14,7 @@
 
 // スプリッター関連の定数
 constexpr int SPLITTER_TYPE_NONE = 0;
-constexpr int SPLITTER_TYPE_VERTICAL = 1;
+// 1 は左右スプリッター用だった。左右は固定のため欠番。
 constexpr int SPLITTER_TYPE_HORIZONTAL = 2;
 
 // 画像処理結果を表す構造体
@@ -55,7 +54,7 @@ private:
 	void OnMouseMove(HWND hwnd, LPARAM lParam);
 	void OnLButtonDown(HWND hwnd, LPARAM lParam);
 	void OnLButtonUp(HWND hwnd, LPARAM lParam);
-	void OnTextChanged(HWND hwnd);
+	void OnTextChanged();
 	void HookPromptEditor();
 	void RequestSuggestionAtCaret();
 	void DismissSuggestions();
@@ -67,6 +66,8 @@ private:
 	void UpdateLayout();
 	void HandleSplitterMouse(int x, int y, bool isDown, bool isUp);
 	void UpdateSplitterCursor(int x, int y);
+	// 水平スプリッターの当たり判定位置。レイアウト計算とはマージンの足し方が違う。
+	std::pair<int, int> GetHorizontalSplitterHit();
 	std::pair<int, int> GetToolbarAndStatusHeight();
 
 	// タグリストの幅を取得（カラム幅の合計 + マージン）
@@ -103,7 +104,6 @@ private:
 
 	// スプリッター関連
 	struct Splitter {
-		int x = 0;
 		int y = 0;
 		bool isDragging = false;
 		int draggingType = SPLITTER_TYPE_NONE;
@@ -127,6 +127,7 @@ private:
 	// 進捗表示関連のメソッド
 	void UpdateProgress(int progress, const std::wstring& statusText);
 	void UpdateStatusText(const std::wstring& text);
+	void AddTagToFavorites(const std::string& tag);
 	void ClearProgress();
 
 	// クリップボード操作のユーティリティ

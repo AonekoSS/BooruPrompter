@@ -164,7 +164,7 @@ void TagListHandlerTest::TestOnTagListDragStart() {
 	// ドラッグ開始のテスト
 	int dragIndex = 0;
 
-	TagListHandler::OnTagListDragStart(reinterpret_cast<BooruPrompter*>(m_mockPrompter), dragIndex);
+	TagListHandler::OnTagListDragStart(dragIndex);
 
 	Assert::IsTrue(TagListHandler::IsDragging());
 	Assert::AreEqual(dragIndex, TagListHandler::GetDragIndex());
@@ -173,7 +173,7 @@ void TagListHandlerTest::TestOnTagListDragStart() {
 
 void TagListHandlerTest::TestOnTagListDragEnd() {
 	// ドラッグ終了のテスト
-	TagListHandler::OnTagListDragStart(reinterpret_cast<BooruPrompter*>(m_mockPrompter), 0);
+	TagListHandler::OnTagListDragStart(0);
 	TagListHandler::OnTagListDragEnd(reinterpret_cast<BooruPrompter*>(m_mockPrompter));
 
 	Assert::IsFalse(TagListHandler::IsDragging());
@@ -377,7 +377,7 @@ void TagListHandlerTest::TestDeleteTagLastItem() {
 
 void TagListHandlerTest::TestIsDragging() {
 	// ドラッグ状態の取得テスト
-	TagListHandler::OnTagListDragStart(reinterpret_cast<BooruPrompter*>(m_mockPrompter), 0);
+	TagListHandler::OnTagListDragStart(0);
 	Assert::IsTrue(TagListHandler::IsDragging());
 
 	TagListHandler::OnTagListDragEnd(reinterpret_cast<BooruPrompter*>(m_mockPrompter));
@@ -389,7 +389,7 @@ void TagListHandlerTest::TestGetDragIndex() {
 	Assert::AreEqual(-1, TagListHandler::GetDragIndex());
 
 	int dragIndex = 2;
-	TagListHandler::OnTagListDragStart(reinterpret_cast<BooruPrompter*>(m_mockPrompter), dragIndex);
+	TagListHandler::OnTagListDragStart(dragIndex);
 	Assert::AreEqual(dragIndex, TagListHandler::GetDragIndex());
 }
 
@@ -398,7 +398,7 @@ void TagListHandlerTest::TestGetDragTargetIndex() {
 	Assert::AreEqual(-1, TagListHandler::GetDragTargetIndex());
 
 	int dragIndex = 1;
-	TagListHandler::OnTagListDragStart(reinterpret_cast<BooruPrompter*>(m_mockPrompter), dragIndex);
+	TagListHandler::OnTagListDragStart(dragIndex);
 	Assert::AreEqual(dragIndex, TagListHandler::GetDragTargetIndex());
 }
 

@@ -21,7 +21,7 @@ public:
 	// タグリスト関連
 	static void RefreshTagList(BooruPrompter* pThis);
 	static void OnTagListDragDrop(BooruPrompter* pThis, int fromIndex, int toIndex);
-	static void OnTagListDragStart(BooruPrompter* pThis, int index);
+	static void OnTagListDragStart(int index);
 	static void OnTagListDragEnd(BooruPrompter* pThis);
 
 	// プロンプト・タグ同期

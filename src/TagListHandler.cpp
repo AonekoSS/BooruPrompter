@@ -6,7 +6,6 @@
 #include "BooruPrompter.h"
 #include "TextUtils.h"
 #include "BooruDB.h"
-#include "FavoriteTags.h"
 
 // 静的メンバー変数の定義
 TagList TagListHandler::s_tagItems;
@@ -35,7 +34,7 @@ void TagListHandler::OnTagListDragDrop(BooruPrompter* pThis, int fromIndex, int 
 	s_dragIndex = toIndex;
 }
 
-void TagListHandler::OnTagListDragStart(BooruPrompter* pThis, int index) {
+void TagListHandler::OnTagListDragStart(int index) {
 	s_dragIndex = index;
 	s_dragTargetIndex = index;
 	s_isDragging = true;
@@ -139,11 +138,7 @@ void TagListHandler::OnTagListContextCommand(BooruPrompter* pThis, int commandId
 	case ID_CONTEXT_ADD_FAVORITE:
 		{
 			const auto& tag = s_tagItems[selectedIndex];
-			if (FavoriteTags::AddFavorite(tag.tag)) {
-				pThis->UpdateStatusText(L"お気に入りに追加: " + utf8_to_unicode(tag.tag));
-			} else {
-				pThis->UpdateStatusText(L"既にお気に入りに登録されています: " + utf8_to_unicode(tag.tag));
-			}
+			pThis->AddTagToFavorites(tag.tag);
 		}
 		break;
 	}

@@ -2,7 +2,6 @@
 #include <fstream>
 #include <sstream>
 #include <algorithm>
-#include <iostream>
 #include <string_view>
 #include <unordered_set>
 #include "BooruDB.h"
