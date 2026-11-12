@@ -56,8 +56,9 @@ std::string booru_to_image_tag(const std::string& booru_tag) {
 		return std::string();
 	}
 	std::string s = booru_tag;
-	std::replace(s.begin(), s.end(), '_', ' ');
-
+	if (s.length() > 3) {
+		std::replace(s.begin(), s.end(), '_', ' ');
+	}
 	size_t pos = 0;
 	while ((pos = s.find_first_of("()", pos)) != std::string::npos) {
 		s.replace(pos, 0, "\\");
