@@ -3,12 +3,59 @@
 #include <sstream>
 #include <algorithm>
 #include <iostream>
+#include <string_view>
 #include <unordered_set>
 #include "BooruDB.h"
 #include "rapidfuzz/fuzz.hpp"
 #include "rapidfuzz/distance/prefix.hpp"
 
 #include "TextUtils.h"
+
+namespace {
+
+void StripUtf8Bom(std::string& line) {
+	if (line.size() >= 3
+		&& static_cast<unsigned char>(line[0]) == 0xEF
+		&& static_cast<unsigned char>(line[1]) == 0xBB
+		&& static_cast<unsigned char>(line[2]) == 0xBF) {
+		line.erase(0, 3);
+	}
+}
+
+// 翻訳辞書にしか無いタグを、既存リストの末尾へファイル順で追加する。
+// 既に辞書へ入っているタグは重複させない。末尾追加なので前方一致の既存候補順は変わらない。
+void AppendTranslationOnlyTags(std::vector<std::string>& dictionary, const std::vector<std::string>& translationTags) {
+	if (translationTags.empty()) {
+		return;
+	}
+
+	std::vector<std::string> translationOnly;
+	std::unordered_set<std::string> addedTags;
+	{
+		std::unordered_set<std::string_view> knownTags;
+		knownTags.reserve(dictionary.size());
+		for (const auto& tag : dictionary) {
+			knownTags.emplace(tag);
+		}
+
+		for (const auto& tag : translationTags) {
+			if (tag.empty()) {
+				continue;
+			}
+			if (knownTags.find(std::string_view(tag)) != knownTags.end()) {
+				continue;
+			}
+			if (!addedTags.insert(tag).second) {
+				continue;
+			}
+			translationOnly.push_back(tag);
+		}
+	}
+
+	dictionary.insert(dictionary.end(), translationOnly.begin(), translationOnly.end());
+}
+
+}
 
 // Singletonインスタンスを取得
 BooruDB& BooruDB::GetInstance() {
@@ -58,6 +105,9 @@ bool BooruDB::LoadDictionary() {
 	// カスタムタグのセット（重複排除用）
 	std::unordered_set<std::string> customTagsSet(customTags.begin(), customTags.end());
 
+	// 翻訳辞書のタグ順。カテゴリ辞書に無いものだけ後でサジェストリストへ足す
+	std::vector<std::string> translationTags;
+
 	// 辞書ファイル（日本語）
 	{
 		metadata_.clear();
@@ -68,14 +118,21 @@ bool BooruDB::LoadDictionary() {
 			return false;
 		}
 
+		translationTags.reserve(100000);
 		std::string line;
+		bool firstLine = true;
 		while (std::getline(file, line, '\n')) {
+			if (firstLine) {
+				firstLine = false;
+				StripUtf8Bom(line);
+			}
 			std::istringstream iss(line);
 			std::string tag, metadata;
 			if (std::getline(iss, tag, ',')) {
 				tag = booru_to_image_tag(tag);
 				if (std::getline(iss, metadata)) {
 					metadata_[tag] = utf8_to_unicode(metadata);
+					translationTags.push_back(std::move(tag));
 				}
 			}
 		}
@@ -110,6 +167,8 @@ bool BooruDB::LoadDictionary() {
 			}
 		}
 	}
+
+	AppendTranslationOnlyTags(dictionary_, translationTags);
 
 	if (dictionary_.empty()) {
 		OutputDebugString(L"dictionary is empty\n");
