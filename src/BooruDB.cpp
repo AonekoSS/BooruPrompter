@@ -65,7 +65,7 @@ bool BooruDB::LoadDictionary() {
 	{
 		metadata_.clear();
 		metadata_.reserve(100000);
-		std::ifstream file(fullpath(L"danbooru-machine-jp.csv"));
+		std::ifstream file(fullpath(L"danbooru-jp.csv"));
 		if (!file.is_open()) {
 			OutputDebugString(L"not found dictionary file\n");
 			return false;
