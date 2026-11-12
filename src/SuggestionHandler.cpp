@@ -67,39 +67,18 @@ void SuggestionHandler::MoveCaretToNextTag(BooruPrompter* pThis) {
 	pThis->RequestSuggestionAtCaret();
 }
 
-void SuggestionHandler::AcceptSuggestion(BooruPrompter* pThis, int index) {
-	if (!pThis->m_promptEditor) return;
-	if (index < 0 || index >= static_cast<int>(pThis->m_currentSuggestions.size())) {
-		MoveCaretToNextTag(pThis);
-		return;
-	}
-
-	const std::string selectedTag = pThis->m_currentSuggestions[index].tag;
-	const std::string currentText = pThis->m_promptEditor->GetText();
-	size_t cursor = pThis->m_promptEditor->GetCurrentPos();
-	if (cursor > currentText.size()) cursor = currentText.size();
-
-	const TagReplaceResult replaced = replace_tag_at_cursor(currentText, cursor, selectedTag);
-	pThis->m_promptEditor->SetText(replaced.text);
-	pThis->m_promptEditor->SetSelection(static_cast<DWORD>(replaced.caret), static_cast<DWORD>(replaced.caret));
-	pThis->m_promptEditor->ScrollCaretIntoView();
-	pThis->m_promptEditor->SetFocus();
-	TagListHandler::SyncTagListFromPrompt(pThis, replaced.text);
-	ClearSuggestionSelection(pThis);
-	pThis->RequestSuggestionAtCaret();
-}
-
 void SuggestionHandler::OnSuggestionTab(BooruPrompter* pThis) {
 	const int index = pThis->m_selectedSuggestion;
 	const int count = static_cast<int>(pThis->m_currentSuggestions.size());
 	if (index >= 0 && index < count) {
-		AcceptSuggestion(pThis, index);
+		OnSuggestionSelected(pThis, index);
 	} else {
 		MoveCaretToNextTag(pThis);
 	}
 }
 
 void SuggestionHandler::OnSuggestionSelected(BooruPrompter* pThis, int index) {
+	if (!pThis->m_promptEditor) return;
 	if (index < 0 || index >= static_cast<int>(pThis->m_currentSuggestions.size())) {
 		return;
 	}
@@ -128,12 +107,13 @@ void SuggestionHandler::OnSuggestionSelected(BooruPrompter* pThis, int index) {
 	// カーソル位置を更新
 	auto newPos = start + insertTag.length();
 	pThis->m_promptEditor->SetSelection(static_cast<DWORD>(newPos), static_cast<DWORD>(newPos));
+	pThis->m_promptEditor->ScrollCaretIntoView();
 	pThis->m_promptEditor->SetFocus();
 
 	// タグリストを更新
 	TagListHandler::SyncTagListFromPrompt(pThis, newText);
 
-	pThis->m_suggestionManager.Request({});
+	pThis->DismissSuggestions();
 }
 
 void SuggestionHandler::OnSuggestionContextMenu(BooruPrompter* pThis, int x, int y) {

@@ -58,6 +58,7 @@ private:
 	void OnTextChanged(HWND hwnd);
 	void HookPromptEditor();
 	void RequestSuggestionAtCaret();
+	void DismissSuggestions();
 	bool HandleEditorKeyboard(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 	static LRESULT CALLBACK EditorSubclassProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 	static WNDPROC s_originalEditorProc;

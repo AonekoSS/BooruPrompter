@@ -129,6 +129,11 @@ void BooruPrompter::RequestSuggestionAtCaret() {
 	}
 }
 
+void BooruPrompter::DismissSuggestions() {
+	m_suggestionManager.Request({});
+	UpdateStatusText(L"");
+}
+
 // カテゴリーから色を取得
 static COLORREF GetCategoryColor(int category) {
 	switch (category) {
@@ -590,7 +595,7 @@ void BooruPrompter::OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify) 
 	case ID_CLEAR:
 		SetPrompt(L"");
 		TagListHandler::SyncTagListFromPrompt(this, "");
-		m_suggestionManager.Request({});
+		DismissSuggestions();
 		break;
 	case ID_PASTE:
 		// テキストをクリップボードから貼り付け
@@ -599,7 +604,7 @@ void BooruPrompter::OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify) 
 		if (!text.empty()) {
 			SetPrompt(text);
 			TagListHandler::SyncTagListFromPrompt(this, unicode_to_utf8(text.c_str()));
-			m_suggestionManager.Request({});
+			DismissSuggestions();
 		}
 	}
 	break;
