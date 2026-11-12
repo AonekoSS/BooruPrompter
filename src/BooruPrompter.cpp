@@ -7,6 +7,7 @@
 #include "TextUtils.h"
 #include "ImageInfo.h"
 #include "PromptEditor.h"
+#include "BooruDB.h"
 
 // スプリッター関連の定数
 constexpr int SPLITTER_HIT_AREA = 8;  // スプリッターの判定領域（ピクセル）
