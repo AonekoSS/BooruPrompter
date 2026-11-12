@@ -47,6 +47,92 @@ enum {
 constexpr COLORREF LISTVIEW_BK_COLOR = RGB(16, 16, 16);
 constexpr COLORREF LISTVIEW_ALT_COLOR = RGB(32, 32, 32);
 constexpr COLORREF LISTVIEW_TEXT_COLOR = RGB(255, 255, 255);
+constexpr COLORREF LISTVIEW_SELECTED_BG = RGB(255, 196, 0);
+constexpr COLORREF LISTVIEW_SELECTED_TEXT = RGB(16, 16, 16);
+
+namespace {
+
+bool IsImeComposing(HWND hwnd) {
+	HIMC himc = ImmGetContext(hwnd);
+	if (!himc) return false;
+	const LONG bytes = ImmGetCompositionStringW(himc, GCS_COMPSTR, nullptr, 0);
+	ImmReleaseContext(hwnd, himc);
+	return bytes > 0;
+}
+
+} // namespace
+
+WNDPROC BooruPrompter::s_originalEditorProc = nullptr;
+
+LRESULT CALLBACK BooruPrompter::EditorSubclassProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+	auto* pThis = reinterpret_cast<BooruPrompter*>(GetWindowLongPtr(GetParent(hwnd), GWLP_USERDATA));
+	if (pThis && pThis->HandleEditorKeyboard(hwnd, msg, wParam, lParam)) {
+		return 0;
+	}
+	if (s_originalEditorProc) {
+		return CallWindowProc(s_originalEditorProc, hwnd, msg, wParam, lParam);
+	}
+	return DefWindowProc(hwnd, msg, wParam, lParam);
+}
+
+void BooruPrompter::HookPromptEditor() {
+	if (!m_promptEditor || s_originalEditorProc) return;
+	HWND hwnd = m_promptEditor->GetHandle();
+	if (!hwnd) return;
+	const LONG_PTR prev = SetWindowLongPtr(hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(EditorSubclassProc));
+	if (!prev) return;
+	s_originalEditorProc = reinterpret_cast<WNDPROC>(prev);
+}
+
+bool BooruPrompter::HandleEditorKeyboard(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+	UNREFERENCED_PARAMETER(lParam);
+	if (IsImeComposing(hwnd)) return false;
+
+	// Tab の文字入力は常に捨てる。Shift+Tab のキーダウンは Scintilla に渡す。
+	if ((msg == WM_CHAR || msg == WM_UNICHAR) && (wParam == '\t' || wParam == VK_TAB)) {
+		return true;
+	}
+	if (msg != WM_KEYDOWN || wParam == VK_PROCESSKEY) return false;
+
+	const bool ctrl = (GetKeyState(VK_CONTROL) & 0x8000) != 0;
+	const bool shift = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
+	const bool alt = (GetKeyState(VK_MENU) & 0x8000) != 0;
+
+	if (wParam == VK_TAB && !ctrl && !shift && !alt) {
+		SuggestionHandler::OnSuggestionTab(this);
+		return true;
+	}
+	// ↑↓単体は行移動のまま。Ctrl 付きだけ候補移動。
+	if (ctrl && !shift && !alt && (wParam == VK_UP || wParam == VK_DOWN)) {
+		SuggestionHandler::MoveSuggestionSelection(this, wParam == VK_DOWN ? 1 : -1);
+		return true;
+	}
+	return false;
+}
+
+void BooruPrompter::RequestSuggestionAtCaret() {
+	if (!m_promptEditor || m_showingFavorites) return;
+
+	const std::string currentText = m_promptEditor->GetText();
+	size_t pos = m_promptEditor->GetCurrentPos();
+	if (pos > currentText.size()) pos = currentText.size();
+	const auto [start, end] = get_span_at_cursor(currentText, static_cast<int>(pos));
+	std::string currentWord;
+	if (start <= end && end <= currentText.size()) {
+		currentWord = trim(currentText.substr(start, end - start));
+	}
+	m_suggestionManager.Request(currentWord);
+	if (!currentWord.empty()) {
+		UpdateStatusText(L"サジェスト中： " + utf8_to_unicode(currentWord));
+	} else {
+		UpdateStatusText(L"");
+	}
+}
+
+void BooruPrompter::DismissSuggestions() {
+	m_suggestionManager.Request({});
+	UpdateStatusText(L"");
+}
 
 // カテゴリーから色を取得
 static COLORREF GetCategoryColor(int category) {
@@ -221,6 +307,7 @@ void BooruPrompter::OnCreate(HWND hwnd) {
 	if (!m_promptEditor->Initialize(hwnd, 0, 0, 0, 0, (HMENU)ID_EDIT)) {
 		return;
 	}
+	HookPromptEditor();
 
 	// サジェスト表示用リストビューの作成
 	std::vector<std::pair<std::wstring, int>> suggestionColumns = {
@@ -508,7 +595,7 @@ void BooruPrompter::OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify) 
 	case ID_CLEAR:
 		SetPrompt(L"");
 		TagListHandler::SyncTagListFromPrompt(this, "");
-		m_suggestionManager.Request({});
+		DismissSuggestions();
 		break;
 	case ID_PASTE:
 		// テキストをクリップボードから貼り付け
@@ -517,7 +604,7 @@ void BooruPrompter::OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify) 
 		if (!text.empty()) {
 			SetPrompt(text);
 			TagListHandler::SyncTagListFromPrompt(this, unicode_to_utf8(text.c_str()));
-			m_suggestionManager.Request({});
+			DismissSuggestions();
 		}
 	}
 	break;
@@ -759,6 +846,9 @@ void BooruPrompter::OnTextChanged(HWND hwnd) {
 		m_showingFavorites = false;
 		SendMessage(m_hwndToolbar, TB_CHECKBUTTON, ID_FAVORITES, MAKELONG(FALSE, 0));
 	}
+
+	// 文字を打ったら候補の選択は一旦外す
+	SuggestionHandler::ClearSuggestionSelection(this);
 
 	// サジェストリクエスト
 	m_suggestionManager.Request(currentWord);
@@ -1088,6 +1178,14 @@ LRESULT CALLBACK BooruPrompter::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, 
 						return CDRF_NOTIFYITEMDRAW | CDRF_NEWFONT;
 					case CDDS_ITEMPREPAINT: {
 						int row = static_cast<int>(lplvcd->nmcd.dwItemSpec);
+						const bool suggestionSelected = pnmh->hwndFrom == pThis->m_hwndSuggestions
+							&& pThis->m_selectedSuggestion >= 0
+							&& row == pThis->m_selectedSuggestion;
+						if (suggestionSelected) {
+							lplvcd->clrText = LISTVIEW_SELECTED_TEXT;
+							lplvcd->clrTextBk = LISTVIEW_SELECTED_BG;
+							return CDRF_NOTIFYSUBITEMDRAW | CDRF_NEWFONT;
+						}
 						if (pnmh->hwndFrom == pThis->m_hwndTagList) {
 							lplvcd->clrText = GetCategoryColor(TagListHandler::GetCategory(row));
 						} else if (pnmh->hwndFrom == pThis->m_hwndSuggestions) {
@@ -1100,6 +1198,16 @@ LRESULT CALLBACK BooruPrompter::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, 
 							lplvcd->clrText = LISTVIEW_TEXT_COLOR;
 						}
 						lplvcd->clrTextBk = (row % 2 == 0) ? LISTVIEW_BK_COLOR : LISTVIEW_ALT_COLOR;
+						return CDRF_DODEFAULT;
+					}
+					case CDDS_ITEMPREPAINT | CDDS_SUBITEM: {
+						int row = static_cast<int>(lplvcd->nmcd.dwItemSpec);
+						if (pnmh->hwndFrom == pThis->m_hwndSuggestions
+							&& pThis->m_selectedSuggestion >= 0
+							&& row == pThis->m_selectedSuggestion) {
+							lplvcd->clrText = LISTVIEW_SELECTED_TEXT;
+							lplvcd->clrTextBk = LISTVIEW_SELECTED_BG;
+						}
 						return CDRF_DODEFAULT;
 					}
 					}

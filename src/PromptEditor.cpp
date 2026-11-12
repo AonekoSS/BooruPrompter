@@ -92,9 +92,17 @@ DWORD PromptEditor::GetSelectionEnd() const {
 	return (DWORD)SendMessage(m_hwnd, SCI_GETSELECTIONEND, 0, 0);
 }
 
+DWORD PromptEditor::GetCurrentPos() const {
+	return (DWORD)SendMessage(m_hwnd, SCI_GETCURRENTPOS, 0, 0);
+}
+
 void PromptEditor::SetSelection(DWORD start, DWORD end) {
 	SendMessage(m_hwnd, SCI_SETSELECTIONSTART, start, 0);
 	SendMessage(m_hwnd, SCI_SETSELECTIONEND, end, 0);
+}
+
+void PromptEditor::ScrollCaretIntoView() {
+	SendMessage(m_hwnd, SCI_SCROLLCARET, 0, 0);
 }
 
 void PromptEditor::SetFocus() {
@@ -143,4 +151,7 @@ void PromptEditor::SetupStyles() {
 	SendMessage(m_hwnd, SCI_SETHSCROLLBAR, FALSE, 0);
 	SendMessage(m_hwnd, SCI_SETVIEWEOL, FALSE, 0);
 	SendMessage(m_hwnd, SCI_SETVIEWWS, SCWS_INVISIBLE, 0);
+
+	// Tab は文字入力に使わない。確定と次タグ移動は親ウィンドウ側で処理する
+	SendMessage(m_hwnd, SCI_ASSIGNCMDKEY, static_cast<WPARAM>(SCK_TAB), static_cast<LPARAM>(SCI_NULL));
 }
