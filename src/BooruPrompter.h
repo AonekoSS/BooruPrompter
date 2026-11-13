@@ -66,7 +66,7 @@ private:
 	void UpdateLayout();
 	void HandleSplitterMouse(int x, int y, bool isDown, bool isUp);
 	void UpdateSplitterCursor(int x, int y);
-	// 水平スプリッターの当たり判定位置。レイアウト計算とはマージンの足し方が違う。
+	// 水平スプリッターの当たり判定位置。CalculateLayout と同じ。
 	std::pair<int, int> GetHorizontalSplitterHit();
 	std::pair<int, int> GetToolbarAndStatusHeight();
 

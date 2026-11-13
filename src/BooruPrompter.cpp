@@ -20,6 +20,7 @@ constexpr int DEFAULT_MIN_BOTTOM_HEIGHT = 100;
 constexpr int DEFAULT_WINDOW_WIDTH = 800;
 constexpr int DEFAULT_WINDOW_HEIGHT = 600;
 constexpr int LAYOUT_MARGIN = 4;
+constexpr int SPLITTER_GAP = 2;
 
 // 画像処理完了タイプ
 constexpr int IMAGE_PROCESSING_INIT_FAILED = 0;
@@ -505,6 +506,17 @@ void BooruPrompter::OnGetMinMaxInfo(HWND hwnd, LPARAM lParam) {
 	pMMI->ptMinTrackSize.y = rcClient.bottom - rcClient.top;
 }
 
+namespace {
+
+std::pair<int, int> splitter_y_range(int clientHeight, int toolbarHeight, int statusHeight) {
+	int maxY = clientHeight - statusHeight - DEFAULT_MIN_BOTTOM_HEIGHT;
+	const int minY = toolbarHeight + DEFAULT_MIN_TOP_HEIGHT;
+	if (maxY < minY) maxY = minY;
+	return { minY, maxY };
+}
+
+} // namespace
+
 BooruPrompter::LayoutInfo BooruPrompter::CalculateLayout(int clientWidth, int clientHeight) {
 	LayoutInfo layout;
 
@@ -522,20 +534,12 @@ BooruPrompter::LayoutInfo BooruPrompter::CalculateLayout(int clientWidth, int cl
 		layout.splitter.x = minLeftWidth;
 	}
 
-	// 上下のスプリッター位置の制限
-	int maxSplitterY = clientHeight - layout.statusHeight - DEFAULT_MIN_BOTTOM_HEIGHT;
-	const int minSplitterY = layout.toolbarHeight + DEFAULT_MIN_TOP_HEIGHT;
-
 	// スプリッター位置の初期化（初回のみ）
 	if (m_splitter.y == 0) {
-		m_splitter.y = (clientHeight - layout.toolbarHeight - layout.statusHeight) / 3;  // 初期位置は1/3 + マージン
+		m_splitter.y = (clientHeight - layout.toolbarHeight - layout.statusHeight) / 3;
 	}
 
-	// min <= max になるように調整（ウィンドウが小さすぎる場合の対策）
-	if (maxSplitterY < minSplitterY) {
-		maxSplitterY = minSplitterY;
-	}
-
+	const auto [minSplitterY, maxSplitterY] = splitter_y_range(clientHeight, layout.toolbarHeight, layout.statusHeight);
 	layout.splitter.y = std::clamp(m_splitter.y, minSplitterY, maxSplitterY);
 
 	// 4分割の設定
@@ -553,15 +557,15 @@ void BooruPrompter::ApplyLayout(const LayoutInfo& layout) {
 		LAYOUT_MARGIN,
 		layout.toolbarHeight + LAYOUT_MARGIN,
 		layout.leftWidth - LAYOUT_MARGIN * 2,
-		layout.topHeight - LAYOUT_MARGIN * 2,
+		layout.topHeight - LAYOUT_MARGIN - SPLITTER_GAP,
 		SWP_NOZORDER);
 
 	// 左下: サジェストリスト
 	SetWindowPos(m_hwndSuggestions, NULL,
 		LAYOUT_MARGIN,
-		layout.splitter.y + LAYOUT_MARGIN,
+		layout.splitter.y + SPLITTER_GAP,
 		layout.leftWidth - LAYOUT_MARGIN * 2,
-		layout.bottomHeight - LAYOUT_MARGIN * 2,
+		layout.bottomHeight - LAYOUT_MARGIN - SPLITTER_GAP,
 		SWP_NOZORDER);
 
 	// 右側: タグリスト
@@ -867,29 +871,8 @@ void BooruPrompter::UpdateLayout() {
 std::pair<int, int> BooruPrompter::GetHorizontalSplitterHit() {
 	RECT rc;
 	GetClientRect(m_hwnd, &rc);
-	const int clientWidth = rc.right - rc.left;
-	const int clientHeight = rc.bottom - rc.top;
-
-	auto [toolbarHeight, statusHeight] = GetToolbarAndStatusHeight();
-	int tagListWidth = GetTagListWidth();
-
-	int actualSplitterX = clientWidth - tagListWidth;
-	const int minLeftWidth = DEFAULT_MIN_LEFT_WIDTH;
-	if (actualSplitterX < minLeftWidth) {
-		actualSplitterX = minLeftWidth;
-	}
-
-	int actualSplitterY = m_splitter.y;
-	if (actualSplitterY == 0) {
-		actualSplitterY = (clientHeight - toolbarHeight - statusHeight) / 3 + LAYOUT_MARGIN;
-	}
-	int maxSplitterY = clientHeight - statusHeight - DEFAULT_MIN_BOTTOM_HEIGHT - LAYOUT_MARGIN;
-	const int minSplitterY = toolbarHeight + DEFAULT_MIN_TOP_HEIGHT + LAYOUT_MARGIN;
-	if (maxSplitterY < minSplitterY) {
-		maxSplitterY = minSplitterY;
-	}
-	actualSplitterY = std::clamp(actualSplitterY, minSplitterY, maxSplitterY);
-	return { actualSplitterX, actualSplitterY };
+	const auto layout = CalculateLayout(rc.right - rc.left, rc.bottom - rc.top);
+	return { layout.splitter.x, layout.splitter.y };
 }
 
 void BooruPrompter::HandleSplitterMouse(int x, int y, bool isDown, bool isUp) {
@@ -919,9 +902,7 @@ void BooruPrompter::HandleSplitterMouse(int x, int y, bool isDown, bool isUp) {
 		const int clientHeight = rc.bottom - rc.top;
 
 		auto [toolbarHeight, statusHeight] = GetToolbarAndStatusHeight();
-
-		const int maxSplitterY = clientHeight - statusHeight - DEFAULT_MIN_BOTTOM_HEIGHT - LAYOUT_MARGIN;
-		const int minSplitterY = toolbarHeight + DEFAULT_MIN_TOP_HEIGHT + LAYOUT_MARGIN;
+		const auto [minSplitterY, maxSplitterY] = splitter_y_range(clientHeight, toolbarHeight, statusHeight);
 
 		bool needsUpdate = false;
 
