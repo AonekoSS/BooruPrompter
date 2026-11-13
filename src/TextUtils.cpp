@@ -98,53 +98,6 @@ std::tuple<size_t, size_t> get_span_at_cursor(const std::string& text, int pos) 
 	return { start, end };
 }
 
-namespace {
-
-bool gap_is_hspace(const std::string& text, size_t from, size_t to) {
-	for (size_t i = from; i < to && i < text.size(); ++i) {
-		const char c = text[i];
-		if (c != ' ' && c != '\t') return false;
-	}
-	return true;
-}
-
-// カーソルが載っているコンテンツタグ。直後の空白、直前の空白も含む。
-const Tag* find_attached_content_tag(const std::string& text, const TagList& tags, size_t cursor) {
-	const Tag* trailing = nullptr;
-	const Tag* leading = nullptr;
-	for (const auto& tag : tags) {
-		if (is_delimiter_tag(tag.tag)) continue;
-		if (cursor >= tag.start && cursor < tag.end) return &tag;
-		if (cursor >= tag.end && gap_is_hspace(text, tag.end, cursor)) {
-			trailing = &tag;
-		}
-		if (!leading && cursor <= tag.start && gap_is_hspace(text, cursor, tag.start)) {
-			leading = &tag;
-		}
-	}
-	if (trailing) return trailing;
-	return leading;
-}
-
-const Tag* find_delimiter_inside(const TagList& tags, size_t cursor) {
-	for (const auto& tag : tags) {
-		if (!is_delimiter_tag(tag.tag)) continue;
-		if (cursor > tag.start && cursor < tag.end) return &tag;
-	}
-	return nullptr;
-}
-
-// 末尾、または次がカンマ・改行・閉じ括弧・重みでなければ ", " を足す
-bool should_append_comma(const std::string& text, size_t end) {
-	size_t i = end;
-	while (i < text.size() && (text[i] == ' ' || text[i] == '\t')) ++i;
-	if (i >= text.size()) return true;
-	const char c = text[i];
-	return !(c == ',' || c == '\n' || c == '\r' || c == ')' || c == ':');
-}
-
-} // namespace
-
 size_t next_tag_position(const std::string& text, size_t cursor) {
 	if (cursor > text.size()) cursor = text.size();
 	const TagList tags = extract_tags_from_text(text);
@@ -184,55 +137,6 @@ size_t next_tag_position(const std::string& text, size_t cursor) {
 		if (tag.start >= cursor) return tag.start;
 	}
 	return text.size();
-}
-
-TagReplaceResult replace_tag_at_cursor(const std::string& text, size_t cursor, const std::string& newTag) {
-	if (cursor > text.size()) cursor = text.size();
-	if (newTag.empty()) {
-		TagReplaceResult result;
-		result.text = text;
-		result.caret = next_tag_position(text, cursor);
-		return result;
-	}
-
-	const TagList tags = extract_tags_from_text(text);
-	if (find_delimiter_inside(tags, cursor)) {
-		TagReplaceResult result;
-		result.text = text;
-		result.caret = next_tag_position(text, cursor);
-		return result;
-	}
-
-	size_t start = cursor;
-	size_t end = cursor;
-	if (const Tag* tag = find_attached_content_tag(text, tags, cursor)) {
-		start = tag->start;
-		end = tag->end;
-		// 抽出範囲は末尾の CR を含むが、タグ文字列には含まれない
-		while (end > start && text[end - 1] == '\r') --end;
-		while (end < text.size() && (text[end] == ' ' || text[end] == '\t')) ++end;
-	} else if (cursor < text.size() && (text[cursor] == '\n' || text[cursor] == '\r')) {
-		TagReplaceResult result;
-		result.text = text;
-		result.caret = next_tag_position(text, cursor);
-		return result;
-	} else {
-		while (start > 0 && (text[start - 1] == ' ' || text[start - 1] == '\t')) --start;
-		while (end < text.size() && (text[end] == ' ' || text[end] == '\t')) ++end;
-	}
-
-	const bool lead = start > 0 && text[start - 1] == ',';
-	const bool comma = should_append_comma(text, end);
-	std::string insert;
-	if (lead) insert.push_back(' ');
-	insert += newTag;
-	if (comma) insert += ", ";
-
-	TagReplaceResult result;
-	result.text = text.substr(0, start) + insert + text.substr(end);
-	const size_t newTagPos = start + (lead ? 1 : 0);
-	result.caret = next_tag_position(result.text, newTagPos);
-	return result;
 }
 
 namespace {
@@ -310,40 +214,6 @@ std::string join(const std::vector<std::string>& strings, const std::string& sep
 		result += separator;
 	}
 	return result.substr(0, result.length() - separator.length());
-}
-
-// 改行コードの正規化
-
-std::wstring newlines_for_edit(const std::wstring& text) {
-	std::wstring result;
-	result.reserve(text.length() * 2);
-	for (wchar_t c : text) {
-		if (c == L'\n') {
-			result += L"\r\n";
-		} else {
-			result += c;
-		}
-	}
-	return result;
-}
-
-std::wstring newlines_for_parse(const std::wstring& text) {
-	std::wstring result;
-	result.reserve(text.length());
-	for (size_t i = 0; i < text.length(); ++i) {
-		if (text[i] == L'\r' && i + 1 < text.length() && text[i + 1] == L'\n') {
-			// \r\nの組み合わせの場合は\nを追加して\rをスキップ
-			result += L'\n';
-			++i; // \rをスキップ
-		} else if (text[i] == L'\r') {
-			// 単独の\rは\nに置換
-			result += L'\n';
-		} else {
-			// その他の文字はそのまま追加
-			result += text[i];
-		}
-	}
-	return result;
 }
 
 // 改行コードのエスケープ
