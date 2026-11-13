@@ -26,13 +26,6 @@ std::tuple<size_t, size_t> get_span_at_cursor(const std::string& text, int pos);
 // 次が無ければ text.size()。
 size_t next_tag_position(const std::string& text, size_t cursor);
 
-// カーソル位置のタグを newTag で置き換え、次のコンテンツタグへ進めた位置を返す。
-struct TagReplaceResult {
-	std::string text;
-	size_t caret;
-};
-TagReplaceResult replace_tag_at_cursor(const std::string& text, size_t cursor, const std::string& newTag);
-
 // 文字列を指定した区切り文字で分割
 std::vector<std::string> split_string(const std::string& str, char delimiter);
 
@@ -42,10 +35,6 @@ std::string trim(const std::string& text);
 
 // 文字列を結合
 std::string join(const std::vector<std::string>& strings, const std::string& separator);
-
-// 改行コードの正規化
-std::wstring newlines_for_edit(const std::wstring& text);
-std::wstring newlines_for_parse(const std::wstring& text);
 
 // 改行コードのエスケープ・アンエスケープ
 std::wstring escape_newlines(const std::wstring& text);

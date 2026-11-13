@@ -1,5 +1,6 @@
 #pragma once
 
+#include <windows.h>
 #include "CppUnitTest.h"
 #include "../src/TagListHandler.h"
 #include "../src/Tag.h"

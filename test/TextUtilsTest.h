@@ -75,22 +75,20 @@ public:
 	TEST_METHOD(TestIsBracketTagEscapedCharacterAndOtherBrackets);
 	TEST_METHOD(TestIsDelimiterTagIgnoresEscapedBrackets);
 
-	// キーボードの「次のタグ」と候補確定時の置換
+	// キーボードの「次のタグ」
 	TEST_METHOD(TestNextTagSkipsEscapedParentheses);
 	TEST_METHOD(TestNextTagSkipsBracketsAndNewlines);
 	TEST_METHOD(TestNextTagWalksIssue43Prompt);
-	TEST_METHOD(TestReplaceTagAtCursorBasic);
-	TEST_METHOD(TestReplaceTagKeepsEscapedParentheses);
-	TEST_METHOD(TestReplaceTagInsideWeightKeepsBrackets);
-	TEST_METHOD(TestReplaceTagBeforeNewlineKeepsNewline);
-	TEST_METHOD(TestReplaceTagInsertsIntoEmptyParens);
-	TEST_METHOD(TestReplaceInsideDelimiterDoesNotCorrupt);
 
 	// 文字列分割のテスト
 	TEST_METHOD(TestSplitString);
 	TEST_METHOD(TestSplitStringEmpty);
 	TEST_METHOD(TestSplitStringNoDelimiter);
 	TEST_METHOD(TestSplitStringMultipleDelimiters);
+
+	// 文字列結合のテスト
+	TEST_METHOD(TestJoin);
+	TEST_METHOD(TestJoinEmpty);
 
 	// トリミングのテスト
 	TEST_METHOD(TestTrimWstring);
@@ -99,12 +97,6 @@ public:
 	TEST_METHOD(TestTrimWhitespaceOnly);
 
 	// 改行コード関連のテスト
-	TEST_METHOD(TestNewlinesForEdit);
-	TEST_METHOD(TestNewlinesForEditEmpty);
-	TEST_METHOD(TestNewlinesForEditNoNewlines);
-	TEST_METHOD(TestNewlinesForParse);
-	TEST_METHOD(TestNewlinesForParseEmpty);
-	TEST_METHOD(TestNewlinesForParseNoCarriageReturn);
 	TEST_METHOD(TestEscapeNewlines);
 	TEST_METHOD(TestEscapeNewlinesEmpty);
 	TEST_METHOD(TestEscapeNewlinesNoSpecialChars);

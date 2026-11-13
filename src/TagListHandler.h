@@ -1,18 +1,17 @@
 #pragma once
 
 #include <vector>
-#include <windows.h>
 
 #include "Tag.h"
 
 class BooruPrompter;
 
-// コンテキストメニュー関連のID
+// コンテキストメニューのコマンドID。ツールバー側（1001〜1012）とは別範囲。
 enum {
-	ID_CONTEXT_MOVE_TO_TOP = 1010,
-	ID_CONTEXT_MOVE_TO_BOTTOM = 1011,
-	ID_CONTEXT_DELETE = 1012,
-	ID_CONTEXT_ADD_FAVORITE = 1013
+	ID_CONTEXT_MOVE_TO_TOP = 1100,
+	ID_CONTEXT_MOVE_TO_BOTTOM = 1101,
+	ID_CONTEXT_DELETE = 1102,
+	ID_CONTEXT_ADD_FAVORITE = 1103
 };
 
 // タグリスト関連のメソッド
