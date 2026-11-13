@@ -1,5 +1,7 @@
 #pragma once
 
+#include "framework.h"
+
 #include <future>
 #include <string>
 #include <vector>
