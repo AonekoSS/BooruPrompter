@@ -430,6 +430,16 @@ void TextUtilsTest::TestSplitStringMultipleDelimiters() {
 	Assert::AreEqual("b", parts[2].c_str());
 }
 
+void TextUtilsTest::TestJoin() {
+	std::vector<std::string> parts = { "a", "b", "c" };
+	Assert::AreEqual("a, b, c", join(parts, ", ").c_str());
+}
+
+void TextUtilsTest::TestJoinEmpty() {
+	std::vector<std::string> parts;
+	Assert::AreEqual("", join(parts, ", ").c_str());
+}
+
 void TextUtilsTest::TestTrimWstring() {
 	// wstringのトリミングテスト
 	std::wstring text = L"  Hello World  ";

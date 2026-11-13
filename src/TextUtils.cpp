@@ -208,12 +208,15 @@ std::vector<std::string> split_string(const std::string& str, char delimiter) {
 
 // 文字列を結合
 std::string join(const std::vector<std::string>& strings, const std::string& separator) {
-	std::string result;
-	for (const auto& str : strings) {
-		result += str;
-		result += separator;
+	if (strings.empty()) {
+		return {};
 	}
-	return result.substr(0, result.length() - separator.length());
+	std::string result = strings.front();
+	for (size_t i = 1; i < strings.size(); ++i) {
+		result += separator;
+		result += strings[i];
+	}
+	return result;
 }
 
 // 改行コードのエスケープ

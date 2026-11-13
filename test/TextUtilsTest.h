@@ -86,6 +86,10 @@ public:
 	TEST_METHOD(TestSplitStringNoDelimiter);
 	TEST_METHOD(TestSplitStringMultipleDelimiters);
 
+	// 文字列結合のテスト
+	TEST_METHOD(TestJoin);
+	TEST_METHOD(TestJoinEmpty);
+
 	// トリミングのテスト
 	TEST_METHOD(TestTrimWstring);
 	TEST_METHOD(TestTrimString);
