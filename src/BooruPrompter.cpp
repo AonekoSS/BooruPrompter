@@ -110,7 +110,13 @@ bool BooruPrompter::HandleEditorKeyboard(HWND hwnd, UINT msg, WPARAM wParam, LPA
 }
 
 void BooruPrompter::RequestSuggestionAtCaret() {
-	if (!m_promptEditor || m_showingFavorites) return;
+	if (!m_promptEditor) return;
+
+	if (m_showingFavorites) {
+		m_showingFavorites = false;
+		SendMessage(m_hwndToolbar, TB_CHECKBUTTON, ID_FAVORITES, MAKELONG(FALSE, 0));
+	}
+	SuggestionHandler::ClearSuggestionSelection(this);
 
 	const std::string currentText = m_promptEditor->GetText();
 	size_t pos = m_promptEditor->GetCurrentPos();
@@ -821,40 +827,12 @@ void BooruPrompter::OnLButtonUp(HWND hwnd, LPARAM lParam) {
 }
 
 void BooruPrompter::OnTextChanged() {
-	// 進捗表示をクリア
 	ClearProgress();
+	RequestSuggestionAtCaret();
+	if (!m_promptEditor) return;
 
-	// 現在のカーソル位置を取得
-	DWORD startPos = m_promptEditor->GetSelectionStart();
-
-	// 現在のテキストを取得
-	std::string currentText = m_promptEditor->GetText();
-
-	// カーソル位置のワードを取得
-	const auto [start, end] = get_span_at_cursor(currentText, startPos);
-	const auto currentWord = trim(currentText.substr(start, end - start));
-
-	// お気に入りリスト表示を解除
-	if (m_showingFavorites) {
-		m_showingFavorites = false;
-		SendMessage(m_hwndToolbar, TB_CHECKBUTTON, ID_FAVORITES, MAKELONG(FALSE, 0));
-	}
-
-	// 文字を打ったら候補の選択は一旦外す
-	SuggestionHandler::ClearSuggestionSelection(this);
-
-	// サジェストリクエスト
-	m_suggestionManager.Request(currentWord);
-	if (!currentWord.empty()) {
-		UpdateStatusText(L"サジェスト中： " + utf8_to_unicode(currentWord));
-	} else {
-		UpdateStatusText(L"");
-	}
-
-	// プロンプトが変更されたのでタグリストを更新
+	const std::string currentText = m_promptEditor->GetText();
 	TagListHandler::SyncTagListFromPrompt(this, currentText);
-
-	// テキスト確定後にシンタックスハイライトを適用
 	m_promptEditor->ApplySyntaxHighlighting(currentText);
 }
 

@@ -63,7 +63,6 @@ void SuggestionHandler::MoveCaretToNextTag(BooruPrompter* pThis) {
 	pThis->m_promptEditor->SetSelection(static_cast<DWORD>(next), static_cast<DWORD>(next));
 	pThis->m_promptEditor->ScrollCaretIntoView();
 	pThis->m_promptEditor->SetFocus();
-	ClearSuggestionSelection(pThis);
 	pThis->RequestSuggestionAtCaret();
 }
 
