@@ -7,6 +7,14 @@
 
 #include "Tag.h"
 
+// Danbooruのカテゴリ番号。表示名と色は各利用側で決める。
+enum class TagCategory {
+	Artist = 1,
+	Copyright = 3,
+	Character = 4,
+	Metadata = 5,
+};
+
 // カスタムタグファイル名
 constexpr const wchar_t* CUSTOM_TAGS_FILENAME = L"custom_tags.txt";
 

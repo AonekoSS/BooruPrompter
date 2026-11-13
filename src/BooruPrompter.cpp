@@ -142,11 +142,11 @@ void BooruPrompter::DismissSuggestions() {
 
 // カテゴリーから色を取得
 static COLORREF GetCategoryColor(int category) {
-	switch (category) {
-	case 1: return RGB(255, 255, 0); // Artist
-	case 3: return RGB(0, 255, 90); // Copyright
-	case 4: return RGB(0, 160, 255); // Character
-	case 5: return RGB(255, 90, 255); // Metadata
+	switch (static_cast<TagCategory>(category)) {
+	case TagCategory::Artist: return RGB(255, 255, 0);
+	case TagCategory::Copyright: return RGB(0, 255, 90);
+	case TagCategory::Character: return RGB(0, 160, 255);
+	case TagCategory::Metadata: return RGB(255, 90, 255);
 	default:
 		return LISTVIEW_TEXT_COLOR;
 	}

@@ -230,11 +230,11 @@ std::wstring BooruDB::GetMetadata(const std::string& tag) {
 
 // カテゴリー名
 static std::wstring GetCategoryName(int category) {
-	switch (category) {
-	case 1: return L" - [Artist]";
-	case 3: return L" - [Copyright]";
-	case 4: return L" - [Character]";
-	case 5: return L" - [Metadata]";
+	switch (static_cast<TagCategory>(category)) {
+	case TagCategory::Artist: return L" - [Artist]";
+	case TagCategory::Copyright: return L" - [Copyright]";
+	case TagCategory::Character: return L" - [Character]";
+	case TagCategory::Metadata: return L" - [Metadata]";
 	default:
 		return L"";
 	}
