@@ -9,8 +9,6 @@ obj/
 bin/
 test/obj/
 test/bin/
-# vcpkg の導入結果。vcpkg.json と vcpkg-configuration.json は追跡する
-vcpkg_installed/
 
 # User-specific files
 *.rsuser

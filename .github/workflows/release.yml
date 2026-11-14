@@ -204,10 +204,9 @@ jobs:
           Write-Host ("MSBuild {0}" -f ($msbuildArgs -join ' '))
           & $env:MSBUILD_PATH @msbuildArgs
           $buildExit = $LASTEXITCODE
-          # MSBuild のマニフェスト導入は vcpkg_installed\<triplet>\<triplet>\include を見る。
+          # 導入先は external\<triplet>\include。ヘッダは scintilla\Scintilla.h。
           $scintilla = @(
-            'vcpkg_installed\x64-windows-static\x64-windows-static\include\scintilla\Scintilla.h',
-            'vcpkg_installed\x64-windows-static\include\scintilla\Scintilla.h'
+            'external\x64-windows-static\include\scintilla\Scintilla.h'
           )
           $found = @($scintilla | Where-Object { Test-Path -LiteralPath $_ })
           if ($found.Count -gt 0) {

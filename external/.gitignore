@@ -1,5 +1,5 @@
-# external 配下にできた古い導入結果だけを無視する。
-# ルートの vcpkg.json / vcpkg-configuration.json はここには当てはまらず、追跡する。
+# vcpkg が external 直下に置く導入結果。サブモジュールと danbooru.csv は追跡する。
+# ルートの vcpkg.json / vcpkg-configuration.json はこのディレクトリの外なので対象外。
 vcpkg
 x64-windows
 x64-windows-static

@@ -52,12 +52,13 @@
     <OutDir>..\bin\</OutDir>
     <IntDir>..\obj\</IntDir>
   </PropertyGroup>
-  <!-- 導入先は vcpkg.json 隣の vcpkg_installed。相対の InstalledDir は msbuild の cwd でずれる。 -->
+  <!-- 導入先はリポジトリの external。プロジェクト位置からの絶対パスにして cwd に依存しない。 -->
   <PropertyGroup Label="Vcpkg">
     <VcpkgEnabled>true</VcpkgEnabled>
     <VcpkgEnableManifest>true</VcpkgEnableManifest>
     <VcpkgAutoLink>true</VcpkgAutoLink>
     <VcpkgApplocalDeps>false</VcpkgApplocalDeps>
+    <VcpkgInstalledDir>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\external'))\</VcpkgInstalledDir>
   </PropertyGroup>
   <PropertyGroup Label="Vcpkg" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <VcpkgUseStatic>true</VcpkgUseStatic>
