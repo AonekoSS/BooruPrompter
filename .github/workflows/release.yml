@@ -74,7 +74,9 @@ jobs:
             'src\BooruPrompter.sln',
             'src\BooruPrompter.vcxproj',
             'src\tools\merge_translation.vcxproj',
-            'test\test.vcxproj'
+            'src\test\test.vcxproj',
+            'src\vcpkg.json',
+            'src\vcpkg-configuration.json'
           )
           foreach ($path in $required) {
             if (-not (Test-Path -LiteralPath $path)) {
@@ -270,19 +272,19 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           $PSNativeCommandUseErrorActionPreference = $false
-          $testDll = 'test\bin\test.dll'
+          $testDll = 'src\test\bin\test.dll'
           if (-not (Test-Path -LiteralPath $testDll)) {
-            Write-Host 'test\bin の内容:'
-            Get-ChildItem -LiteralPath 'test\bin' -ErrorAction SilentlyContinue | Format-Table Name, Length
+            Write-Host 'src\test\bin の内容:'
+            Get-ChildItem -LiteralPath 'src\test\bin' -ErrorAction SilentlyContinue | Format-Table Name, Length
             throw "テストDLLが見つかりません: $testDll"
           }
 
           $sourceDir = Split-Path -Parent $env:ONNXRUNTIME_DLL
-          New-Item -ItemType Directory -Force -Path 'test\bin' | Out-Null
+          New-Item -ItemType Directory -Force -Path 'src\test\bin' | Out-Null
           Get-ChildItem -LiteralPath $sourceDir -Filter 'onnxruntime*.dll' | ForEach-Object {
-            Copy-Item -LiteralPath $_.FullName -Destination (Join-Path 'test\bin' $_.Name) -Force
+            Copy-Item -LiteralPath $_.FullName -Destination (Join-Path 'src\test\bin' $_.Name) -Force
           }
-          $env:PATH = "$(Resolve-Path -LiteralPath 'test\bin');$env:PATH"
+          $env:PATH = "$(Resolve-Path -LiteralPath 'src\test\bin');$env:PATH"
 
           $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
           $vstest = & $vswhere -latest -find 'Common7\IDE\CommonExtensions\Microsoft\TestWindow\vstest.console.exe' | Select-Object -First 1

@@ -30,37 +30,37 @@
     <ClCompile Include="FavoriteTagsTest.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\TextUtils.cpp">
+    <ClCompile Include="..\TextUtils.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\BooruDB.cpp">
+    <ClCompile Include="..\BooruDB.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\ImageTagDetector.cpp">
+    <ClCompile Include="..\ImageTagDetector.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\TagListHandler.cpp">
+    <ClCompile Include="..\TagListHandler.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\SuggestionHandler.cpp">
+    <ClCompile Include="..\SuggestionHandler.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\ImageInfo.cpp">
+    <ClCompile Include="..\ImageInfo.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\BooruPrompter.cpp">
+    <ClCompile Include="..\BooruPrompter.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\PromptEditor.cpp">
+    <ClCompile Include="..\PromptEditor.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
     <ClCompile Include="SuggestionTest.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\Suggestion.cpp">
+    <ClCompile Include="..\Suggestion.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\FavoriteTags.cpp">
+    <ClCompile Include="..\FavoriteTags.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
     <ClCompile Include="TranslationMergeTest.cpp">
@@ -86,43 +86,43 @@
     <ClInclude Include="FavoriteTagsTest.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\TextUtils.h">
+    <ClInclude Include="..\TextUtils.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\BooruDB.h">
+    <ClInclude Include="..\BooruDB.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\Tag.h">
+    <ClInclude Include="..\Tag.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\ImageTagDetector.h">
+    <ClInclude Include="..\ImageTagDetector.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\SyntaxHighlighter.h">
+    <ClInclude Include="..\SyntaxHighlighter.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\TagListHandler.h">
+    <ClInclude Include="..\TagListHandler.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\SuggestionHandler.h">
+    <ClInclude Include="..\SuggestionHandler.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\ImageInfo.h">
+    <ClInclude Include="..\ImageInfo.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\BooruPrompter.h">
+    <ClInclude Include="..\BooruPrompter.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\framework.h">
+    <ClInclude Include="..\framework.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\resource.h">
+    <ClInclude Include="..\resource.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="SuggestionTest.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\Suggestion.h">
+    <ClInclude Include="..\Suggestion.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="TranslationMergeTest.h">
