@@ -373,6 +373,6 @@ jobs:
           }
           # 上の gh はリリースが無いと 1 を返す。以降のコマンドが失敗したときはその終了コードを残す。
           $global:LASTEXITCODE = 0
-          & gh release create $tag $env:RELEASE_ZIP --repo $env:GITHUB_REPOSITORY --draft --title $tag --target $tag --generate-notes
+          & gh release create $tag $env:RELEASE_ZIP --repo $env:GITHUB_REPOSITORY --draft --title $tag --generate-notes
           if ($LASTEXITCODE -ne 0) { throw "gh release create が失敗しました (exit $LASTEXITCODE)" }
           & gh release view $tag --repo $env:GITHUB_REPOSITORY --json url,isDraft,name
