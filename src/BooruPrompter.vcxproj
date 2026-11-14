@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="..\external\packages\Microsoft.ML.OnnxRuntime.1.32.0\build\native\Microsoft.ML.OnnxRuntime.props" Condition="Exists('..\external\packages\Microsoft.ML.OnnxRuntime.1.32.0\build\native\Microsoft.ML.OnnxRuntime.props')" />
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
       <Configuration>Debug</Configuration>
@@ -146,9 +147,7 @@
     </CopyFileToFolders>
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.26.0" />
-  </ItemGroup>
-  <ItemGroup>
+    <None Include="packages.config" />
     <None Include="translation_overrides.csv">
       <DeploymentContent>false</DeploymentContent>
     </None>
@@ -163,5 +162,13 @@
     <Exec Command="&quot;$(SolutionDir)..\bin\tools\merge_translation.exe&quot; &quot;$(SolutionDir)..\external\booru-japanese-tag\danbooru-machine-jp.csv&quot; &quot;$(SolutionDir)translation_overrides.csv&quot; &quot;$(SolutionDir)..\bin\danbooru-jp.csv&quot;" />
   </Target>
   <ImportGroup Label="ExtensionTargets">
+    <Import Project="..\external\packages\Microsoft.ML.OnnxRuntime.1.32.0\build\native\Microsoft.ML.OnnxRuntime.targets" Condition="Exists('..\external\packages\Microsoft.ML.OnnxRuntime.1.32.0\build\native\Microsoft.ML.OnnxRuntime.targets')" />
   </ImportGroup>
+  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
+    <PropertyGroup>
+      <ErrorText>このプロジェクトは、このコンピューター上にない NuGet パッケージを参照しています。それらのパッケージをダウンロードするには、[NuGet パッケージの復元] を使用します。詳細については、http://go.microsoft.com/fwlink/?LinkID=322105 を参照してください。見つからないファイルは {0} です。</ErrorText>
+    </PropertyGroup>
+    <Error Condition="!Exists('..\external\packages\Microsoft.ML.OnnxRuntime.1.32.0\build\native\Microsoft.ML.OnnxRuntime.props')" Text="$([System.String]::Format('$(ErrorText)', '..\external\packages\Microsoft.ML.OnnxRuntime.1.32.0\build\native\Microsoft.ML.OnnxRuntime.props'))" />
+    <Error Condition="!Exists('..\external\packages\Microsoft.ML.OnnxRuntime.1.32.0\build\native\Microsoft.ML.OnnxRuntime.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\external\packages\Microsoft.ML.OnnxRuntime.1.32.0\build\native\Microsoft.ML.OnnxRuntime.targets'))" />
+  </Target>
 </Project>

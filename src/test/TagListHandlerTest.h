@@ -1,0 +1,124 @@
+#pragma once
+
+#include <windows.h>
+#include "CppUnitTest.h"
+#include "../TagListHandler.h"
+#include "../Tag.h"
+#include "../BooruDB.h"
+
+using namespace Microsoft::VisualStudio::CppUnitTestFramework;
+
+// MockSyntaxHighlighterの定義
+class MockSyntaxHighlighter {
+public:
+	void SetText(const std::string& text) {
+		lastPrompt = text;
+	}
+	std::string lastPrompt;
+};
+
+// MockBooruPrompterの定義
+class MockBooruPrompter {
+public:
+	HWND m_hwndTagList = nullptr;
+	std::unique_ptr<MockSyntaxHighlighter> m_promptEditor;
+};
+
+namespace TagListHandlerTest {
+// BooruDBのテスト用ヘルパークラス
+class BooruDBTestHelper {
+public:
+	static void SetupTestData(BooruDB& db);
+};
+
+TEST_CLASS(TagListHandlerTest) {
+public:
+	// テストクラス全体の初期化とクリーンアップ
+	TEST_CLASS_INITIALIZE(ClassInitialize);
+	TEST_CLASS_CLEANUP(ClassCleanup);
+
+	// 各テストメソッドの初期化とクリーンアップ
+	TEST_METHOD_INITIALIZE(SetUp);
+	TEST_METHOD_CLEANUP(TearDown);
+
+	// タグリスト操作のテスト
+	TEST_METHOD(TestRefreshTagList);
+	TEST_METHOD(TestSyncTagList);
+	TEST_METHOD(TestSyncTagListFromPrompt);
+
+	// ドラッグ&ドロップのテスト
+	TEST_METHOD(TestOnTagListDragStart);
+	TEST_METHOD(TestOnTagListDragEnd);
+	TEST_METHOD(TestOnTagListDragDrop);
+	TEST_METHOD(TestOnTagListDragDropInvalidIndices);
+	TEST_METHOD(TestOnTagListDragDropSameIndex);
+
+	// 追加: ドラッグ&ドロップの多様なケース
+	TEST_METHOD(TestOnTagListDragDropVariousCases);
+	TEST_METHOD(TestOnTagListDragDropWithVariousSizes);
+
+	// プロンプト同期のテスト
+	TEST_METHOD(TestUpdatePromptFromTagList);
+	TEST_METHOD(TestUpdatePromptFromTagListEmpty);
+
+	// タグ移動のテスト
+	TEST_METHOD(TestMoveTagToTop);
+	TEST_METHOD(TestMoveTagToTopInvalidIndex);
+	TEST_METHOD(TestMoveTagToBottom);
+	TEST_METHOD(TestMoveTagToBottomInvalidIndex);
+
+	// タグ削除のテスト
+	TEST_METHOD(TestDeleteTag);
+	TEST_METHOD(TestDeleteTagInvalidIndex);
+	TEST_METHOD(TestDeleteTagLastItem);
+
+	// ドラッグ状態のテスト
+	TEST_METHOD(TestIsDragging);
+	TEST_METHOD(TestGetDragIndex);
+	TEST_METHOD(TestGetDragTargetIndex);
+	TEST_METHOD(TestGetTagCount);
+	TEST_METHOD(TestUpdateDragTargetIndex);
+
+	// コンテキストメニューのテスト
+	TEST_METHOD(TestOnTagListContextCommand);
+	TEST_METHOD(TestOnTagListContextCommandInvalidIndex);
+
+	// タグソートのテスト
+	TEST_METHOD(TestSortTags);
+	TEST_METHOD(TestSortTagsEmpty);
+
+	// タグ整理後のプロンプト復元（カンマ消失バグの再現用）
+	TEST_METHOD(TestUpdatePromptFromTagListRoundTripBasic);
+	TEST_METHOD(TestUpdatePromptFromTagListRoundTripBracketsWithWeight);
+	TEST_METHOD(TestUpdatePromptFromTagListRoundTripBracketsWithoutColon);
+	TEST_METHOD(TestUpdatePromptFromTagListRoundTripMultiline);
+	TEST_METHOD(TestUpdatePromptFromTagListRoundTripWeightBeforeNewline);
+	TEST_METHOD(TestUpdatePromptFromTagListRoundTripClosingParenBeforeNewline);
+	TEST_METHOD(TestSortTagsPreservesBracketsWithWeight);
+	TEST_METHOD(TestSortTagsPreservesMultilinePrompt);
+	TEST_METHOD(TestSortTagsPreservesBracketsWithoutColon);
+	TEST_METHOD(TestSortTagsUnclosedBracketLosesTags);
+
+	// エスケープ括弧を含むタグ整理（#43）
+	TEST_METHOD(TestUpdatePromptFromTagListRoundTripEscapedTagFirst);
+	TEST_METHOD(TestUpdatePromptFromTagListRoundTripEscapedTagNotFirst);
+	TEST_METHOD(TestUpdatePromptFromTagListRoundTripMultipleEscapedTags);
+	TEST_METHOD(TestUpdatePromptFromTagListRoundTripEscapedInsideParens);
+	TEST_METHOD(TestUpdatePromptFromTagListRoundTripMixedWeightAndEscaped);
+	TEST_METHOD(TestSortTagsEscapedCharacterSortsToFront);
+	TEST_METHOD(TestSortTagsIssue43PlainTagsBeforeCharacter);
+	TEST_METHOD(TestSortTagsIssue43SeveralEscapedCharactersMerge);
+	TEST_METHOD(TestSortTagsEscapedTagInsideWeightWhenSortedFirst);
+	TEST_METHOD(TestSortTagsEscapedTagInsideWeightLosesComma);
+	TEST_METHOD(TestSortTagsDedupKeepsEscapedCharacter);
+	TEST_METHOD(TestSortTagsPreservesEscapedSquareAndCurlyBrackets);
+	TEST_METHOD(TestSortTagsPreservesTrailingBackslash);
+	TEST_METHOD(TestSortTagsDoubleBackslashBeforeParenLosesComma);
+	TEST_METHOD(TestSortTagsEscapedTagAfterNewlineLosesComma);
+	TEST_METHOD(TestSortTagsPreservesNonEscapedBrackets);
+
+
+private:
+	MockBooruPrompter* m_mockPrompter;
+};
+}

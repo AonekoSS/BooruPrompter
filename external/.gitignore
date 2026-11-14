@@ -1,6 +1,8 @@
 # vcpkg が external 直下に置く導入結果。サブモジュールと danbooru.csv は追跡する。
-# ルートの vcpkg.json / vcpkg-configuration.json はこのディレクトリの外なので対象外。
+# src の vcpkg.json / vcpkg-configuration.json はこのディレクトリの外なので対象外。
 vcpkg
 x64-windows
 x64-windows-static
 .msbuildstamp*
+# NuGet（packages.config）の展開先
+packages
