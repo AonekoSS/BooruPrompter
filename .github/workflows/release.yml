@@ -1,0 +1,359 @@
+# バージョンタグの push（または手動実行）で Release x64 をビルドし、
+# GitHub Releases に下書きを作る。公開は手元で行う。
+name: リリース下書き
+
+on:
+  push:
+    tags:
+      # 既存タグは 2.1 / 1.9 / 1.9c のように v 接頭辞なし。フィルタは glob。
+      - "[0-9]+.[0-9]+"
+      - "[0-9]+.[0-9]+[a-z]"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "下書きを作る既存タグ（例: 2.1, 1.9c）。v は付けない"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.event.inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: pwsh
+
+env:
+  RELEASE_TAG: ${{ github.event.inputs.tag || github.ref_name }}
+  VCPKG_ROOT: C:\vcpkg
+  VCPKG_INSTALLATION_ROOT: C:\vcpkg
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  draft:
+    name: ビルドして下書きリリース
+    runs-on: windows-latest
+    timeout-minutes: 120
+    steps:
+      - name: タグを確認
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+          $tag = $env:RELEASE_TAG
+          if ($tag -notmatch '^[0-9]+\.[0-9]+[a-z]?$') {
+            throw "タグ '$tag' は 2.1 や 1.9c の形式ではありません"
+          }
+          Write-Host "リリースタグ: $tag"
+          & gh release view $tag --repo $env:GITHUB_REPOSITORY --json isDraft,url 2>&1 | Out-Null
+          if ($LASTEXITCODE -eq 0) {
+            throw "タグ $tag のリリース（下書きを含む）が既にあります。消してから再実行してください"
+          }
+
+      - name: チェックアウト
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: 入力ファイルを確認
+        run: |
+          $ErrorActionPreference = 'Stop'
+          # 結合そのものは BooruPrompter.vcxproj のプリビルドが行う。ここでは欠けると
+          # ビルドが落ちる入力だけ先に見る。
+          $required = @(
+            'external\booru-japanese-tag\danbooru-machine-jp.csv',
+            'src\translation_overrides.csv',
+            'external\danbooru.csv',
+            'src\BooruPrompter.sln',
+            'src\BooruPrompter.vcxproj',
+            'src\tools\merge_translation.vcxproj',
+            'test\test.vcxproj'
+          )
+          foreach ($path in $required) {
+            if (-not (Test-Path -LiteralPath $path)) {
+              throw "必要なファイルがありません: $path"
+            }
+            $item = Get-Item -LiteralPath $path
+            Write-Host ("{0}`t{1} bytes" -f $path, $item.Length)
+          }
+
+      - name: ツールセットを選ぶ
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          if (-not (Test-Path -LiteralPath $vswhere)) {
+            throw "vswhere.exe が見つかりません"
+          }
+          $install = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath | Select-Object -First 1
+          if (-not $install) {
+            throw "C++ ツールセット入りの Visual Studio が見つかりません"
+          }
+          $install = "$install".Trim()
+          $version = & $vswhere -latest -products '*' -property catalog_productDisplayVersion | Select-Object -First 1
+          $line = & $vswhere -latest -products '*' -property catalog_productLineVersion | Select-Object -First 1
+          $version = "$version".Trim()
+          $line = "$line".Trim()
+          Write-Host "Visual Studio: $line $version"
+          Write-Host "installationPath: $install"
+
+          $vcTargets = Get-ChildItem -LiteralPath (Join-Path $install 'MSBuild\Microsoft\VC') -Directory -ErrorAction SilentlyContinue |
+            Where-Object { $_.Name -match '^v\d+$' } |
+            Sort-Object { [int]$_.Name.Substring(1) } -Descending |
+            Select-Object -First 1
+          $available = @()
+          if ($vcTargets) {
+            $toolsetDir = Join-Path $vcTargets.FullName 'Platforms\x64\PlatformToolsets'
+            Write-Host "VCTargets: $($vcTargets.FullName)"
+            if (Test-Path -LiteralPath $toolsetDir) {
+              $available = @(Get-ChildItem -LiteralPath $toolsetDir -Directory | Select-Object -ExpandProperty Name)
+            }
+          }
+          if ($available.Count -eq 0) {
+            Write-Warning "PlatformToolsets が見つからないため、VC\Tools\MSVC の版から推定します"
+            $msvcRoot = Join-Path $install 'VC\Tools\MSVC'
+            if (Test-Path -LiteralPath $msvcRoot) {
+              foreach ($dir in Get-ChildItem -LiteralPath $msvcRoot -Directory) {
+                if ($dir.Name -match '^14\.(\d+)') {
+                  $minor = [int]$Matches[1]
+                  if ($minor -ge 50) { $available += 'v145' }
+                  elseif ($minor -ge 30) { $available += 'v143' }
+                  elseif ($minor -ge 20) { $available += 'v142' }
+                  elseif ($minor -ge 10) { $available += 'v141' }
+                }
+              }
+            }
+            $available = @($available | Select-Object -Unique)
+          }
+          Write-Host ("利用可能な PlatformToolset: {0}" -f ($available -join ', '))
+
+          # プロジェクト（本体・merge_translation・test）は v145。無ければ近いものを /p: で上書きする。
+          $chosen = $null
+          foreach ($name in @('v145', 'v144', 'v143', 'v142', 'v141')) {
+            if ($available -contains $name) { $chosen = $name; break }
+          }
+          if (-not $chosen) {
+            throw "利用できる PlatformToolset がありません"
+          }
+          if ($chosen -eq 'v145') {
+            Write-Host "PlatformToolset v145 があるため、vcxproj の指定でビルドします"
+          } else {
+            Write-Warning "vcxproj は v145 ですが、この runner には無いので $chosen を /p:PlatformToolset で上書きします"
+          }
+
+          $msbuild = & $vswhere -latest -requires Microsoft.Component.MSBuild -find 'MSBuild\**\Bin\amd64\MSBuild.exe' | Select-Object -First 1
+          if (-not $msbuild) {
+            $msbuild = & $vswhere -latest -requires Microsoft.Component.MSBuild -find 'MSBuild\**\Bin\MSBuild.exe' | Select-Object -First 1
+          }
+          if (-not $msbuild) {
+            throw "MSBuild.exe が見つかりません"
+          }
+          $msbuild = "$msbuild".Trim()
+          Write-Host "MSBuild: $msbuild"
+
+          Add-Content -Path $env:GITHUB_ENV -Value "VSINSTALL_PATH=$install" -Encoding utf8NoBOM
+          Add-Content -Path $env:GITHUB_ENV -Value "PLATFORM_TOOLSET=$chosen" -Encoding utf8NoBOM
+          Add-Content -Path $env:GITHUB_ENV -Value "MSBUILD_PATH=$msbuild" -Encoding utf8NoBOM
+          @(
+            '### ツールセット',
+            "- Visual Studio: $line $version",
+            "- 選択: $chosen",
+            '- プロジェクトの指定: v145'
+          ) | Add-Content -Path $env:GITHUB_STEP_SUMMARY -Encoding utf8NoBOM
+
+      - name: vcpkg を MSBuild に統合
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+          git config --global core.longpaths true
+          $vcpkg = Join-Path $env:VCPKG_ROOT 'vcpkg.exe'
+          if (-not (Test-Path -LiteralPath $vcpkg)) {
+            throw "vcpkg.exe が見つかりません: $vcpkg"
+          }
+          & $vcpkg integrate install
+          if ($LASTEXITCODE -ne 0) { throw "vcpkg integrate install が失敗しました (exit $LASTEXITCODE)" }
+
+      - name: Release x64 をビルド
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+          if (-not $env:PLATFORM_TOOLSET) { throw "PLATFORM_TOOLSET が空です" }
+          # ソリューションをビルドすると test が BooruPrompter を参照し、
+          # 本体のプリビルド（merge_translation のビルドと辞書結合）が先に走る。
+          # PlatformToolset はグローバルプロパティなので merge_translation.vcxproj にも伝わる。
+          # EnableNativePackageReferenceSupport は VS2026 のネイティブ PackageReference
+          # （Microsoft.ML.OnnxRuntime）をコマンドラインから有効にする。vcxproj は変更しない。
+          $msbuildArgs = @(
+            'src\BooruPrompter.sln',
+            '/restore',
+            '/t:Build',
+            '/m',
+            '/p:Configuration=Release',
+            '/p:Platform=x64',
+            "/p:PlatformToolset=$env:PLATFORM_TOOLSET",
+            "/p:VcpkgRoot=$env:VCPKG_ROOT",
+            '/p:EnableNativePackageReferenceSupport=true'
+          )
+          Write-Host ("MSBuild {0}" -f ($msbuildArgs -join ' '))
+          & $env:MSBUILD_PATH @msbuildArgs
+          if ($LASTEXITCODE -ne 0) { throw "MSBuild が失敗しました (exit $LASTEXITCODE)" }
+
+      - name: 結合結果と onnxruntime.dll を確認
+        run: |
+          $ErrorActionPreference = 'Stop'
+          foreach ($path in @('bin\BooruPrompter.exe', 'bin\tools\merge_translation.exe', 'bin\danbooru-jp.csv')) {
+            if (-not (Test-Path -LiteralPath $path)) {
+              throw "ビルド成果がありません: $path （プリビルドの辞書結合が走っていない可能性があります）"
+            }
+            $item = Get-Item -LiteralPath $path
+            Write-Host ("{0}`t{1} bytes" -f $path, $item.Length)
+          }
+          if ((Get-Item -LiteralPath 'bin\danbooru-jp.csv').Length -lt 100KB) {
+            throw "bin\danbooru-jp.csv が小さすぎます。結合に失敗しています"
+          }
+
+          $candidates = @()
+          if (Test-Path -LiteralPath 'bin\onnxruntime.dll') {
+            $candidates += (Resolve-Path -LiteralPath 'bin\onnxruntime.dll').Path
+          }
+          $packageRoots = @()
+          if ($env:NUGET_PACKAGES) {
+            $packageRoots += (Join-Path $env:NUGET_PACKAGES 'microsoft.ml.onnxruntime')
+          }
+          $packageRoots += (Join-Path $env:USERPROFILE '.nuget\packages\microsoft.ml.onnxruntime')
+          foreach ($packageRoot in $packageRoots) {
+            if (-not (Test-Path -LiteralPath $packageRoot)) { continue }
+            $candidates += @(Get-ChildItem -LiteralPath $packageRoot -Filter 'onnxruntime.dll' -Recurse |
+              Where-Object { $_.FullName -match '\\runtimes\\win-x64\\native\\onnxruntime\.dll$' } |
+              Sort-Object FullName -Descending |
+              Select-Object -ExpandProperty FullName)
+          }
+          $dll = $candidates | Where-Object { $_ -match '\\bin\\onnxruntime\.dll$' } | Select-Object -First 1
+          if (-not $dll) {
+            $dll = $candidates | Where-Object { $_ -match '\\1\.26\.0\\runtimes\\win-x64\\' } | Select-Object -First 1
+          }
+          if (-not $dll) { $dll = $candidates | Select-Object -First 1 }
+          if (-not $dll) {
+            throw "onnxruntime.dll が見つかりません。Microsoft.ML.OnnxRuntime 1.26.0 (win-x64) の復元を確認してください"
+          }
+          Write-Host "onnxruntime.dll: $dll ($((Get-Item -LiteralPath $dll).Length) bytes)"
+          $dest = Join-Path (Resolve-Path -LiteralPath 'bin').Path 'onnxruntime.dll'
+          $sameFile = [System.IO.Path]::GetFullPath($dll) -eq [System.IO.Path]::GetFullPath($dest)
+          if (-not $sameFile) {
+            Copy-Item -LiteralPath $dll -Destination $dest -Force
+            Write-Host "NuGet キャッシュから bin\onnxruntime.dll へコピーしました"
+          }
+          Add-Content -Path $env:GITHUB_ENV -Value "ONNXRUNTIME_DLL=$dest" -Encoding utf8NoBOM
+
+      - name: ユニットテスト
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+          $testDll = 'test\bin\test.dll'
+          if (-not (Test-Path -LiteralPath $testDll)) {
+            Write-Host 'test\bin の内容:'
+            Get-ChildItem -LiteralPath 'test\bin' -ErrorAction SilentlyContinue | Format-Table Name, Length
+            throw "テストDLLが見つかりません: $testDll"
+          }
+
+          $sourceDir = Split-Path -Parent $env:ONNXRUNTIME_DLL
+          New-Item -ItemType Directory -Force -Path 'test\bin' | Out-Null
+          Get-ChildItem -LiteralPath $sourceDir -Filter 'onnxruntime*.dll' | ForEach-Object {
+            Copy-Item -LiteralPath $_.FullName -Destination (Join-Path 'test\bin' $_.Name) -Force
+          }
+          $env:PATH = "$(Resolve-Path -LiteralPath 'test\bin');$env:PATH"
+
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $vstest = & $vswhere -latest -find 'Common7\IDE\CommonExtensions\Microsoft\TestWindow\vstest.console.exe' | Select-Object -First 1
+          if (-not $vstest) { throw "vstest.console.exe が見つかりません" }
+          $vstest = "$vstest".Trim()
+          Write-Host "vstest: $vstest"
+
+          $wd = (Resolve-Path -LiteralPath '.').Path
+          $wdXml = $wd.Replace('&', '&amp;').Replace('<', '&lt;').Replace('>', '&gt;')
+          $settings = Join-Path $env:RUNNER_TEMP 'cppunit.runsettings'
+          $xml = '<?xml version="1.0" encoding="utf-8"?><RunSettings><RunConfiguration><WorkingDirectory>' + $wdXml + '</WorkingDirectory></RunConfiguration></RunSettings>'
+          Set-Content -LiteralPath $settings -Value $xml -Encoding utf8NoBOM
+
+          $vstestArgs = @(
+            (Resolve-Path -LiteralPath $testDll).Path,
+            '/Platform:x64',
+            "/Settings:$settings",
+            '/Logger:console'
+          )
+          $adapterNames = @(
+            'Common7\IDE\Extensions\TestPlatform\Extensions',
+            'Common7\IDE\CommonExtensions\Microsoft\TestWindow\Extensions',
+            'Common7\IDE\Extensions\TestPlatform'
+          )
+          foreach ($rel in $adapterNames) {
+            $dir = Join-Path $env:VSINSTALL_PATH $rel
+            $dll = Join-Path $dir 'Microsoft.VisualStudio.TestTools.CppUnitTestFramework.CppUnitTestExtension.dll'
+            if (Test-Path -LiteralPath $dll) {
+              Write-Host "CppUnitTest adapter: $dir"
+              $vstestArgs += "/TestAdapterPath:$dir"
+              break
+            }
+          }
+          & $vstest @vstestArgs
+          if ($LASTEXITCODE -ne 0) { throw "ユニットテストが失敗しました (exit $LASTEXITCODE)" }
+
+      - name: zip を作る
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+          # BooruPrompter2.1.zip と同じ並び。pdb、結合ツール、providers dll は入れない。
+          $stageParent = Join-Path $env:RUNNER_TEMP 'release-stage'
+          $stage = Join-Path $stageParent 'BooruPrompter'
+          if (Test-Path -LiteralPath $stageParent) { Remove-Item -LiteralPath $stageParent -Recurse -Force }
+          New-Item -ItemType Directory -Force -Path $stage | Out-Null
+          Copy-Item -LiteralPath 'bin\BooruPrompter.exe' -Destination (Join-Path $stage 'BooruPrompter.exe')
+          Copy-Item -LiteralPath 'bin\danbooru-jp.csv' -Destination (Join-Path $stage 'danbooru-jp.csv')
+          Copy-Item -LiteralPath 'external\danbooru.csv' -Destination (Join-Path $stage 'danbooru.csv')
+          Copy-Item -LiteralPath 'bin\onnxruntime.dll' -Destination (Join-Path $stage 'onnxruntime.dll')
+
+          $zip = Join-Path (Resolve-Path -LiteralPath '.').Path ("BooruPrompter{0}.zip" -f $env:RELEASE_TAG)
+          if (Test-Path -LiteralPath $zip) { Remove-Item -LiteralPath $zip -Force }
+          & tar.exe -a -cf $zip -C $stageParent 'BooruPrompter'
+          if ($LASTEXITCODE -ne 0) { throw "zip の作成に失敗しました (exit $LASTEXITCODE)" }
+
+          $entries = @( & tar.exe -tf $zip )
+          if ($LASTEXITCODE -ne 0) { throw "zip の一覧に失敗しました" }
+          Write-Host 'zip の内容:'
+          $entries | ForEach-Object { Write-Host $_ }
+          $normalized = @(
+            $entries | ForEach-Object {
+              $entry = "$_".Trim().Replace('\', '/').TrimEnd('/')
+              if ($entry.StartsWith('./')) { $entry = $entry.Substring(2) }
+              $entry
+            } | Where-Object { $_ -and $_ -ne 'BooruPrompter' }
+          )
+          $expected = @(
+            'BooruPrompter/BooruPrompter.exe',
+            'BooruPrompter/danbooru-jp.csv',
+            'BooruPrompter/danbooru.csv',
+            'BooruPrompter/onnxruntime.dll'
+          )
+          $missing = @($expected | Where-Object { $normalized -notcontains $_ })
+          $extra = @($normalized | Where-Object { $expected -notcontains $_ })
+          if ($missing.Count -gt 0 -or $extra.Count -gt 0) {
+            throw ("zip の構成が BooruPrompter2.1.zip と違います。不足: {0} / 余分: {1}" -f ($missing -join ', '), ($extra -join ', '))
+          }
+          Add-Content -Path $env:GITHUB_ENV -Value "RELEASE_ZIP=$zip" -Encoding utf8NoBOM
+
+      - name: 下書きリリースを作る
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+          $tag = $env:RELEASE_TAG
+          & gh release view $tag --repo $env:GITHUB_REPOSITORY --json isDraft,url 2>&1 | Out-Null
+          if ($LASTEXITCODE -eq 0) {
+            throw "タグ $tag のリリースが既にあります。下書きは作りません"
+          }
+          & gh release create $tag $env:RELEASE_ZIP --repo $env:GITHUB_REPOSITORY --draft --title $tag --target $tag --generate-notes
+          if ($LASTEXITCODE -ne 0) { throw "gh release create が失敗しました (exit $LASTEXITCODE)" }
+          & gh release view $tag --repo $env:GITHUB_REPOSITORY --json url,isDraft,name
