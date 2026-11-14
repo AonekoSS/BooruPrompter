@@ -203,7 +203,21 @@ jobs:
           )
           Write-Host ("MSBuild {0}" -f ($msbuildArgs -join ' '))
           & $env:MSBUILD_PATH @msbuildArgs
-          if ($LASTEXITCODE -ne 0) { throw "MSBuild が失敗しました (exit $LASTEXITCODE)" }
+          $buildExit = $LASTEXITCODE
+          # 導入先は external\<triplet>\include。ヘッダは scintilla\Scintilla.h。
+          $scintilla = @(
+            'external\x64-windows-static\include\scintilla\Scintilla.h'
+          )
+          $found = @($scintilla | Where-Object { Test-Path -LiteralPath $_ })
+          if ($found.Count -gt 0) {
+            $found | ForEach-Object { Write-Host "Scintilla.h: $_" }
+          } else {
+            Write-Host 'Scintilla.h が見つかりません。探した場所:'
+            $scintilla | ForEach-Object { Write-Host "  $_" }
+          }
+          if ($buildExit -ne 0) { throw "MSBuild が失敗しました (exit $buildExit)" }
+          if ($found.Count -eq 0) { throw 'Scintilla.h が vcpkg の導入先にありません' }
+          $global:LASTEXITCODE = 0
 
       - name: 結合結果と onnxruntime.dll を確認
         run: |
