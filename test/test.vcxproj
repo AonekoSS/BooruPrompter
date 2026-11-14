@@ -62,7 +62,7 @@
     <VcpkgEnableManifest>true</VcpkgEnableManifest>
     <VcpkgAutoLink>true</VcpkgAutoLink>
     <VcpkgApplocalDeps>false</VcpkgApplocalDeps>
-    <VcpkgInstalledDir>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\external'))\</VcpkgInstalledDir>
+    <VcpkgInstalledDir>$(ProjectDir)..\external\</VcpkgInstalledDir>
   </PropertyGroup>
   <PropertyGroup Label="Vcpkg" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <VcpkgUseStatic>true</VcpkgUseStatic>

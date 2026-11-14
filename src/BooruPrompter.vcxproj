@@ -52,14 +52,15 @@
     <OutDir>..\bin\</OutDir>
     <IntDir>..\obj\</IntDir>
   </PropertyGroup>
-  <!-- 導入先はリポジトリの external。プロジェクト位置からの絶対パスにして cwd に依存しない。 -->
+  <!-- ProjectDir はプロジェクトのディレクトリ。先頭が絶対なので .. は cwd ではなくここから解決される。 -->
   <PropertyGroup Label="Vcpkg">
     <VcpkgEnabled>true</VcpkgEnabled>
     <VcpkgEnableManifest>true</VcpkgEnableManifest>
     <VcpkgAutoLink>true</VcpkgAutoLink>
     <VcpkgApplocalDeps>false</VcpkgApplocalDeps>
-    <VcpkgInstalledDir>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\external'))\</VcpkgInstalledDir>
+    <VcpkgInstalledDir>$(ProjectDir)..\external\</VcpkgInstalledDir>
   </PropertyGroup>
+  <!-- ターゲットは x64-windows-static。vcpkg-msbuild 等のホスト依存は x64-windows で入る。 -->
   <PropertyGroup Label="Vcpkg" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <VcpkgUseStatic>true</VcpkgUseStatic>
     <VcpkgUseMD>false</VcpkgUseMD>
