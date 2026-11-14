@@ -182,6 +182,20 @@ jobs:
           & $vcpkg integrate install
           if ($LASTEXITCODE -ne 0) { throw "vcpkg integrate install が失敗しました (exit $LASTEXITCODE)" }
 
+      - name: NuGet パッケージを external\packages に復元
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+          # packages.config は msbuild /restore では展開されない。
+          $nuget = Join-Path $env:RUNNER_TEMP 'nuget.exe'
+          Invoke-WebRequest -Uri 'https://dist.nuget.org/win-x86-commandline/v6.13.2/nuget.exe' -OutFile $nuget
+          & $nuget restore 'src\BooruPrompter.sln' -NonInteractive
+          if ($LASTEXITCODE -ne 0) { throw "nuget restore が失敗しました (exit $LASTEXITCODE)" }
+          $header = 'external\packages\Microsoft.ML.OnnxRuntime.1.32.0\build\native\include\onnxruntime_cxx_api.h'
+          if (-not (Test-Path -LiteralPath $header)) {
+            throw "展開先にヘッダがありません: $header"
+          }
+
       - name: Release x64 をビルド
         run: |
           $ErrorActionPreference = 'Stop'
@@ -190,8 +204,7 @@ jobs:
           # ソリューションをビルドすると test が BooruPrompter を参照し、
           # 本体のプリビルド（merge_translation のビルドと辞書結合）が先に走る。
           # PlatformToolset はグローバルプロパティなので merge_translation.vcxproj にも伝わる。
-          # EnableNativePackageReferenceSupport は VS2026 のネイティブ PackageReference
-          # （Microsoft.ML.OnnxRuntime）をコマンドラインから有効にする。vcxproj は変更しない。
+          # Microsoft.ML.OnnxRuntime は packages.config。nuget.config の repositoryPath で external\packages に展開される。
           $msbuildArgs = @(
             'src\BooruPrompter.sln',
             '/restore',
@@ -200,8 +213,7 @@ jobs:
             '/p:Configuration=Release',
             '/p:Platform=x64',
             "/p:PlatformToolset=$env:PLATFORM_TOOLSET",
-            "/p:VcpkgRoot=$env:VCPKG_ROOT",
-            '/p:EnableNativePackageReferenceSupport=true'
+            "/p:VcpkgRoot=$env:VCPKG_ROOT"
           )
           Write-Host ("MSBuild {0}" -f ($msbuildArgs -join ' '))
           & $env:MSBUILD_PATH @msbuildArgs
@@ -239,25 +251,16 @@ jobs:
           if (Test-Path -LiteralPath 'bin\onnxruntime.dll') {
             $candidates += (Resolve-Path -LiteralPath 'bin\onnxruntime.dll').Path
           }
-          $packageRoots = @()
-          if ($env:NUGET_PACKAGES) {
-            $packageRoots += (Join-Path $env:NUGET_PACKAGES 'microsoft.ml.onnxruntime')
-          }
-          $packageRoots += (Join-Path $env:USERPROFILE '.nuget\packages\microsoft.ml.onnxruntime')
-          foreach ($packageRoot in $packageRoots) {
-            if (-not (Test-Path -LiteralPath $packageRoot)) { continue }
+          $packageRoot = 'external\packages\Microsoft.ML.OnnxRuntime.1.32.0'
+          if (Test-Path -LiteralPath $packageRoot) {
             $candidates += @(Get-ChildItem -LiteralPath $packageRoot -Filter 'onnxruntime.dll' -Recurse |
               Where-Object { $_.FullName -match '\\runtimes\\win-x64\\native\\onnxruntime\.dll$' } |
-              Sort-Object FullName -Descending |
               Select-Object -ExpandProperty FullName)
           }
           $dll = $candidates | Where-Object { $_ -match '\\bin\\onnxruntime\.dll$' } | Select-Object -First 1
-          if (-not $dll) {
-            $dll = $candidates | Where-Object { $_ -match '\\1\.26\.0\\runtimes\\win-x64\\' } | Select-Object -First 1
-          }
           if (-not $dll) { $dll = $candidates | Select-Object -First 1 }
           if (-not $dll) {
-            throw "onnxruntime.dll が見つかりません。Microsoft.ML.OnnxRuntime 1.26.0 (win-x64) の復元を確認してください"
+            throw "onnxruntime.dll が見つかりません。Microsoft.ML.OnnxRuntime 1.32.0 (win-x64) の復元を確認してください"
           }
           Write-Host "onnxruntime.dll: $dll ($((Get-Item -LiteralPath $dll).Length) bytes)"
           $dest = Join-Path (Resolve-Path -LiteralPath 'bin').Path 'onnxruntime.dll'
