@@ -1,3 +1,5 @@
+# external 配下にできた古い導入結果だけを無視する。
+# ルートの vcpkg.json / vcpkg-configuration.json はここには当てはまらず、追跡する。
 vcpkg
 x64-windows
 x64-windows-static

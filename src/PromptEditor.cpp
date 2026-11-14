@@ -1,6 +1,6 @@
 #include "framework.h"
 #include "PromptEditor.h"
-#include <Scintilla.h>
+#include <scintilla/Scintilla.h>
 #include <vector>
 #include "TextUtils.h"
 
