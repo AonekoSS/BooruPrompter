@@ -51,6 +51,9 @@ jobs:
           if ($LASTEXITCODE -eq 0) {
             throw "タグ $tag のリリース（下書きを含む）が既にあります。消してから再実行してください"
           }
+          # リリースが無いと gh は 1 を返す。Actions の pwsh は末尾の LASTEXITCODE を
+          # ステップの終了コードにするため、想定内の失敗は 0 に戻す。
+          $global:LASTEXITCODE = 0
 
       - name: チェックアウト
         uses: actions/checkout@v5
@@ -354,6 +357,8 @@ jobs:
           if ($LASTEXITCODE -eq 0) {
             throw "タグ $tag のリリースが既にあります。下書きは作りません"
           }
+          # 上の gh はリリースが無いと 1 を返す。以降のコマンドが失敗したときはその終了コードを残す。
+          $global:LASTEXITCODE = 0
           & gh release create $tag $env:RELEASE_ZIP --repo $env:GITHUB_REPOSITORY --draft --title $tag --target $tag --generate-notes
           if ($LASTEXITCODE -ne 0) { throw "gh release create が失敗しました (exit $LASTEXITCODE)" }
           & gh release view $tag --repo $env:GITHUB_REPOSITORY --json url,isDraft,name
