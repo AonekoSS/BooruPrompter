@@ -7,8 +7,6 @@
 .vscode/
 obj/
 bin/
-src/test/obj/
-src/test/bin/
 
 # User-specific files
 *.rsuser
